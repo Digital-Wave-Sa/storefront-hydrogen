@@ -12,6 +12,7 @@ import type {
   CartLineFragment,
 } from 'storefrontapi.generated';
 import { SaudiRiyalSymbol } from './Price';
+import { PendingOverlay } from './BrandLoader';
 import { fixMojibake } from '~/lib/mojibake';
 import { getIsOutOfStockForFulfillment, isOutOfStockAtBranch, findBranchLocation, resolveBranchLocationId } from '~/lib/stock';
 import { useBranchAvailability } from '~/lib/useBranchAvailability';
@@ -328,6 +329,21 @@ export function CartLineItem({
   // NORMAL LAYOUT
   return (
     <li key={id} className={`group flex flex-col ${layout === 'aside' ? 'p-4 border-b border-gray-100 bg-white' : 'py-6 border-b border-gray-200 last:border-0'} relative gap-4`}>
+      {/*
+        Only this row waits.
+
+        A quantity change or a remove is a change to one line, so the blur and
+        the mark are scoped to that line: the rows around it stay sharp, the
+        order summary keeps its last confirmed figures, and nothing on the page
+        is replaced by a skeleton. The row keeps its height, so nothing below
+        it jumps while the request is in flight.
+      */}
+      <PendingOverlay
+        active={isLinePending}
+        size={layout === 'aside' ? 56 : 72}
+        contentClassName="flex flex-col gap-4"
+        label={isEn ? 'Updating this item…' : 'جارٍ تحديث هذا المنتج…'}
+      >
       {/* 1. Desktop Layout (hidden on mobile screen sizes for main page cart) */}
       <div className={`${layout === 'aside' ? 'hidden' : 'hidden md:flex'} items-center gap-6 w-full ${isOutOfStock ? 'opacity-40 pointer-events-none select-none' : ''} transition-opacity`}>
 
@@ -806,6 +822,7 @@ export function CartLineItem({
           </span>
         </div>
       )}
+      </PendingOverlay>
     </li>
   );
 }

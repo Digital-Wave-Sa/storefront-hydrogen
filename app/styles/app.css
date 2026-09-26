@@ -3408,3 +3408,53 @@ button.reset:hover:not(:has(> *)) {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+/*
+  The Saadeddin loading tile (see app/components/BrandLoader.tsx).
+
+  Two slow, offset motions rather than one spin: the tile breathes, the
+  monogram inside it drifts a little further. A spin would read as a generic
+  spinner wearing a logo; this reads as the mark itself being alive. Both are
+  deliberately gentle — this sits over a row the shopper is looking at, and a
+  busy animation there is more distracting than the wait it covers.
+*/
+@keyframes sdLoaderTile {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.045);
+  }
+}
+
+@keyframes sdLoaderMark {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: translateY(1px) scale(0.97);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-1px) scale(1);
+  }
+}
+
+.sd-loader-tile {
+  animation: sdLoaderTile 1600ms ease-in-out infinite;
+}
+
+.sd-loader-mark {
+  animation: sdLoaderMark 1600ms ease-in-out infinite;
+}
+
+/* A wait indicator must not be the thing that makes someone unwell. */
+@media (prefers-reduced-motion: reduce) {
+  .sd-loader-tile,
+  .sd-loader-mark {
+    animation: none;
+  }
+  .sd-loader-mark {
+    opacity: 0.85;
+  }
+}

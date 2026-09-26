@@ -1,5 +1,6 @@
 import {getAdminToken, getAdminDomain} from '~/lib/shopify-admin.server';
 import {
+  DELIVERY_IS_TAXED,
   STANDARD_DELIVERY_FEE,
   STANDARD_FREE_DELIVERY_THRESHOLD,
 } from '~/lib/delivery-defaults';
@@ -33,6 +34,14 @@ export type StandardDeliveryRate = {
   fee: number;
   /** Order total at or above which delivery is free, or null if no such rule. */
   freeThreshold: number | null;
+  /**
+   * Whether the delivery fee carries VAT — Shopify's "Charge tax on shipping
+   * rates". The cart needs it to show the same VAT figure checkout will: with
+   * this on, the tax inside the delivery fee is part of the order's VAT.
+   * Read here because it rides the same Admin request as the rate, so it costs
+   * nothing extra and follows the setting without a code change.
+   */
+  taxShipping: boolean;
 };
 
 let cache: {timestamp: number; rate: StandardDeliveryRate} | null = null;
@@ -41,10 +50,12 @@ const TTL_MS = 5 * 60 * 1000;
 const FALLBACK: StandardDeliveryRate = {
   fee: STANDARD_DELIVERY_FEE,
   freeThreshold: STANDARD_FREE_DELIVERY_THRESHOLD,
+  taxShipping: DELIVERY_IS_TAXED,
 };
 
 const DELIVERY_PROFILE_QUERY = `
   query StandardDeliveryRate {
+    shop { taxShipping }
     deliveryProfiles(first: 10) {
       nodes {
         default
@@ -160,9 +171,20 @@ export async function getStandardDeliveryRate(env: any): Promise<StandardDeliver
 
     // If no paid rate was found at all, keep the fallback fee rather than 0 —
     // a zero here would read as free delivery for every branch.
+    /**
+     * Only a real boolean from Shopify counts. A missing `shop` block (a
+     * partial response, a permissions change) falls back to the configured
+     * value rather than silently reading as "not taxed".
+     */
+    const taxShipping =
+      typeof json?.data?.shop?.taxShipping === 'boolean'
+        ? json.data.shop.taxShipping
+        : DELIVERY_IS_TAXED;
+
     const rate: StandardDeliveryRate = {
       fee: fee ?? STANDARD_DELIVERY_FEE,
       freeThreshold,
+      taxShipping,
     };
 
     cache = {timestamp: now, rate};

@@ -204,23 +204,32 @@ export async function loader(args: Route.LoaderArgs) {
      * every request; a failed lookup returns the constant as an offline
      * fallback and never blocks the page.
      */
-    let standardDeliveryRate: {fee: number; freeThreshold: number | null};
+    let standardDeliveryRate: {
+      fee: number;
+      freeThreshold: number | null;
+      taxShipping: boolean;
+    };
     try {
       const {getStandardDeliveryRate} = await import('~/lib/delivery-rate.server');
       standardDeliveryRate = await getStandardDeliveryRate(env);
     } catch (e) {
-      const {STANDARD_DELIVERY_FEE, STANDARD_FREE_DELIVERY_THRESHOLD} = await import(
-        '~/lib/delivery-defaults'
-      );
+      const {
+        STANDARD_DELIVERY_FEE,
+        STANDARD_FREE_DELIVERY_THRESHOLD,
+        DELIVERY_IS_TAXED,
+      } = await import('~/lib/delivery-defaults');
       standardDeliveryRate = {
         fee: STANDARD_DELIVERY_FEE,
         freeThreshold: STANDARD_FREE_DELIVERY_THRESHOLD,
+        taxShipping: DELIVERY_IS_TAXED,
       };
     }
 
     return data({
       standardDeliveryFee: standardDeliveryRate.fee,
       standardFreeDeliveryThreshold: standardDeliveryRate.freeThreshold,
+      // Shopify's "Charge tax on shipping rates" — the cart's VAT row needs it.
+      deliveryIsTaxed: standardDeliveryRate.taxShipping,
       ...deferredData,
       ...criticalData,
       publicStoreDomain: env.PUBLIC_STORE_DOMAIN,

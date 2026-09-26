@@ -20,6 +20,7 @@ import { redeemableAmount, cartHasGiftCard } from '~/lib/redeemable';
 import { usePendingCartMutations, lineTotalOf } from '~/lib/cart-pending';
 import { trackSelectBranch, trackLoyaltyRedeem } from '~/lib/analytics-events';
 import {
+  DELIVERY_IS_TAXED,
   STANDARD_DELIVERY_FEE,
   STANDARD_FREE_DELIVERY_THRESHOLD,
   quotedDeliveryFee,
@@ -529,7 +530,8 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
 
   const calculatedTotal = Math.max(0, subtotalBeforeDiscounts - otherDiscountDisplay - loyaltyDiscountDisplay - storeCreditDiscountDisplay + deliveryFee);
 
-  // Calculate 15% VAT strictly on taxable products in the cart (net of product discounts, independent of delivery fees)
+  // 15% VAT on the taxable products in the cart (net of product discounts).
+  // The VAT inside the delivery fee is added below, when Shopify taxes delivery.
   const taxableProductsTotal = cart?.lines?.nodes?.reduce((acc: number, line: any) => {
     const isFreeItem = line.attributes?.some((attr: any) => attr.key === '_is_free' && attr.value === 'true') || false;
     if (isFreeItem) return acc;
@@ -550,39 +552,59 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
   );
 
   /*
-    Shopify's figure, except while a change is still in flight.
+    The VAT row: what Shopify's checkout will report, worked out the same way.
 
-    `cart.cost.totalTaxAmount` is recomputed server-side, so after a quantity
-    change in the drawer it holds the PREVIOUS cart's tax until the mutation
-    returns. The old test preferred it whenever it was above zero, which is
-    exactly when it is stale, so the VAT line sat on the old amount for a
-    round trip — one to three seconds in which the subtotal had already moved
-    and the three numbers on the panel did not add up.
+    Prices are VAT-inclusive, so the VAT is the 15/115 share of what the
+    shopper pays on taxable things. Since «Charge tax on shipping rates» was
+    switched on in Shopify, the delivery fee is one of those things: on a
+    21.00 cart with 19.00 delivery, checkout reports 5.22 (2.74 + 2.48), and
+    this row used to say 2.74 — the product share alone — on the same 40.00
+    total. `deliveryIsTaxed` is read live from Shopify (`shop.taxShipping`, via
+    root), so if the setting is ever switched off again this follows it.
 
-    The local figure is not a guess: `netTaxableAmount` above is summed from
-    the same optimistic lines the shopper is looking at, so during that window
-    it is the correct answer and the server's is not. Once the cart settles we
-    go back to Shopify's number, which is the one that must match the invoice.
+    Rounded ONCE, on the whole taxable amount — products and delivery
+    together. Rounding each part first is wrong by a halala whenever the two
+    remainders push the same way: 193.00 (174 + 19) is 22.70 + 2.48 = 25.18
+    part by part, but Shopify's checkout says 25.17, which is 193 × 15/115
+    rounded once. Checked against 35 real orders and both checkout screens:
+    rounding once matched all of them; rounding each part missed one.
 
-    This is the other half of QA-059. That fix added the local calculation as a
-    fallback for a cart Shopify had not taxed yet — the ABSENT case. The stale
-    case never reached it. The subtotal had already been handled properly, by
-    `optimisticDelta` above; the VAT row had not, which is why the two rows
-    disagreed on screen.
+    Why this no longer reads `cart.cost.totalTaxAmount`:
 
-    Note the two are founded differently. `optimisticDelta` diffs Shopify's own
-    confirmed line prices, so it stays right whatever the tax rules are. This
-    assumes a flat 15% inclusive rate on every taxable line, which holds for
-    this catalogue. If a line is ever zero-rated or overridden, the figure will
-    correct itself when the server answers — still better than showing the
-    previous cart's tax, but worth knowing before the catalogue grows one.
+    It used to be preferred once the cart settled, as "Shopify's number". The
+    Storefront API has since deprecated it — "tax and duty amounts are no
+    longer available" — so it no longer carries the figure it was trusted for,
+    and the row was already running on the local calculation in practice.
+    Keeping it would now only add a way to be wrong: this storefront selects
+    delivery options on the cart, and a server figure that ever did include
+    delivery tax would have the delivery share added a second time below.
+
+    The local figure is also the right one during a change in flight: it is
+    summed from the same optimistic lines the shopper is looking at (QA-059),
+    so the VAT row moves with the subtotal instead of a round trip behind it.
+
+    Assumes a flat 15% inclusive rate on every taxable line, which holds for
+    this catalogue; per-line `taxable` flags are honoured above.
   */
-  const cartIsSettling = !!cart?.isOptimistic || pendingCart.busy;
-  const serverTax = parseFloat(cart?.cost?.totalTaxAmount?.amount ?? '0');
-  const localTax = netTaxableAmount > 0 ? netTaxableAmount * (15 / 115) : 0;
+  const deliveryIsTaxed =
+    typeof rootData?.deliveryIsTaxed === 'boolean'
+      ? rootData.deliveryIsTaxed
+      : DELIVERY_IS_TAXED;
+  const taxedDelivery = deliveryIsTaxed && deliveryFee > 0 ? deliveryFee : 0;
+  const taxableTotal = netTaxableAmount + taxedDelivery;
   const calculatedTax =
-    !cartIsSettling && serverTax > 0 ? serverTax : localTax;
+    taxableTotal > 0 ? Math.round(taxableTotal * (15 / 115) * 100) / 100 : 0;
+  /** Unrounded — only ever compared with 0, to label the subtotal below. */
+  const productVat = netTaxableAmount > 0 ? netTaxableAmount * (15 / 115) : 0;
+  // Whether a VAT row renders at all: tax in the products OR in the delivery.
   const hasTax = calculatedTax > 0;
+  /**
+   * Whether the SUBTOTAL has VAT inside it — products only, never delivery.
+   * Not the same as `hasTax` any more: a cart of untaxed products still has a
+   * VAT row when its delivery is taxed, but its subtotal contains no VAT, and
+   * labelling it «(شامل الضريبة)» would claim tax that is not in that figure.
+   */
+  const subtotalHasTax = productVat > 0;
 
   const isBranchHidden = currentBranch && (
     currentBranch.hide_from_storefront?.value === 'true' ||
@@ -1283,11 +1305,13 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
                     * product» switched off in Shopify, and on a cart made
                     * entirely of those items the suffix claimed a tax the
                     * shopper is not paying and no VAT row appeared to
-                    * contradict it. `hasTax` is the same flag that decides
-                    * whether that row renders, so the two cannot disagree.
+                    * contradict it. Keyed on `subtotalHasTax` — VAT in the
+                    * PRODUCTS — not `hasTax`: once delivery is taxed, a cart
+                    * of untaxed items still has a VAT row, but none of that
+                    * VAT is inside this subtotal.
                     */}
                   <dt className="text-[#9FB7AE] font-medium" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                    {hasTax
+                    {subtotalHasTax
                       ? (isEn ? 'Subtotal (Including VAT)' : 'المجموع الفرعي (شامل الضريبة)')
                       : (isEn ? 'Subtotal' : 'المجموع الفرعي')}
                   </dt>
@@ -1565,9 +1589,9 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
       {layout === 'aside' && (
         <div className="space-y-2 mb-4 px-1">
           <div className="flex justify-between items-center text-[14px]">
-            {/** Tied to `hasTax` for the same reason as the drawer above. */}
+            {/** Tied to `subtotalHasTax` for the same reason as the page above. */}
             <dt className="text-gray-400 font-medium">
-              {hasTax
+              {subtotalHasTax
                 ? (isEn ? 'Subtotal (Including VAT)' : 'المجموع الفرعي (شامل الضريبة)')
                 : (isEn ? 'Subtotal' : 'المجموع الفرعي')}
             </dt>

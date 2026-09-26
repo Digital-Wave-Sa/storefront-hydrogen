@@ -53,6 +53,23 @@ export const STANDARD_DELIVERY_FEE = 19;
 export const STANDARD_FREE_DELIVERY_THRESHOLD = 320;
 
 /**
+ * Whether the delivery fee carries VAT — a LAST-RESORT fallback only.
+ *
+ * The live answer is Shopify's `shop.taxShipping` ("Charge tax on shipping
+ * rates", Settings → Taxes and duties), read by `getStandardDeliveryRate` on
+ * the same Admin call as the rate itself. This constant is used only when that
+ * call fails, so it must hold what the shop is actually set to: true, since
+ * the setting was switched on in September 2026.
+ *
+ * Why it matters: with prices tax-inclusive and delivery taxed, Shopify's
+ * checkout reports the VAT inside the delivery fee too — on a 21.00 cart with
+ * 19.00 delivery, 5.22 (40 × 15/115), not 2.74 (21 × 15/115). A cart that
+ * leaves delivery out shows a different VAT figure from the checkout it hands
+ * the shopper to, on the same total.
+ */
+export const DELIVERY_IS_TAXED = true;
+
+/**
  * What Shopify has quoted for delivering this cart, in SAR — or null when it
  * has not quoted yet (no delivery address on the cart).
  *

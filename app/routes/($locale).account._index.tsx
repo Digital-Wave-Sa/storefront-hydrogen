@@ -356,14 +356,23 @@ export default function AccountDashboard() {
                     }
                   }}
                 >
+                  {/*
+                    Styled as one more row of the menu above, which is how the
+                    desktop sidebar shows it (`.account-nav-item`): the same
+                    grey, weight, size and font as «المعلومات الشخصية», and the
+                    desktop's icon the right way round. It used to be red,
+                    bold and a size smaller, with the icon flipped by
+                    `rotate-180` -- a different button from the one desktop
+                    shoppers see for the same action.
+                  */}
                   <button
                     type="submit"
-                    className="flex items-center gap-3 w-full py-4 text-red-500 hover:text-red-600 transition-colors font-bold text-[15px] text-start border-t border-gray-100"
+                    className="flex items-center gap-3 !font-normal md:font-bold w-full py-4 !text-[#7D7D7D] hover:text-[#234745] transition-colors text-[16px] text-start border-t border-gray-100"
                     style={
                       !isEn
                         ? {
                             fontFamily:
-                              "'EnglishDigits', 'Bahij Janna', sans-serif",
+                              "'EnglishDigits', 'GE Dinar One', sans-serif",
                           }
                         : undefined
                     }
@@ -375,13 +384,11 @@ export default function AccountDashboard() {
                       fill="none"
                       stroke="currentColor"
                       strokeWidth="2"
-                      className="shrink-0 text-red-500/80 rotate-180"
+                      className="shrink-0"
                     >
-                      <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
-                      <polyline points="16 17 21 12 16 7" />
-                      <line x1="21" y1="12" x2="9" y2="12" />
+                      <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
                     </svg>
-                    <span>{isEn ? 'Logout' : 'تسجيل الخروج'}</span>
+                    <span>{isEn ? 'Sign out' : 'تسجيل الخروج'}</span>
                   </button>
                 </Form>
               </div>

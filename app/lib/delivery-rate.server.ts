@@ -35,11 +35,17 @@ export type StandardDeliveryRate = {
   /** Order total at or above which delivery is free, or null if no such rule. */
   freeThreshold: number | null;
   /**
+   * Whether `fee` and `freeThreshold` were actually read from Shopify. False
+   * means the read failed and they are fallbacks — so `freeThreshold: null`
+   * with `live: false` is "we could not find out", while `freeThreshold: null`
+   * with `live: true` is "Shopify has no free-delivery rate". The product page
+   * needs the difference: the first still shows the free-delivery line, the
+   * second must not promise one.
+   */
+  live: boolean;
+  /**
    * Whether the delivery fee carries VAT — Shopify's "Charge tax on shipping
-   * rates". The cart needs it to show the same VAT figure checkout will: with
-   * this on, the tax inside the delivery fee is part of the order's VAT.
-   * Read here because it rides the same Admin request as the rate, so it costs
-   * nothing extra and follows the setting without a code change.
+   * rates". The cart needs it to show the same VAT figure checkout will.
    */
   taxShipping: boolean;
 };
@@ -50,12 +56,12 @@ const TTL_MS = 5 * 60 * 1000;
 const FALLBACK: StandardDeliveryRate = {
   fee: STANDARD_DELIVERY_FEE,
   freeThreshold: STANDARD_FREE_DELIVERY_THRESHOLD,
+  live: false,
   taxShipping: DELIVERY_IS_TAXED,
 };
 
 const DELIVERY_PROFILE_QUERY = `
   query StandardDeliveryRate {
-    shop { taxShipping }
     deliveryProfiles(first: 10) {
       nodes {
         default
@@ -90,32 +96,107 @@ const DELIVERY_PROFILE_QUERY = `
   }
 `;
 
+/**
+ * A SEPARATE request, on purpose.
+ *
+ * `taxShipping` used to be the first field of the rates query above. It is a
+ * non-null Boolean on a non-null `shop`, so if Shopify refuses it (a missing
+ * scope, an API change) GraphQL null-propagation can blank the ENTIRE
+ * response — rates included — and the rates silently fell back: the product
+ * page printed a stale 320 while Shopify's rate was 299. Two requests, run in
+ * parallel, mean one can fail without taking the other with it.
+ */
+const TAX_SHIPPING_QUERY = `
+  query ShopTaxShipping {
+    shop { taxShipping }
+  }
+`;
+
+/**
+ * One Admin GraphQL call that SAYS why it failed.
+ *
+ * The old code checked only `res.ok`. GraphQL errors arrive with HTTP 200, so
+ * a refused field or a missing scope produced no log at all — the fallback
+ * just took over, and a permanently broken lookup looked exactly like a
+ * working one. Returns `data`, or null when there is none to use.
+ */
+async function adminGraphql(
+  domain: string,
+  token: string,
+  query: string,
+  label: string,
+): Promise<any | null> {
+  const res = await fetch(`https://${domain}/admin/api/2024-04/graphql.json`, {
+    method: 'POST',
+    headers: {
+      'X-Shopify-Access-Token': token,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({query}),
+    signal: AbortSignal.timeout(4000),
+  }).catch((e: any) => {
+    console.error(`[delivery-rate] ${label}: request failed:`, e?.message || e);
+    return null;
+  });
+  if (!res) return null;
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    console.error(`[delivery-rate] ${label}: HTTP ${res.status}`, body.slice(0, 300));
+    return null;
+  }
+  const json = (await res.json().catch(() => null)) as any;
+  if (json?.errors?.length) {
+    console.error(
+      `[delivery-rate] ${label}: Shopify returned errors:`,
+      JSON.stringify(json.errors).slice(0, 500),
+    );
+  }
+  return json?.data ?? null;
+}
+
 export async function getStandardDeliveryRate(env: any): Promise<StandardDeliveryRate> {
   const now = Date.now();
   if (cache && now - cache.timestamp < TTL_MS) return cache.rate;
 
   const domain = getAdminDomain(env);
-  if (!domain) return cache?.rate ?? FALLBACK;
+  if (!domain) {
+    console.error('[delivery-rate] No Admin domain configured; using fallbacks.');
+    return cache?.rate ?? FALLBACK;
+  }
 
   try {
     const token = await getAdminToken(env);
-    if (!token) return cache?.rate ?? FALLBACK;
+    if (!token) {
+      console.error('[delivery-rate] No Admin token; using fallbacks.');
+      return cache?.rate ?? FALLBACK;
+    }
 
-    const res = await fetch(`https://${domain}/admin/api/2024-04/graphql.json`, {
-      method: 'POST',
-      headers: {
-        'X-Shopify-Access-Token': token,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({query: DELIVERY_PROFILE_QUERY}),
-      signal: AbortSignal.timeout(4000),
-    }).catch(() => null);
+    const [rateData, taxData] = await Promise.all([
+      adminGraphql(domain, token, DELIVERY_PROFILE_QUERY, 'rates'),
+      adminGraphql(domain, token, TAX_SHIPPING_QUERY, 'taxShipping'),
+    ]);
 
-    if (!res || !res.ok) return cache?.rate ?? FALLBACK;
+    /**
+     * Only a real boolean from Shopify counts. Otherwise keep the last value
+     * Shopify gave, and only then the configured fallback — never silently
+     * "not taxed".
+     */
+    const taxShipping =
+      typeof taxData?.shop?.taxShipping === 'boolean'
+        ? taxData.shop.taxShipping
+        : cache?.rate.taxShipping ?? DELIVERY_IS_TAXED;
 
-    const json = (await res.json()) as any;
-    const profiles = json?.data?.deliveryProfiles?.nodes || [];
-    const profile = profiles.find((p: any) => p?.default) || profiles[0];
+    const profiles: any[] | undefined = rateData?.deliveryProfiles?.nodes;
+    if (!Array.isArray(profiles)) {
+      /**
+       * The rates could not be read. This is NOT cached: caching it is how a
+       * single bad response used to stand in for the real rate for five
+       * minutes. Serve the last good read if there is one, else the fallback,
+       * and try Shopify again on the next request.
+       */
+      return cache ? {...cache.rate, taxShipping} : {...FALLBACK, taxShipping};
+    }
+    const profile: any = profiles.find((p: any) => p?.default) || profiles[0];
 
     let fee: number | null = null;
     let freeThreshold: number | null = null;
@@ -140,8 +221,11 @@ export async function getStandardDeliveryRate(env: any): Promise<StandardDeliver
             that the paid rate carries no threshold and only the free rate
             does. That is not how this shop is configured. Its قياسي rate is:
 
-                Standard Delivery  19.00  TOTAL_PRICE >= 0.00 AND <= 320.00
-                Free Delivery       0.00  TOTAL_PRICE >= 320.00
+                Standard Delivery  19.00  TOTAL_PRICE >= 0.00 AND <= 298.90
+                Free Delivery       0.00  TOTAL_PRICE >= 299.00
+
+            (The amounts are whatever admin says today — they were 320 when
+            this was written; the SHAPE is the point.)
 
             — the paid rate carries a TOTAL_PRICE condition of its own, to stop
             applying once the free rate takes over. So the guard excluded the
@@ -171,19 +255,10 @@ export async function getStandardDeliveryRate(env: any): Promise<StandardDeliver
 
     // If no paid rate was found at all, keep the fallback fee rather than 0 —
     // a zero here would read as free delivery for every branch.
-    /**
-     * Only a real boolean from Shopify counts. A missing `shop` block (a
-     * partial response, a permissions change) falls back to the configured
-     * value rather than silently reading as "not taxed".
-     */
-    const taxShipping =
-      typeof json?.data?.shop?.taxShipping === 'boolean'
-        ? json.data.shop.taxShipping
-        : DELIVERY_IS_TAXED;
-
     const rate: StandardDeliveryRate = {
       fee: fee ?? STANDARD_DELIVERY_FEE,
       freeThreshold,
+      live: true,
       taxShipping,
     };
 

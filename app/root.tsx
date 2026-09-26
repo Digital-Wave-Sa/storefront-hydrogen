@@ -207,6 +207,7 @@ export async function loader(args: Route.LoaderArgs) {
     let standardDeliveryRate: {
       fee: number;
       freeThreshold: number | null;
+      live: boolean;
       taxShipping: boolean;
     };
     try {
@@ -221,6 +222,7 @@ export async function loader(args: Route.LoaderArgs) {
       standardDeliveryRate = {
         fee: STANDARD_DELIVERY_FEE,
         freeThreshold: STANDARD_FREE_DELIVERY_THRESHOLD,
+        live: false,
         taxShipping: DELIVERY_IS_TAXED,
       };
     }
@@ -228,6 +230,9 @@ export async function loader(args: Route.LoaderArgs) {
     return data({
       standardDeliveryFee: standardDeliveryRate.fee,
       standardFreeDeliveryThreshold: standardDeliveryRate.freeThreshold,
+      // False when the rate could not be read from Shopify — lets pages tell
+      // "threshold unknown" apart from "no free-delivery rate exists".
+      deliveryRateLive: standardDeliveryRate.live,
       // Shopify's "Charge tax on shipping rates" — the cart's VAT row needs it.
       deliveryIsTaxed: standardDeliveryRate.taxShipping,
       ...deferredData,

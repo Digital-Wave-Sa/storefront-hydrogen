@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import {STANDARD_FREE_DELIVERY_THRESHOLD} from '~/lib/delivery-defaults';
 import { createPortal } from 'react-dom';
 import { Await, useFetcher, useRouteLoaderData, Link, useLocation } from 'react-router';
 import { Suspense } from 'react';
@@ -100,7 +99,7 @@ export const FALLBACK_BRANCHES: Branch[] = [
         minOrder: 40,
         deliveryFee: 0,
         perKmRate: 0,
-        freeDeliveryThreshold: STANDARD_FREE_DELIVERY_THRESHOLD,
+        freeDeliveryThreshold: 0,
         badge: 'طلب مسبق',
         rating: 4.8,
         ratingCount: 342,
@@ -119,7 +118,7 @@ export const FALLBACK_BRANCHES: Branch[] = [
         minOrder: 40,
         deliveryFee: 0,
         perKmRate: 0,
-        freeDeliveryThreshold: STANDARD_FREE_DELIVERY_THRESHOLD,
+        freeDeliveryThreshold: 0,
         badge: 'طلب مسبق',
         rating: 4.5,
         ratingCount: 128,
@@ -138,7 +137,7 @@ export const FALLBACK_BRANCHES: Branch[] = [
         minOrder: 40,
         deliveryFee: 0,
         perKmRate: 0,
-        freeDeliveryThreshold: STANDARD_FREE_DELIVERY_THRESHOLD,
+        freeDeliveryThreshold: 0,
         badge: 'طلب مسبق',
         rating: 4.9,
         ratingCount: 512,
@@ -157,7 +156,7 @@ export const FALLBACK_BRANCHES: Branch[] = [
         minOrder: 40,
         deliveryFee: 0,
         perKmRate: 0,
-        freeDeliveryThreshold: STANDARD_FREE_DELIVERY_THRESHOLD,
+        freeDeliveryThreshold: 0,
         badge: 'طلب مسبق',
         rating: 4.2,
         ratingCount: 89,
@@ -176,7 +175,7 @@ export const FALLBACK_BRANCHES: Branch[] = [
         minOrder: 40,
         deliveryFee: 0,
         perKmRate: 0,
-        freeDeliveryThreshold: STANDARD_FREE_DELIVERY_THRESHOLD,
+        freeDeliveryThreshold: 0,
         badge: 'طلب مسبق',
         rating: 4.6,
         ratingCount: 204,

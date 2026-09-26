@@ -20,8 +20,9 @@
  *     Settings -> Shipping and delivery -> General profile
  *       -> Domestic zone -> قياسي
  *
- * which is 19.00 SAR with free delivery over 320. If that rate is ever
- * changed, change it here too. There is no way to read it from the Storefront
+ * which is 19.00 SAR at the time of writing. If that rate is ever changed,
+ * change it here too (the free-delivery threshold, by contrast, has no copy
+ * here at all — see STANDARD_FREE_DELIVERY_THRESHOLD below). There is no way to read it from the Storefront
  * API without a quoted cart, which is precisely the situation this covers.
  *
  * Deliberately NOT per branch. Branch fees belong in Shopify Local delivery,
@@ -43,14 +44,23 @@
 export const STANDARD_DELIVERY_FEE = 19;
 
 /**
- * Whether the free-delivery threshold on the standard rate is met.
+ * The free-delivery threshold when Shopify cannot be asked: UNKNOWN, on purpose.
  *
- * Mirrors the «Free 320.00 ر.س and up» condition on the قياسي rate. Used only
- * alongside STANDARD_DELIVERY_FEE, for the same pre-quote window: promising a
- * fee to a shopper whose order already qualifies for free delivery would be
- * wrong in the direction that costs them money.
+ * The real threshold is the «Free Delivery … and up» rate on the Domestic
+ * zone, read live by `getStandardDeliveryRate` (root passes it to every page
+ * as `standardFreeDeliveryThreshold`). This used to be a hardcoded 320, and
+ * the day the rate was changed to 299 in Shopify, every Admin hiccup put
+ * «للطلبات فوق 320 ر.س» back on product pages — a number the shop no longer
+ * offered, printed with full confidence.
+ *
+ * So there is no fallback number. `null` means "we could not find out", and
+ * every consumer treats it that way: the product page keeps the free-delivery
+ * line but drops the amount («للطلبات المؤهلة») rather than guess, and the
+ * cart simply does not assume free
+ * delivery before Shopify has quoted (the quote, once there, is authoritative
+ * anyway). Change the threshold in Shopify admin only; nothing here.
  */
-export const STANDARD_FREE_DELIVERY_THRESHOLD = 320;
+export const STANDARD_FREE_DELIVERY_THRESHOLD: number | null = null;
 
 /**
  * Whether the delivery fee carries VAT — a LAST-RESORT fallback only.

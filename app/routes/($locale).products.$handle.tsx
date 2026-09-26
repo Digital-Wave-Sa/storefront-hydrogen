@@ -1,5 +1,4 @@
 import {Suspense, Fragment, useState, useEffect, useMemo} from 'react';
-import {STANDARD_FREE_DELIVERY_THRESHOLD} from '~/lib/delivery-defaults';
 import {counted, REVIEWS} from '~/lib/plural';
 import {
   getVisibilityStatus,
@@ -4805,43 +4804,72 @@ export default function Product() {
 
                 This used to read the branch's `custom.free_delivery_threshold`
                 and fall back to a hardcoded 200. Both were fiction. Shopify's
-                shipping profile has ONE Domestic zone with one free rate, at
-                320, and that is what checkout charges against — a per-branch
-                threshold cannot be enforced, so the two branches carrying one
-                (500 and 700) only ever made this line disagree with the till.
-                The 200 was worse: it promised free delivery on a 250 cart that
-                Shopify then charged 19 for.
+                shipping profile has ONE Domestic zone with one free rate, and
+                that is what checkout charges against — a per-branch threshold
+                cannot be enforced, so the two branches carrying one (500 and
+                700) only ever made this line disagree with the till. The 200
+                was worse: it promised free delivery on a 250 cart that Shopify
+                then charged 19 for.
 
                 root reads the rate through lib/delivery-rate.server, so
                 editing it in Shopify admin changes this line with no deploy.
-                The constant is the offline fallback and matches the rate.
+
+                There is NO fallback number. This used to fall back to a
+                hardcoded 320, so after the rate moved to 299 in Shopify, any
+                failed Admin lookup put «للطلبات فوق 320 ر.س» on the page — a
+                figure the shop no longer offered.
+
+                Three cases, and the free-delivery line is shown in two:
+                  • number known        → «للطلبات فوق 299 ر.س»
+                  • lookup failed       → the line stays, without an amount
+                                          («للطلبات المؤهلة») — it is still
+                                          true, it just does not guess
+                  • Shopify has no free → the line is dropped: nothing to
+                    rate (live, null)     promise
               */
-              const threshold =
+              const threshold: number | null =
                 typeof rootData?.standardFreeDeliveryThreshold === 'number'
                   ? rootData.standardFreeDeliveryThreshold
-                  : STANDARD_FREE_DELIVERY_THRESHOLD;
+                  : null;
 
               /**
                * The free-delivery line names an amount that comes from the
                * branch, so its editable text carries a `{threshold}` token
                * rather than a number a merchant would have to keep in sync.
                */
-              const thresholdText = isEn
-                ? String(threshold)
-                : new Intl.NumberFormat('en-US').format(threshold);
+              const thresholdText =
+                threshold == null
+                  ? null
+                  : isEn
+                    ? String(threshold)
+                    : new Intl.NumberFormat('en-US').format(threshold);
               const readyText = formatReadyIn(
                 readBranchNumber(currentBranch, 'pickup_ready_minutes') ??
                   DEFAULT_PICKUP_READY_MINUTES,
                 isEn,
               );
-              const panelRows = panelCopy.map((row) => ({
-                ...row,
-                text: row.text
-                  .split('{threshold}')
-                  .join(thresholdText)
-                  .split('{ready}')
-                  .join(readyText),
-              }));
+              // Shopify was read and has no free-delivery rate at all.
+              const noFreeDelivery =
+                threshold == null && rootData?.deliveryRateLive === true;
+              const panelRows = panelCopy
+                .filter(
+                  (row) =>
+                    !(noFreeDelivery && row.text.includes('{threshold}')),
+                )
+                .map((row) => ({
+                  ...row,
+                  text:
+                    thresholdText == null && row.text.includes('{threshold}')
+                      ? // Amount unknown right now: keep the line, drop the number.
+                        isEn
+                        ? 'On qualifying orders'
+                        : 'للطلبات المؤهلة'
+                      : row.text
+                          .split('{threshold}')
+                          .join(thresholdText ?? '')
+                          .split('{ready}')
+                          .join(readyText),
+                }));
 
               return (
                 <div

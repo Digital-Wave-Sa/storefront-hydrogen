@@ -1864,9 +1864,9 @@ export default function CustomCakeBuilder({
           </div>
         )}
 
-        {/* The picture, on cream, ringed in gold. */}
-        <div className="bg-[#FBF5E9] px-5 pt-5 pb-4 flex items-center justify-center">
-          <div className="w-full aspect-square max-w-[190px] rounded-full overflow-hidden ring-2 ring-[#C9A84C] shadow-inner">
+        {/* The picture, on soft rose. */}
+        <div className="bg-[#EED5D73D] px-5 pt-5 pb-4 flex items-center justify-center">
+          <div className="w-full aspect-square max-w-[190px] overflow-hidden">
             <img
               src={option.image}
               alt=""
@@ -2262,7 +2262,7 @@ export default function CustomCakeBuilder({
                               aria-pressed={isSelected}
                               className={`relative flex flex-col items-center rounded-2xl border p-3 sm:p-4 transition-all cursor-pointer ${
                                 isSelected
-                                  ? 'border-[#294941] bg-[#F7EAE6]'
+                                  ? 'border-[#294941] bg-white shadow-md'
                                   : 'border-[#E5E7EB] bg-white hover:border-[#294941]/50'
                               }`}
                             >
@@ -2271,7 +2271,7 @@ export default function CustomCakeBuilder({
                                   <CheckIcon className="w-3 h-3" />
                                 </div>
                               )}
-                              <div className="w-full aspect-square rounded-xl bg-[#F4ECE3] flex items-center justify-center overflow-hidden mb-3">
+                              <div className="w-full aspect-square rounded-xl bg-[#EED5D73D] flex items-center justify-center overflow-hidden mb-3">
                                 <img
                                   src={`${option.image}${option.image.includes('?') ? '&' : '?'}width=320`}
                                   alt=""

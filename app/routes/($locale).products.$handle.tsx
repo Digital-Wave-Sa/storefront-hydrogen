@@ -1386,18 +1386,27 @@ export default function Product() {
    * the panel rendered in English and vanished in Arabic. Same product, same
    * variant, same price, and only half the shoppers could put a message on it.
    *
-   * The handle replaces it because it is the same string in both languages:
-   * only `title` and `body_html` have Arabic translations on this store, and
-   * tags are not translatable in Shopify at all. Every one of the 41 carries
-   * `cake` in its handle, so this restores the panel for all of them without
-   * touching a single product in admin.
+   * The handle used to stand in for it (the same string in both languages),
+   * and it was removed on purpose. A handle is a URL, not a merchandising
+   * decision: `cake` in a slug switched the panel on for 54 products,
+   * including ten cake and cheesecake PIECES, two ice-cream molds and a box of
+   * maamoul «and cakes», and there was no way to say no short of changing the
+   * product's URL. It also missed real cakes whose slug lacks the word
+   * (Large/Small Mango Velvet).
    *
-   * It is still a name match, and a name is not a merchandising decision. The
-   * durable answer is a tag or a `custom.allow_writing` metafield that Israa
-   * sets -- language-independent by construction, and able to say NO to a
-   * cheesecake slice whose handle happens to contain `cake`. Both tests below
-   * are already in place for the day that lands; adding the tag is then the
-   * only step, and nothing here needs to change.
+   * So the panel now follows ONLY what the team sets in Shopify admin:
+   *
+   *   • Product type exactly `Cake`, or
+   *   • a tag exactly `cake`
+   *
+   * (case-insensitive, surrounding spaces ignored). Both are language-
+   * independent: product type and tags are not translated in Shopify.
+   *
+   * Exact, not "contains": with `includes('cake')` a `cheesecake` tag or a
+   * `Cheesecake` type -- perfectly reasonable things to set for collections --
+   * would switch the panel on for slices nobody writes on, which is the same
+   * name accident the handle had. To offer writing on a product, tag it
+   * `cake`; to stop, remove the tag.
    *
    * The same defect was found and patched 300 lines up, at `isGiftCard`, by
    * bolting «بطاقة هدية» and «قسيمة» onto the English match. That works and it
@@ -1407,10 +1416,10 @@ export default function Product() {
    * not display text is the fix that holds.
    */
   const isCakeProduct =
-    product.productType?.toLowerCase().includes('cake') ||
-    product.tags?.some((t: string) => t.toLowerCase().includes('cake')) ||
-    product.handle?.toLowerCase().includes('cake') ||
-    false;
+    (product.productType || '').trim().toLowerCase() === 'cake' ||
+    (product.tags || []).some(
+      (t: string) => (t || '').trim().toLowerCase() === 'cake',
+    );
 
   const isCorporateProduct =
     product.tags?.some((t: string) => {

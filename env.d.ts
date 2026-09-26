@@ -65,6 +65,12 @@ declare global {
      */
     SAADEDDIN_MIDDLEWARE_TOKEN?: string;
     /**
+     * Bearer token the mobile app uses for the middleware. The storefront
+     * uses it for `POST /orders/offline-invoices` (in-store purchases on
+     * /account/orders?source=store). Server-side only.
+     */
+    MOBILE_APP_SECRET_TOKEN?: string;
+    /**
      * Where checkout failures are reported. Server-side only.
      *
      * Optional. With nothing set, `logCheckoutError` writes its line to the

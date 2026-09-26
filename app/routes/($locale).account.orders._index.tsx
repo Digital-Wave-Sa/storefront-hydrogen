@@ -27,6 +27,11 @@ import {
   localizeCakeLineTitle,
 } from '~/lib/cake-order';
 import {resolveOrderStatus} from '~/lib/order-status';
+import {
+  getStoreInvoices,
+  type StoreInvoice,
+  type StoreInvoicesResult,
+} from '~/lib/store-invoices.server';
 
 import {pageTitle} from '~/lib/seo';
 import {localeRedirect} from '~/lib/i18n';
@@ -639,6 +644,25 @@ export async function loader({request, context}: LoaderFunctionArgs) {
     return localeRedirect(request, '/account/login');
   }
 
+  /**
+   * Online orders (Shopify) or in-store purchases (branch POS, via the ERP).
+   *
+   * Only one side is fetched per request: the in-store view never runs the
+   * Shopify order queries, and the online view never calls the ERP. So a slow
+   * or failing POS lookup can only ever affect its own view.
+   */
+  const source =
+    new URL(request.url).searchParams.get('source') === 'store' ? 'store' : 'online';
+
+  if (source === 'store') {
+    return data({
+      source,
+      storeInvoicesPromise: getStoreInvoices(context),
+      ordersPromise: null,
+      countsPromise: null,
+    });
+  }
+
   // {first, endCursor} going forward, {last, startCursor} going back —
   // derived from the ?direction & ?cursor params the <Pagination> links set.
   const paginationVariables = getPaginationVariables(request, {
@@ -786,6 +810,8 @@ export async function loader({request, context}: LoaderFunctionArgs) {
   })();
 
   return data({
+    source,
+    storeInvoicesPromise: null,
     ordersPromise,
     countsPromise,
   });
@@ -802,11 +828,13 @@ const CurrencyIcon = ({className}: {className?: string}) => (
 );
 
 export default function Orders() {
-  const {ordersPromise, countsPromise} = useLoaderData<typeof loader>();
+  const {ordersPromise, countsPromise, storeInvoicesPromise, source} =
+    useLoaderData<typeof loader>() as any;
   const {locale} = useOutletContext<{locale: string}>();
   const [searchParams] = useSearchParams();
   const statusFilter = searchParams.get('status') || 'all';
   const isEn = locale === 'en';
+  const isStore = source === 'store';
 
   return (
     <div className="orders-page-container" dir={isEn ? 'ltr' : 'rtl'}>
@@ -822,7 +850,29 @@ export default function Orders() {
           {isEn ? 'My Orders' : 'طلباتي'}
         </h2>
 
+        <OrdersSourceToggle isStore={isStore} isEn={isEn} />
+
+        {isStore ? (
+          <Suspense
+            key="store"
+            fallback={
+              <div className="py-20 text-center text-gray-500">
+                {isEn ? 'Loading in-store purchases...' : 'جاري تحميل مشتريات الفروع...'}
+              </div>
+            }
+          >
+            <Await
+              resolve={storeInvoicesPromise}
+              errorElement={<StoreInvoicesUnavailable isEn={isEn} />}
+            >
+              {(result: StoreInvoicesResult) => (
+                <StoreInvoicesList result={result} isEn={isEn} />
+              )}
+            </Await>
+          </Suspense>
+        ) : (
         <Suspense
+          key="online"
           fallback={
             <div className="py-20 text-center text-gray-500">
               {isEn ? 'Loading orders...' : 'جاري تحميل الطلبات...'}
@@ -920,8 +970,322 @@ export default function Orders() {
             }}
           </Await>
         </Suspense>
+        )}
       </div>
     </div>
+  );
+}
+
+/* ── Online / in-store switch ─────────────────────────────────────────────── */
+
+function OrdersSourceToggle({isStore, isEn}: {isStore: boolean; isEn: boolean}) {
+  const base = isEn ? '/en/account/orders' : '/account/orders';
+  const options = [
+    {
+      key: 'online',
+      to: base,
+      active: !isStore,
+      label: isEn ? 'Online orders' : 'طلبات أونلاين',
+    },
+    {
+      key: 'store',
+      to: `${base}?source=store`,
+      active: isStore,
+      label: isEn ? 'In-store purchases' : 'مشتريات الفروع',
+    },
+  ];
+
+  return (
+    <div
+      role="tablist"
+      aria-label={isEn ? 'Order source' : 'مصدر الطلبات'}
+      className="grid grid-cols-2 gap-1 p-1 bg-[#F3F7F6] border border-[#BBCFCD] rounded-full w-full md:w-fit"
+    >
+      {options.map((o) => (
+        <Link
+          key={o.key}
+          role="tab"
+          aria-selected={o.active}
+          to={o.to}
+          prefetch="intent"
+          preventScrollReset
+          className={`text-center px-5 md:px-7 py-2 rounded-full text-[13px] md:text-[14px] font-bold whitespace-nowrap transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#234745] ${
+            o.active
+              ? 'bg-[#234745] shadow-sm'
+              : 'text-[#5E7F79] hover:text-[#234745]'
+          }`}
+          style={o.active ? {color: '#FFFFFF'} : undefined}
+        >
+          {o.label}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+/* ── In-store purchases ───────────────────────────────────────────────────── */
+
+const sar = (n: number) =>
+  n.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+function StoreInvoicesList({
+  result,
+  isEn,
+}: {
+  result: StoreInvoicesResult | null;
+  isEn: boolean;
+}) {
+  if (!result || result.status === 'unavailable') {
+    return <StoreInvoicesUnavailable isEn={isEn} />;
+  }
+
+  if (result.status === 'no-phone') {
+    return (
+      <div className="py-16 px-6 text-center bg-white rounded-2xl border border-dashed border-gray-200">
+        <p className="text-[#234745] font-bold mb-2">
+          {isEn ? 'No phone number on your account' : 'لا يوجد رقم جوال في حسابك'}
+        </p>
+        <p className="text-gray-500 text-[14px] max-w-md mx-auto">
+          {isEn
+            ? 'Branch purchases are linked by the phone number you give at the till. Add yours to see them here.'
+            : 'ترتبط مشتريات الفروع برقم الجوال الذي تعطيه عند الدفع. أضف رقمك لتظهر هنا.'}
+        </p>
+        <Link
+          to={isEn ? '/en/account/profile' : '/account/profile'}
+          className="text-[#234745] font-bold underline mt-4 inline-block"
+        >
+          {isEn ? 'Add phone number' : 'إضافة رقم الجوال'}
+        </Link>
+      </div>
+    );
+  }
+
+  const invoices = result.invoices;
+
+  if (invoices.length === 0) {
+    return (
+      <div className="py-16 px-6 text-center bg-white rounded-2xl border border-dashed border-gray-200">
+        <p className="text-[#234745] font-bold mb-2">
+          {isEn
+            ? 'No branch purchases in the last 12 months'
+            : 'لا توجد مشتريات من الفروع خلال آخر 12 شهراً'}
+        </p>
+        <p className="text-gray-500 text-[14px] max-w-md mx-auto">
+          {isEn
+            ? 'Give your phone number at the till next time and your purchase will appear here.'
+            : 'أعطِ رقم جوالك عند الدفع في الفرع وستظهر مشترياتك هنا.'}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-[13px] text-[#5E7F79] m-0">
+        {isEn ? (
+          <>
+            <span className="font-en">{invoices.length}</span>{' '}
+            {invoices.length === 1 ? 'purchase' : 'purchases'} in the last 12 months
+          </>
+        ) : (
+          <>
+            <span className="font-en">{invoices.length}</span>{' '}
+            {invoices.length === 1 ? 'عملية شراء' : 'عمليات شراء'} خلال آخر 12 شهراً
+          </>
+        )}
+      </p>
+      {invoices.map((invoice) => (
+        <StoreInvoiceCard key={invoice.id} invoice={invoice} isEn={isEn} />
+      ))}
+    </div>
+  );
+}
+
+function StoreInvoicesUnavailable({isEn}: {isEn: boolean}) {
+  return (
+    <div className="py-16 px-6 text-center bg-white rounded-2xl border border-dashed border-gray-200">
+      <p className="text-[#234745] font-bold mb-2">
+        {isEn ? "Branch purchases couldn't load" : 'تعذّر تحميل مشتريات الفروع'}
+      </p>
+      <p className="text-gray-500 text-[14px]">
+        {isEn
+          ? 'Your online orders are not affected. Try again in a moment.'
+          : 'طلباتك الأونلاين لم تتأثر. حاول مرة أخرى بعد قليل.'}
+      </p>
+      <Link
+        to={isEn ? '/en/account/orders?source=store' : '/account/orders?source=store'}
+        reloadDocument
+        className="text-[#234745] font-bold underline mt-4 inline-block"
+      >
+        {isEn ? 'Try again' : 'إعادة المحاولة'}
+      </Link>
+    </div>
+  );
+}
+
+function StoreInvoiceCard({invoice, isEn}: {invoice: StoreInvoice; isEn: boolean}) {
+  const branch =
+    (isEn ? invoice.branchEn : invoice.branchAr) ||
+    invoice.branchAr ||
+    // A till whose Shopify Location has no `custom.ax_store_id` yet.
+    (invoice.storeCode
+      ? `${isEn ? 'Branch' : 'فرع'} ${invoice.storeCode}`
+      : isEn
+        ? 'Branch'
+        : 'الفرع');
+  const dateNode = formatOrderDate(invoice.date, isEn);
+  const itemCount = invoice.lines.reduce((s, l) => s + Math.abs(l.qty || 0), 0);
+  const names = invoice.lines.map((l) => l.name).filter(Boolean);
+  const titles =
+    names.slice(0, 3).join(' • ') + (names.length > 3 ? '...' : '');
+  const discountTotal = invoice.lines.reduce((s, l) => s + (l.discount || 0), 0);
+  const arFont = !isEn
+    ? {fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif"}
+    : undefined;
+
+  return (
+    <details
+      className="group bg-white border border-[#9FB7AE] rounded-[24px] md:rounded-2xl transition-all hover:border-[#234745] open:border-[#234745] w-full overflow-hidden"
+      dir={isEn ? 'ltr' : 'rtl'}
+    >
+      <summary className="list-none [&::-webkit-details-marker]:hidden cursor-pointer flex items-center gap-4 md:gap-5 p-4 md:p-6 text-start focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#234745] rounded-[24px] md:rounded-2xl">
+        {/* Store mark in place of a product photo: POS items carry ERP ids, not Shopify products. */}
+        <div className="relative flex-shrink-0">
+          <div className="w-[64px] h-[64px] md:w-[90px] md:h-[90px] rounded-xl bg-[#EEF4F2] border border-[#DCE7E4] flex items-center justify-center text-[#234745]">
+            <svg
+              className="w-7 h-7 md:w-9 md:h-9"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M3 9l1.5-5h15L21 9M3 9v11h18V9M3 9h18M9 20v-6h6v6"
+              />
+            </svg>
+          </div>
+          <div className="absolute -top-2 -left-2 min-w-6 h-6 px-1 bg-[#234745] text-white rounded-full flex items-center justify-center text-[11px] font-bold border-2 border-white font-en shadow-sm">
+            {itemCount.toLocaleString('en-US')}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1 min-w-0 flex-1">
+          <span className="text-[12px] text-[#9FB7AE] font-medium font-en truncate">
+            #{invoice.number}
+          </span>
+          <h3
+            className="text-[15px] md:text-[17px] font-bold text-[#234745] leading-tight mb-0.5 truncate"
+            style={arFont}
+          >
+            {titles || (isEn ? 'Branch purchase' : 'شراء من الفرع')}
+          </h3>
+          <span className="text-[12px] text-[#5E7F79] font-medium leading-tight truncate">
+            {branch}
+            {dateNode ? <> · {dateNode}</> : null}
+            {invoice.time ? (
+              <>
+                {' · '}
+                <span className="font-en">{invoice.time}</span>
+              </>
+            ) : null}
+          </span>
+          <div className="flex items-center gap-1 mt-1 text-[#234745] md:hidden">
+            <span className="text-[18px] font-black leading-none font-en">
+              {sar(invoice.total)}
+            </span>
+            <CurrencyIcon className="h-4 w-auto" />
+          </div>
+        </div>
+
+        <div className="flex flex-col items-end gap-3 shrink-0">
+          <span
+            className={`px-3 py-1 rounded-full text-[12px] font-bold whitespace-nowrap ${
+              invoice.isReturn
+                ? 'bg-[#FDECEC] text-[#B42318]'
+                : 'bg-[#EEF4F2] text-[#234745]'
+            }`}
+          >
+            {invoice.isReturn
+              ? isEn
+                ? 'Return'
+                : 'مرتجع'
+              : isEn
+                ? 'In store'
+                : 'من الفرع'}
+          </span>
+          <div className="hidden md:flex items-center gap-1 text-[#234745]">
+            <span className="text-[20px] font-black leading-none font-en">
+              {sar(invoice.total)}
+            </span>
+            <CurrencyIcon className="h-4.5 w-auto" />
+          </div>
+          <svg
+            className="w-5 h-5 text-[#9FB7AE] transition-transform group-open:rotate-180"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
+          </svg>
+        </div>
+      </summary>
+
+      <div className="border-t border-[#E3ECEA] px-4 md:px-6 py-4 flex flex-col gap-3">
+        <ul className="flex flex-col gap-3 m-0 p-0 list-none">
+          {invoice.lines.map((line, i) => (
+            <li key={i} className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-[14px] font-bold text-[#234745] m-0" style={arFont}>
+                  {line.name}
+                </p>
+                <p className="text-[12px] text-[#5E7F79] m-0">
+                  <span className="font-en">{line.qty}</span> ×{' '}
+                  <span className="font-en">{sar(line.unitPrice)}</span>
+                  {line.discount > 0 ? (
+                    <>
+                      {' · '}
+                      {isEn ? 'discount' : 'خصم'}{' '}
+                      <span className="font-en">{sar(line.discount)}</span>
+                    </>
+                  ) : null}
+                </p>
+              </div>
+              <span className="text-[14px] font-bold text-[#234745] font-en whitespace-nowrap flex items-center gap-1">
+                {sar(line.amount)}
+                <CurrencyIcon className="h-3 w-auto" />
+              </span>
+            </li>
+          ))}
+        </ul>
+
+        <div className="border-t border-dashed border-[#DCE7E4] pt-3 flex flex-col gap-1.5 text-[13px]">
+          {discountTotal > 0 ? (
+            <div className="flex justify-between text-[#5E7F79]">
+              <span>{isEn ? 'Discounts' : 'الخصومات'}</span>
+              <span className="font-en">-{sar(discountTotal)}</span>
+            </div>
+          ) : null}
+          {invoice.vat > 0 ? (
+            <div className="flex justify-between text-[#5E7F79]">
+              <span>{isEn ? 'VAT (15%, included)' : 'ضريبة القيمة المضافة (15%، مشمولة)'}</span>
+              <span className="font-en">{sar(invoice.vat)}</span>
+            </div>
+          ) : null}
+          <div className="flex justify-between text-[#234745] font-bold text-[15px]">
+            <span>{isEn ? 'Total' : 'الإجمالي'}</span>
+            <span className="font-en flex items-center gap-1">
+              {sar(invoice.total)}
+              <CurrencyIcon className="h-3.5 w-auto" />
+            </span>
+          </div>
+        </div>
+      </div>
+    </details>
   );
 }
 

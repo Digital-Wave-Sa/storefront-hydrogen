@@ -19,9 +19,11 @@ import {getAdminToken, getAdminDomain} from '~/lib/shopify-admin.server';
  * matching in memory, with light Arabic normalisation so the spellings people
  * actually type (hamza/ta-marbuta/alef-maqsura variants) still hit.
  *
- * The catalog is fetched from the Admin API and cached in module memory for
- * TTL_MS, the same shape as `delivery-rate.server`: one paged fetch every ten
- * minutes per server instance, never a call per keystroke.
+ * The catalog is fetched from the Admin API and cached — in module memory and
+ * in the shared Oxygen cache — with stale-while-revalidate: refreshed every
+ * ten minutes, but served for up to an hour while that refresh runs, so a
+ * rebuild is never an outage. One paged fetch per refresh, never a call per
+ * keystroke.
  */
 
 export type IndexedProduct = {
@@ -39,10 +41,55 @@ export type IndexedProduct = {
   keyEn: string;
 };
 
-type IndexCache = {timestamp: number; items: IndexedProduct[]; currencyCode: string};
+type IndexCache = {
+  timestamp: number;
+  items: IndexedProduct[];
+  currencyCode: string;
+  /**
+   * False when the crawl stopped early (a page errored, or the 40-page guard
+   * fired). A partial index is still better than nothing, but it is missing
+   * products, so it is only held briefly and never allowed to replace a
+   * complete one.
+   */
+  complete: boolean;
+};
 
 let cache: IndexCache | null = null;
-const TTL_MS = 10 * 60 * 1000;
+
+/**
+ * Two ages, not one.
+ *
+ * The index used to have a single ten-minute TTL, and an expired copy was
+ * treated as no copy at all: `readSharedIndex` returned null, `getIndex` began
+ * a crawl from zero, and every search during that crawl answered "no results".
+ * Since Arabic has no other source — Shopify's predictive search cannot serve
+ * it, see the header — the dropdown went dead for the length of a rebuild,
+ * every ten minutes, forever.
+ *
+ * SOFT is "time to refresh": past it the index is still served, and a rebuild
+ * runs in the background. HARD is "too old to trust": only past THIS does a
+ * request wait on a build. A refresh is now invisible; only a genuinely cold
+ * start costs the shopper anything.
+ */
+const SOFT_TTL_MS = 10 * 60 * 1000;
+const HARD_TTL_MS = 60 * 60 * 1000;
+/** A partial index is refreshed aggressively — it is known to be incomplete. */
+const PARTIAL_SOFT_TTL_MS = 60 * 1000;
+
+function softTtlFor(idx: IndexCache): number {
+  return idx.complete === false ? PARTIAL_SOFT_TTL_MS : SOFT_TTL_MS;
+}
+
+/** Fresh enough to serve without a background refresh. */
+function isFresh(idx: IndexCache | null): idx is IndexCache {
+  return !!idx && Date.now() - idx.timestamp < softTtlFor(idx);
+}
+
+/** Old, but still worth serving while a rebuild runs behind it. */
+function isUsable(idx: IndexCache | null): idx is IndexCache {
+  return !!idx && Date.now() - idx.timestamp < HARD_TTL_MS;
+}
+
 /** One in-flight build at a time, so a burst of first keystrokes shares it. */
 let building: Promise<IndexCache | null> | null = null;
 
@@ -67,9 +114,21 @@ async function readSharedIndex(): Promise<IndexCache | null> {
     const store = await caches.open('hydrogen');
     const hit = await store.match(new Request(INDEX_CACHE_URL));
     if (!hit) return null;
-    const parsed = (await hit.json()) as IndexCache;
-    if (!parsed?.items?.length) return null;
-    if (Date.now() - parsed.timestamp > TTL_MS) return null;
+    const raw = (await hit.json()) as Partial<IndexCache> | null;
+    if (!raw?.items?.length || typeof raw.timestamp !== 'number') return null;
+    const parsed: IndexCache = {
+      timestamp: raw.timestamp,
+      items: raw.items,
+      currencyCode: raw.currencyCode || 'SAR',
+      // Entries written before `complete` existed are whole catalogues.
+      complete: raw.complete !== false,
+    };
+    /**
+     * Stale is not useless. Only a copy past the HARD age is refused; a
+     * merely-soft-expired one is returned and the caller revalidates behind
+     * the response.
+     */
+    if (!isUsable(parsed)) return null;
     return parsed;
   } catch {
     return null;
@@ -85,7 +144,9 @@ async function writeSharedIndex(idx: IndexCache): Promise<void> {
       new Response(JSON.stringify(idx), {
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': `max-age=${Math.floor(TTL_MS / 1000)}`,
+          // The entry must outlive the SOFT age, or the Cache API would
+          // evict it at the very moment stale-while-revalidate needs it.
+          'Cache-Control': `max-age=${Math.floor(HARD_TTL_MS / 1000)}`,
         },
       }),
     );
@@ -189,6 +250,13 @@ async function buildIndex(env: any): Promise<IndexCache | null> {
   const items: IndexedProduct[] = [];
   let currencyCode = 'SAR';
   let after: string | null = null;
+  /**
+   * Only a crawl that reached the last page is complete. Anything else — an
+   * errored page, a throttle, the runaway guard below — leaves products out,
+   * and the cache needs to know that so it can retry soon instead of holding
+   * a hole in the catalogue for the full ten minutes.
+   */
+  let complete = false;
   // Hard stop so a runaway pagination can never spin forever.
   for (let page = 0; page < 40; page++) {
     const res = await fetchIndexPage(domain, token, after);
@@ -232,7 +300,10 @@ async function buildIndex(env: any): Promise<IndexCache | null> {
       });
     }
 
-    if (!data.products.pageInfo?.hasNextPage) break;
+    if (!data.products.pageInfo?.hasNextPage) {
+      complete = true;
+      break;
+    }
     after = data.products.pageInfo.endCursor;
   }
 
@@ -250,8 +321,19 @@ async function buildIndex(env: any): Promise<IndexCache | null> {
     return null;
   }
 
-  console.log(`[product-search-index] Indexed ${items.length} products.`);
-  return {timestamp: Date.now(), items, currencyCode};
+  if (!complete) {
+    /**
+     * Say it out loud. A partial index does not look broken — it looks like a
+     * shop that is missing a few products, which is far harder to notice than
+     * an empty dropdown.
+     */
+    console.warn(
+      `[product-search-index] PARTIAL build: ${items.length} products (a page failed or the page guard fired). Holding it for ${PARTIAL_SOFT_TTL_MS / 1000}s, then retrying.`,
+    );
+  } else {
+    console.log(`[product-search-index] Indexed ${items.length} products.`);
+  }
+  return {timestamp: Date.now(), items, currencyCode, complete};
 }
 
 /**
@@ -270,16 +352,38 @@ async function buildIndex(env: any): Promise<IndexCache | null> {
  */
 const BUILD_WAIT_MS = 2500;
 
+/**
+ * How long to wait when there is NOTHING to fall back on.
+ *
+ * 2.5s was sized for "a stale copy exists, do not block on the refresh". With
+ * an empty cache the trade is different: the alternative to waiting is an
+ * empty dropdown, and for Arabic — which has no second source — that means
+ * the feature is simply broken for that keystroke. 422 products is five
+ * sequential Admin pages, so the short wait lost that race almost every time.
+ */
+const COLD_BUILD_WAIT_MS = 8000;
+
 function startBuild(env: any): Promise<IndexCache | null> {
   if (!building) {
     building = buildIndex(env)
       .then(async (built) => {
         if (built) {
-          cache = built;
-          // So the next isolate does not have to crawl the catalog again.
-          await writeSharedIndex(built);
+          /**
+           * A partial crawl must not evict a complete catalogue. Without this,
+           * a single throttled refresh replaces 422 products with whatever it
+           * managed to read, and products vanish from search for ten minutes.
+           */
+          const wouldDowngrade =
+            built.complete === false &&
+            cache?.complete === true &&
+            isUsable(cache);
+          if (!wouldDowngrade) {
+            cache = built;
+            // So the next isolate does not have to crawl the catalog again.
+            await writeSharedIndex(built);
+          }
         }
-        return built ?? cache;
+        return cache ?? built;
       })
       .catch((e) => {
         console.error('[product-search-index] Build failed:', e);
@@ -303,14 +407,14 @@ export function warmProductIndex(
   env: any,
   waitUntil?: (p: Promise<unknown>) => void,
 ): void {
-  const now = Date.now();
-  if (cache && now - cache.timestamp < TTL_MS) return;
+  if (isFresh(cache)) return;
   if (building) return;
   const work = (async () => {
     const shared = await readSharedIndex();
     if (shared) {
       cache = shared;
-      return;
+      // A soft-expired shared copy is worth having AND worth refreshing.
+      if (isFresh(shared)) return;
     }
     await startBuild(env);
   })().catch(() => {});
@@ -321,27 +425,79 @@ export function warmProductIndex(
   }
 }
 
-async function getIndex(env: any, waitMs = BUILD_WAIT_MS): Promise<IndexCache | null> {
-  const now = Date.now();
-  if (cache && now - cache.timestamp < TTL_MS) return cache;
+/**
+ * Refresh behind the response. Never awaited by the request that triggers it.
+ *
+ * `waitUntil` matters on Oxygen: work that is not registered with it can be
+ * killed the moment the response is returned, which is how a warm-up could
+ * start on every search and still never finish.
+ */
+function revalidateInBackground(
+  env: any,
+  waitUntil?: (p: Promise<unknown>) => void,
+): void {
+  if (building) return;
+  const work = startBuild(env).catch(() => null);
+  if (waitUntil) {
+    try {
+      waitUntil(work);
+    } catch (e) {}
+  }
+}
 
-  /**
-   * Before crawling, ask whether another isolate already did it. This is the
-   * step that makes the deployed site behave like localhost.
-   */
+/**
+ * The index for this request — stale-while-revalidate.
+ *
+ * The order matters, and each step exists because of a way search went blank:
+ *
+ *  1. Fresh in module memory. The fast path; nothing to do.
+ *  2. Stale in module memory but inside the HARD age: SERVE IT, refresh
+ *     behind the response. This is the fix for "search dies every ten
+ *     minutes" — a refresh is no longer an outage.
+ *  3. The shared (cross-isolate) copy, same rule. This is what makes a fresh
+ *     Oxygen isolate behave like a warm one.
+ *  4. Genuinely nothing: wait for the crawl, and wait properly — an empty
+ *     answer here is not a cheaper answer, it is a wrong one.
+ */
+async function getIndex(
+  env: any,
+  waitMs = BUILD_WAIT_MS,
+  waitUntil?: (p: Promise<unknown>) => void,
+): Promise<IndexCache | null> {
+  if (isFresh(cache)) return cache;
+
+  if (isUsable(cache)) {
+    revalidateInBackground(env, waitUntil);
+    return cache;
+  }
+
   const shared = await readSharedIndex();
   if (shared) {
     cache = shared;
+    if (!isFresh(shared)) revalidateInBackground(env, waitUntil);
     return shared;
   }
 
   const build = startBuild(env);
 
-  // Wait, but not forever. `cache` may be a stale index or null.
+  /**
+   * If the wait below runs out, this request answers while the crawl is still
+   * going — and on Oxygen, work not registered with `waitUntil` can be killed
+   * with the response. The crawl must survive, or the next keystroke starts
+   * it all over again and search stays cold indefinitely.
+   */
+  if (waitUntil) {
+    try {
+      waitUntil(build.catch(() => null));
+    } catch (e) {}
+  }
+
+  // Nothing to fall back on, so give the crawl a real chance to finish.
+  const coldWait = Math.max(waitMs, COLD_BUILD_WAIT_MS);
   return Promise.race([
     build,
     new Promise<IndexCache | null>((resolve) =>
-      setTimeout(() => resolve(cache), waitMs),
+      setTimeout(() => resolve(cache), coldWait),
     ),
   ]);
 }
@@ -410,9 +566,14 @@ export async function searchProductIndex(
    * to Shopify's English-only matching, i.e. the wrong products.
    */
   waitMs = BUILD_WAIT_MS,
+  /**
+   * The request's `waitUntil`, so a background refresh triggered by this
+   * search is allowed to outlive the response instead of being killed with it.
+   */
+  waitUntil?: (p: Promise<unknown>) => void,
 ): Promise<{hits: SearchHit[]; currencyCode: string; ready: boolean}> {
   const q = normalizeSearchText(query);
-  const idx = await getIndex(env, waitMs);
+  const idx = await getIndex(env, waitMs, waitUntil);
   if (!idx) return {hits: [], currencyCode: 'SAR', ready: false};
   if (!q) return {hits: [], currencyCode: idx.currencyCode, ready: true};
   const qWords = q.split(' ').filter(Boolean);

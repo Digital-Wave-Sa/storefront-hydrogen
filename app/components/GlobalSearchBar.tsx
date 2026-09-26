@@ -110,10 +110,11 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
    * the two-character minimum keeps a single letter — which matches most of
    * the catalog and tells the shopper nothing — from asking at all.
    */
+  const searchEndpoint = isEn ? "/en/predictive-search" : "/predictive-search";
+
   useEffect(() => {
     const term = query.trim();
     if (term.length < 2) return;
-    const searchEndpoint = isEn ? "/en/predictive-search" : "/predictive-search";
     const timer = setTimeout(() => {
       fetcher.submit(
         { q: term, predictive: 'true' },
@@ -122,6 +123,75 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
     }, 300);
     return () => clearTimeout(timer);
   }, [query, isEn]);
+
+  /**
+   * Focusing the box warms the catalog index.
+   *
+   * The route has always treated an empty `q` as "the shopper is about to
+   * type, go build the index" — but nothing ever sent that request. The
+   * effect above refuses to fire below two characters, and `onFocus` only
+   * opened the panel, so the first real keystroke was also the one that paid
+   * for the whole catalog crawl. For Arabic, which has no fallback source,
+   * that keystroke answered «لم نجد أي نتائج».
+   *
+   * A bare `fetch` rather than the fetcher: this must not overwrite the
+   * dropdown's data with an empty result set.
+   */
+  const warmedRef = useRef(false);
+  const warmSearchIndex = () => {
+    if (warmedRef.current) return;
+    warmedRef.current = true;
+    fetch(`${searchEndpoint}?q=`, {
+      headers: { Accept: 'application/json' },
+    }).catch(() => {
+      // Warming is best effort; a failure here costs nothing.
+      warmedRef.current = false;
+    });
+  };
+
+  /**
+   * An unanswerable keystroke is retried, not reported as "no results".
+   *
+   * `pending` from the route means the index was not available to look in.
+   * Without this the shopper sees an empty dropdown and has to type another
+   * character to shake it loose — which is exactly what "sometimes it returns
+   * nothing" looked like. Capped at two retries per term so a genuinely
+   * broken index cannot loop.
+   */
+  const MAX_PENDING_RETRIES = 2;
+  const retriesRef = useRef<Record<string, number>>({});
+  /**
+   * The term we stopped retrying for. Without this the panel waited on a
+   * `pending` answer forever once the retries ran out — «جاري البحث...» with
+   * nothing coming. Past the cap, the empty answer is accepted as the answer.
+   */
+  const [gaveUpOn, setGaveUpOn] = useState<string | null>(null);
+
+  // A new query gets a fresh retry budget.
+  useEffect(() => {
+    retriesRef.current = {};
+    setGaveUpOn(null);
+  }, [query]);
+
+  useEffect(() => {
+    const answer: any = fetcher.data;
+    if (!answer?.pending || fetcher.state !== 'idle') return;
+    const term = String(answer.searchTerm || '').trim();
+    if (!term || term !== query.trim()) return;
+    const attempts = retriesRef.current[term] || 0;
+    if (attempts >= MAX_PENDING_RETRIES) {
+      setGaveUpOn(term);
+      return;
+    }
+    retriesRef.current[term] = attempts + 1;
+    const timer = setTimeout(() => {
+      fetcher.submit(
+        { q: term, predictive: 'true' },
+        { method: 'get', action: searchEndpoint }
+      );
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [fetcher.data, fetcher.state, query, isEn]);
 
   // Click outside listener
   useEffect(() => {
@@ -163,7 +233,11 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
     trimmedQuery.length >= 2 &&
     fetcher.state === 'idle' &&
     !isTyping &&
-    fetcher.data?.searchTerm === trimmedQuery;
+    fetcher.data?.searchTerm === trimmedQuery &&
+    // `pending` is the server saying it had no index to search. That is not
+    // an answer, so the panel keeps waiting rather than declaring no results —
+    // until the retries are spent, after which waiting longer helps nobody.
+    (!fetcher.data?.pending || gaveUpOn === trimmedQuery);
 
   const rawResults = fetcher.data?.searchResults?.results as NormalizedPredictiveSearchResults | undefined;
   const results = rawResults?.map(group => ({
@@ -237,9 +311,10 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
             setSelectedIndex(-1);
           }}
           onKeyDown={handleKeyDown}
-          onFocus={() => { 
-            setIsOpen(true); 
+          onFocus={() => {
+            setIsOpen(true);
             setSelectedIndex(-1);
+            warmSearchIndex();
           }}
           placeholder={isEn ? "Search for a product..." : "إبحث عن منتج..."}
           className="w-full bg-white !border-transparent !border-none !outline-none !ring-0 !rounded-full !py-3 !ps-12 !pe-5 !text-[14px] !m-0 font-medium text-[#234745] placeholder:text-gray-400 focus:!outline-none focus:!ring-0 focus:!border-transparent !shadow-sm transition-all"

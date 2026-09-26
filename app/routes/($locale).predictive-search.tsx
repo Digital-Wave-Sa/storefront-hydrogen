@@ -6,6 +6,15 @@ import {
 
 export async function loader({request, params, context}: LoaderFunctionArgs) {
   const {storefront, env} = context;
+  /**
+   * Oxygen may terminate work that is not registered with `waitUntil` as soon
+   * as the response is returned. Warming and refreshing the catalog index are
+   * exactly that kind of work, so the request's `waitUntil` has to be handed
+   * down — without it a warm-up starts on every search and finishes on none.
+   */
+  const waitUntil = (context as any).waitUntil as
+    | ((p: Promise<unknown>) => void)
+    | undefined;
   const searchParams = new URL(request.url).searchParams;
   const q = searchParams.get('q') || '';
   const limit = parseInt(searchParams.get('limit') || '6', 10);
@@ -18,13 +27,14 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
      * perfect moment to start building the catalog index, so the first real
      * keystroke finds it ready instead of waiting for a crawl.
      */
-    warmProductIndex(env);
+    warmProductIndex(env, waitUntil);
     return data({
       searchResults: {
         results: [],
         totalResults: 0,
       },
       searchTerm: '',
+      pending: false,
     });
   }
 
@@ -60,9 +70,22 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
    * own bilingual catalog index instead. See product-search-index.server.
    */
   let indexProducts: any[] = [];
+  /**
+   * Whether the index could actually be consulted. `hits: []` means two very
+   * different things — "nothing matches" and "there was no index to look in" —
+   * and the dropdown was announcing the first while the truth was the second.
+   */
+  let indexReady = true;
   if (!isEn || shopifyPhysicalProducts.length === 0) {
     try {
-      const {hits, currencyCode} = await searchProductIndex(env, q, limit);
+      const {hits, currencyCode, ready} = await searchProductIndex(
+        env,
+        q,
+        limit,
+        undefined,
+        waitUntil,
+      );
+      indexReady = ready;
       indexProducts = hits
         .filter((h) => !h.isGiftCard && h.productType !== 'Gift Card')
         .map((h) => ({
@@ -77,6 +100,7 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
           url: `${isEn ? '/en' : ''}/products/${h.handle}`,
         }));
     } catch (e) {
+      indexReady = false;
       console.error('[PredictiveSearch] Index search failed:', e);
     }
   }
@@ -144,12 +168,28 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
     0,
   );
 
+  /**
+   * "Ask me again in a moment", not "there is nothing".
+   *
+   * Only meaningful when the answer is empty AND the index was the source
+   * that came up short. The client keeps its loading state and retries
+   * instead of telling the shopper their query has no matches.
+   */
+  const pending = totalResults === 0 && !indexReady;
+
+  if (pending) {
+    console.warn(
+      `[PredictiveSearch] query="${q}" answered with no index (still building) — client will retry.`,
+    );
+  }
+
   return data({
     searchResults: {
       results,
       totalResults,
     },
     searchTerm: q,
+    pending,
   });
 }
 

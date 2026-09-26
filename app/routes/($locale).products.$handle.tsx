@@ -1549,7 +1549,7 @@ export default function Product() {
                         : 'على الكيكة'
                       : isEn
                         ? 'On Board'
-                        : 'على القاعدة',
+                        : 'على لوح الشوكولاته',
                 },
                 {key: '_writeOn', value: writeLocation},
               ]
@@ -3265,7 +3265,7 @@ export default function Product() {
                           >
                             {isEn
                               ? 'Choose where you want your custom message to be written (on the cake surface, base board, or both).'
-                              : 'اختر موقع موضع الكتابة المخصص (على سطح الكيكة، على القاعدة، أو كلاهما).'}
+                              : 'اختر موقع موضع الكتابة المخصص (على سطح الكيكة، على لوح الشوكولاته، أو كلاهما).'}
                           </span>
                         </div>
 
@@ -3292,7 +3292,7 @@ export default function Product() {
                                 : 'bg-white text-[#234745] border-[#BBCFCD]/60 hover:bg-gray-50'
                             }`}
                           >
-                            <span>{isEn ? 'On the Board' : 'على القاعدة'}</span>
+                            <span>{isEn ? 'On the Board' : 'على لوح الشوكولاته'}</span>
                           </button>
                         </div>
 
@@ -3308,7 +3308,7 @@ export default function Product() {
                                 : 'مثال: عيد ميلاد سعيد (على الكيكة)'
                               : isEn
                                 ? 'e.g. Happy Birthday (written on board)'
-                                : 'مثال: عيد ميلاد سعيد (على القاعدة)'
+                                : 'مثال: عيد ميلاد سعيد (على لوح الشوكولاته)'
                           }
                           maxLength={35}
                         />
@@ -3901,7 +3901,7 @@ export default function Product() {
                                                   : 'على الكيكة'
                                                 : isEn
                                                   ? 'On Board'
-                                                  : 'على القاعدة',
+                                                  : 'على لوح الشوكولاته',
                                           },
                                           {
                                             key: '_writeOn',
@@ -4509,7 +4509,7 @@ export default function Product() {
                                                     : 'على الكيكة'
                                                   : isEn
                                                     ? 'On Board'
-                                                    : 'على القاعدة',
+                                                    : 'على لوح الشوكولاته',
                                             },
                                             {
                                               key: '_writeOn',

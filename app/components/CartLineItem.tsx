@@ -424,7 +424,7 @@ export function CartLineItem({
                 ?.filter((a: any) => a.value && !a.key.startsWith('_'))
                 .map((a: any) => {
                   const writeOnVal = line.attributes?.find((attr: any) => attr.key === '_writeOn' || attr.key === 'Write On' || attr.key === 'الكتابة على')?.value;
-                  const isBoardWrite = writeOnVal === 'board' || writeOnVal === 'On Board' || writeOnVal === 'على القاعدة';
+                  const isBoardWrite = writeOnVal === 'board' || writeOnVal === 'On Board' || writeOnVal === 'على القاعدة' || writeOnVal === 'على لوح الشوكولاته';
 
                   const isCakeMsg = a.key === 'Cake Message' || a.key === 'كتابة على الكيكة' || a.key === 'Board Message' || a.key === 'كتابة على القاعدة';
                   const isGiftMsg = a.key === 'Gift Message' || a.key === 'رسالة إهداء';
@@ -434,7 +434,7 @@ export function CartLineItem({
 
                   let keyName = a.key;
                   if (!isEn) {
-                    if (isCakeMsg) keyName = isBoardWrite ? 'كتابة على القاعدة' : 'كتابة على الكيكة';
+                    if (isCakeMsg) keyName = isBoardWrite ? 'كتابة على لوح الشوكولاته' : 'كتابة على الكيكة';
                     else if (isGiftMsg) keyName = 'رسالة إهداء';
                     else if (isRecipient) keyName = 'اسم المستلم';
                     else if (isNote) keyName = 'ملاحظة الطلب';
@@ -607,7 +607,7 @@ export function CartLineItem({
                   ?.filter((a: any) => a.value && !a.key.startsWith('_'))
                   .map((a: any) => {
                     const writeOnVal = line.attributes?.find((attr: any) => attr.key === '_writeOn' || attr.key === 'Write On' || attr.key === 'الكتابة على')?.value;
-                    const isBoardWrite = writeOnVal === 'board' || writeOnVal === 'On Board' || writeOnVal === 'على القاعدة';
+                    const isBoardWrite = writeOnVal === 'board' || writeOnVal === 'On Board' || writeOnVal === 'على القاعدة' || writeOnVal === 'على لوح الشوكولاته';
 
                     const isCakeMsg = a.key === 'Cake Message' || a.key === 'كتابة على الكيكة' || a.key === 'Board Message' || a.key === 'كتابة على القاعدة';
                     const isGiftMsg = a.key === 'Gift Message' || a.key === 'رسالة إهداء';
@@ -617,7 +617,7 @@ export function CartLineItem({
 
                     let keyName = a.key;
                     if (!isEn) {
-                      if (isCakeMsg) keyName = isBoardWrite ? 'كتابة على القاعدة' : 'كتابة على الكيكة';
+                      if (isCakeMsg) keyName = isBoardWrite ? 'كتابة على لوح الشوكولاته' : 'كتابة على الكيكة';
                       else if (isGiftMsg) keyName = 'رسالة إهداء';
                       else if (isRecipient) keyName = 'اسم المستلم';
                       else if (isNote) keyName = 'ملاحظة الطلب';

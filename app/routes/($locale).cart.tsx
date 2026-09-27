@@ -477,11 +477,18 @@ export async function action({request, context, params}: Route.ActionArgs) {
           break;
         }
 
-        const userPhone =
-          inputs.phone ||
-          (await context.session.get('loginOtpPhone')) ||
-          (await context.session.get('saadeddinPhone')) ||
-          currentCart.buyerIdentity?.phone;
+        /**
+         * Whose wallet: the signed-in customer's, and nobody else's.
+         *
+         * This used to take `inputs.phone` first, then the cart's
+         * `buyerIdentity.phone` -- both set by the browser -- so anyone could
+         * post a stranger's number and spend that stranger's balance on their
+         * own cart. The form may still send a phone; it is ignored.
+         */
+        const {resolveSelfPhone} = await import(
+          '~/lib/session-identity.server'
+        );
+        const userPhone = await resolveSelfPhone(context);
 
         if (!userPhone) {
           return data(

@@ -308,3 +308,51 @@ export async function resolveSelf(context: any): Promise<SessionIdentity | null>
     return null;
   }
 }
+
+/**
+ * The signed-in customer's phone, for services keyed on it (wallet, in-store
+ * invoices). Never from the request: a phone the browser sends is only a
+ * claim, and the wallet debits whichever number it is given.
+ *
+ * In order: the session's own phone; the synthetic `<phone>@saadeddin.dev`
+ * email OTP sign-in creates; then, for a shopper signed in by email or
+ * Google, the phone on their Shopify customer record. Null when nobody is
+ * signed in or no phone is on file.
+ */
+export async function resolveSelfPhone(context: any): Promise<string | null> {
+  const self = await resolveSelf(context);
+  if (!self) return null;
+  if (self.phone) return String(self.phone);
+
+  const email = lower(self.email);
+  if (email.endsWith('@saadeddin.dev')) {
+    const local = email.split('@')[0];
+    if (digits(local).length >= 9) return local;
+  }
+
+  if (!self.customerId) return null;
+  try {
+    const {getAdminDomain, getAdminToken} = await import(
+      '~/lib/shopify-admin.server'
+    );
+    const domain = getAdminDomain(context.env);
+    const token = domain ? await getAdminToken(context.env) : '';
+    if (!domain || !token) return null;
+    const id = String(self.customerId).startsWith('gid://')
+      ? String(self.customerId)
+      : `gid://shopify/Customer/${digits(self.customerId)}`;
+    const res = await fetch(`https://${domain}/admin/api/2024-04/graphql.json`, {
+      method: 'POST',
+      headers: {'X-Shopify-Access-Token': token, 'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        query: 'query($id: ID!) { customer(id: $id) { phone } }',
+        variables: {id},
+      }),
+      signal: AbortSignal.timeout(5000),
+    });
+    const json: any = await res.json().catch(() => null);
+    return json?.data?.customer?.phone || null;
+  } catch {
+    return null;
+  }
+}

@@ -2740,7 +2740,7 @@ function StoreCreditRedemptionUI({ isEn, cart }: { isEn: boolean; cart: any }) {
           <CartForm
             route={isEn ? '/en/cart' : '/cart'}
             action="StoreCreditUpdate"
-            inputs={{ intent: 'remove', phone: String(phone || '') }}
+            inputs={{ intent: 'remove' }}
           >
             {(fetcher: any) => (
               <button
@@ -2767,7 +2767,6 @@ function StoreCreditRedemptionUI({ isEn, cart }: { isEn: boolean; cart: any }) {
           inputs={{
             amount: String(amountToUse),
             intent: 'apply',
-            phone: String(phone || ''),
           }}
           className="flex flex-col gap-2"
         >

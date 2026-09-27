@@ -1,5 +1,5 @@
 import {getAdminDomain, getAdminToken} from '~/lib/shopify-admin.server';
-import {resolveSelf} from '~/lib/session-identity.server';
+import {resolveSelfPhone} from '~/lib/session-identity.server';
 
 /**
  * In-store (POS) purchases for the signed-in customer.
@@ -267,41 +267,8 @@ export function normaliseTransactions(
 
 /* ── Entry point ──────────────────────────────────────────────────────────── */
 
-async function sessionPhone(context: any): Promise<string | null> {
-  const self = await resolveSelf(context);
-  if (!self) return null;
-  if (self.phone) return self.phone;
-
-  // Signed in by email: the phone is on the Shopify customer record.
-  if (!self.customerId) return null;
-  try {
-    const domain = getAdminDomain(context.env);
-    const token = domain ? await getAdminToken(context.env) : '';
-    if (!domain || !token) return null;
-    const id = String(self.customerId).startsWith('gid://')
-      ? String(self.customerId)
-      : `gid://shopify/Customer/${String(self.customerId).replace(/\D/g, '')}`;
-    const res = await fetch(
-      `https://${domain}/admin/api/2024-04/graphql.json`,
-      {
-        method: 'POST',
-        headers: {
-          'X-Shopify-Access-Token': token,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: 'query($id: ID!) { customer(id: $id) { phone } }',
-          variables: {id},
-        }),
-        signal: AbortSignal.timeout(5000),
-      },
-    );
-    const json: any = await res.json().catch(() => null);
-    return json?.data?.customer?.phone || null;
-  } catch {
-    return null;
-  }
-}
+/** The session's phone only — see `resolveSelfPhone`. */
+const sessionPhone = resolveSelfPhone;
 
 export async function getStoreInvoices(
   context: any,

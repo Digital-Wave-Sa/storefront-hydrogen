@@ -1,4 +1,5 @@
 import {Suspense, useState} from 'react';
+import {BrandLoaderBlock} from '~/components/BrandLoader';
 import {localeRedirect} from '~/lib/i18n';
 import {
   data as json,
@@ -380,13 +381,9 @@ export default function WalletPage() {
                 : 'إدارة رصيد متجرك واسترداد قسائم الهدايا وعرض نقاط الولاء الخاصة بك.'}
             </p>
           </div>
-          <div className="py-20 text-center">
-            <p className="text-gray-500">
-              {isEn
-                ? 'Loading wallet details...'
-                : 'جاري تحميل تفاصيل المحفظة...'}
-            </p>
-          </div>
+          <BrandLoaderBlock
+            label={isEn ? 'Loading your wallet' : 'جاري تحميل محفظتك'}
+          />
         </div>
       }
     >

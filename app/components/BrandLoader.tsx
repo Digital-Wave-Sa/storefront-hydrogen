@@ -116,3 +116,41 @@ export function PendingOverlay({
     </div>
   );
 }
+
+/**
+ * A section that is still arriving -- the Suspense fallback shape.
+ *
+ * The tile plus one short line saying what is coming («جاري تحميل طلباتك»),
+ * centred in a block tall enough that the page does not jump when the real
+ * content replaces it.
+ *
+ * It appears only after a short delay, and the delay is CSS rather than a
+ * timer. A fallback is often part of the server-streamed HTML, painted before
+ * any JavaScript has run; a `useEffect` timer would leave it invisible for
+ * exactly that stretch. `sd-loader-reveal` holds it at opacity 0 for 250ms and
+ * then fades it in, so a fast answer never flashes the mark -- the same rule
+ * NavigationProgress follows for page changes.
+ */
+export function BrandLoaderBlock({
+  label,
+  size = 72,
+  className = '',
+}: {
+  label: string;
+  size?: number;
+  /** Height and spacing; defaults suit an account section. */
+  className?: string;
+}) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className={`sd-loader-reveal flex flex-col items-center justify-center gap-4 text-center ${
+        className || 'min-h-[260px] py-16'
+      }`}
+    >
+      <BrandLoaderTile size={size} />
+      <span className="text-[13px] font-medium text-[#5E7F79]">{label}</span>
+    </div>
+  );
+}

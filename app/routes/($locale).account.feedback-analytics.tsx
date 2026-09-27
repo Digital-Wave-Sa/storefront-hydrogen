@@ -1,4 +1,5 @@
 import {data, redirect, type LoaderFunctionArgs} from 'react-router';
+import {BrandLoaderBlock} from '~/components/BrandLoader';
 import {useLoaderData, useLocation, useNavigation} from 'react-router';
 import {getAdminToken} from '~/lib/shopify-admin.server';
 import {adminApiQuery} from '~/lib/admin.server';
@@ -446,11 +447,9 @@ export default function FeedbackAnalyticsDashboard() {
   return (
     <Suspense
       fallback={
-        <div className="py-20 text-center text-gray-500">
-          {isEn
-            ? 'Loading analytics data...'
-            : 'جاري تحميل بيانات التحليلات...'}
-        </div>
+        <BrandLoaderBlock
+          label={isEn ? 'Loading analytics' : 'جاري تحميل التحليلات'}
+        />
       }
     >
       <Await resolve={adminDataPromise}>

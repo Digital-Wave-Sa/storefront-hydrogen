@@ -29,7 +29,7 @@ import {ServerError} from './components/ServerError';
 import {CookieConsentBanner} from './components/CookieConsentBanner';
 import {ProductSkeleton} from './components/ProductSkeleton';
 import {CollectionPageSkeleton} from './components/CollectionSkeleton';
-import {NavigationProgress} from './components/NavigationProgress';
+import {PageLoader, useSlowNavigation} from './components/NavigationProgress';
 import {useLocale} from '~/lib/i18n';
 
 export const meta: MetaFunction = () => {
@@ -855,7 +855,16 @@ export default function App() {
     navigation.state === 'loading' &&
     !!navigation.location &&
     /\/collections(\/|$)/.test(navigation.location.pathname) &&
+    // /collections/all shows the brand loader instead (useSlowNavigation).
+    !/\/collections\/all\/?$/.test(navigation.location.pathname) &&
     navigation.location.pathname !== currentLocation.pathname;
+
+  /*
+    Any other page that takes more than a moment: the old page is replaced by
+    the brand mark under the header, so the click visibly leaves where the
+    shopper was. See ~/components/NavigationProgress.
+  */
+  const isSlowNavigation = useSlowNavigation();
 
   return (
     <Analytics.Provider
@@ -871,6 +880,8 @@ export default function App() {
             <ProductSkeleton isEn={pageLocale === 'en'} />
           ) : isNavigatingToCollection ? (
             <CollectionPageSkeleton isEn={pageLocale === 'en'} />
+          ) : isSlowNavigation ? (
+            <PageLoader isEn={pageLocale === 'en'} />
           ) : (
             <Outlet context={{ 
               locale: pageLocale,

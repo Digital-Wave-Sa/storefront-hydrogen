@@ -4,6 +4,7 @@ import {
   type LoaderFunctionArgs,
   type ActionFunctionArgs,
 } from 'react-router';
+import {BrandLoaderBlock} from '~/components/BrandLoader';
 import {
   useLoaderData,
   Form,
@@ -648,9 +649,9 @@ export default function PromotionsDashboard() {
   return (
     <Suspense
       fallback={
-        <div className="py-20 text-center text-gray-500">
-          {isEn ? 'Loading campaign data...' : 'جاري تحميل بيانات الحملات...'}
-        </div>
+        <BrandLoaderBlock
+          label={isEn ? 'Loading campaign data' : 'جاري تحميل بيانات الحملات'}
+        />
       }
     >
       <Await resolve={adminDataPromise}>

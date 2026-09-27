@@ -3448,11 +3448,33 @@ button.reset:hover:not(:has(> *)) {
   animation: sdLoaderMark 1600ms ease-in-out infinite;
 }
 
+/*
+  BrandLoaderBlock: invisible for the first 250ms, then fades in. A load that
+  finishes sooner never shows the mark at all. Pure CSS so it also holds for
+  fallbacks painted from streamed HTML before hydration.
+*/
+.sd-loader-reveal {
+  animation: sdLoaderReveal 200ms ease-out 250ms both;
+}
+
+@keyframes sdLoaderReveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* A wait indicator must not be the thing that makes someone unwell. */
 @media (prefers-reduced-motion: reduce) {
   .sd-loader-tile,
   .sd-loader-mark {
     animation: none;
+  }
+  /* Keep the delay, drop the fade. */
+  .sd-loader-reveal {
+    animation-duration: 1ms;
   }
   .sd-loader-mark {
     opacity: 0.85;

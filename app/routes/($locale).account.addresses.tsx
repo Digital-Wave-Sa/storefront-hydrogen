@@ -1,4 +1,4 @@
-import {useState, useEffect} from 'react';
+import {useState, useEffect, useRef} from 'react';
 import type {MailingAddressInput} from '@shopify/hydrogen/storefront-api-types';
 import type {AddressFragment, CustomerFragment} from 'storefrontapi.generated';
 import {
@@ -18,6 +18,7 @@ import {
 import {Button} from '~/components/layout/Button';
 import {stripCoordsMarker} from '~/lib/address-coords';
 import {AddressForm} from '~/components/AddressForm';
+import {PendingOverlay} from '~/components/BrandLoader';
 
 import {pageTitle} from '~/lib/seo';
 export type ActionResponse = {
@@ -719,6 +720,9 @@ export default function Addresses() {
     }
   }, [actionData]);
 
+  /** The address the last «set as default» was for, so a refusal lands on its card. */
+  const defaultSubmittedFor = useRef<string | null>(null);
+
   useEffect(() => {
     if ((fetcher.data as any)?.defaultAddress) {
       const defId = (fetcher.data as any).defaultAddress;
@@ -774,6 +778,61 @@ export default function Addresses() {
     setLocalAddresses((prev) => prev.filter((a) => !isSameAddressId(a.id, id)));
   };
 
+  /**
+   * Deleting happens on the card, not in the dialog.
+   *
+   * Confirming closes the dialog straight away and the card itself blurs
+   * under the loader until Shopify answers: gone on success, back to normal
+   * with the reason written on it on failure (the default-address rule is
+   * the one a shopper can act on). The dialog used to stay open with a
+   * spinner in its button, covering the very card it was about.
+   *
+   * The fetcher lives here rather than in the dialog so it survives the
+   * dialog unmounting.
+   */
+  const deleteFetcher = useFetcher<ActionResponse>();
+  const deleteSubmittedFor = useRef<string | null>(null);
+  /** A refusal from Shopify, shown on the card it was about. */
+  const [cardError, setCardError] = useState<{
+    id: string;
+    message: string;
+  } | null>(null);
+  const deletingId =
+    deleteFetcher.state !== 'idle'
+      ? String(deleteFetcher.formData?.get('addressId') ?? '') || null
+      : null;
+
+  const confirmDelete = (id: string) => {
+    deleteSubmittedFor.current = id;
+    setCardError(null);
+    void deleteFetcher.submit({addressId: id}, {method: 'DELETE'});
+    setAddressToDelete(null);
+  };
+
+  useEffect(() => {
+    const id = deleteSubmittedFor.current;
+    if (!id || deleteFetcher.state !== 'idle' || !deleteFetcher.data) return;
+    deleteSubmittedFor.current = null;
+    const message = readActionError(deleteFetcher.data, id);
+    if (message) {
+      setCardError({id, message});
+    } else {
+      handleAddressDelete(id);
+    }
+  }, [deleteFetcher.state, deleteFetcher.data]);
+
+  /** Set-as-default is optimistic already; the overlay says it is still saving. */
+  const savingDefaultId =
+    fetcher.state !== 'idle' ? pendingDefaultId : null;
+
+  useEffect(() => {
+    const id = defaultSubmittedFor.current;
+    if (!id || fetcher.state !== 'idle' || !fetcher.data) return;
+    defaultSubmittedFor.current = null;
+    const message = readActionError(fetcher.data, id);
+    if (message) setCardError({id, message});
+  }, [fetcher.state, fetcher.data]);
+
   return (
     <div className="account-addresses-section" dir={isEn ? 'ltr' : 'rtl'}>
       {/* Outer bordered container */}
@@ -799,10 +858,27 @@ export default function Addresses() {
               .filter(Boolean)
               .join('، ');
 
+            const isDeleting = isSameAddressId(deletingId, address.id);
+            const isSavingDefault = isSameAddressId(savingDefaultId, address.id);
+            const errorOnCard = isSameAddressId(cardError?.id, address.id)
+              ? cardError?.message
+              : null;
+
             return (
-              <div
+              <PendingOverlay
                 key={address.id}
-                className={`flex flex-col p-4 gap-3.5 rounded-[12px] border-1 transition-all ${
+                active={isDeleting || isSavingDefault}
+                size={56}
+                label={
+                  isDeleting
+                    ? isEn
+                      ? 'Deleting address'
+                      : 'جاري حذف العنوان'
+                    : isEn
+                      ? 'Saving default address'
+                      : 'جاري حفظ العنوان الافتراضي'
+                }
+                contentClassName={`flex flex-col p-4 gap-3.5 rounded-[12px] border-1 transition-all ${
                   isDefault
                     ? 'bg-[#FEF8EB] border-[#234745]'
                     : 'bg-transparent border-[#BBCFCD]'
@@ -845,8 +921,25 @@ export default function Addresses() {
                     >
                       {isEn ? 'Edit' : 'تعديل'}
                     </button>
+                    {/*
+                      No onClick that marks the address default. It used to,
+                      and that state change re-rendered this card as the
+                      default before the browser fired `submit` -- which
+                      removed this very form, so the submission was dropped.
+                      The address turned default on screen (and in
+                      localStorage) while Shopify was never asked. The
+                      optimistic view comes from `pendingDefaultId`, which
+                      reads the in-flight submission, so nothing is lost.
+                    */}
                     {!isDefault && (
-                      <fetcher.Form method="PUT" style={{display: 'contents'}}>
+                      <fetcher.Form
+                        method="PUT"
+                        style={{display: 'contents'}}
+                        onSubmit={() => {
+                          defaultSubmittedFor.current = address.id;
+                          setCardError(null);
+                        }}
+                      >
                         <input
                           type="hidden"
                           name="intent"
@@ -860,7 +953,6 @@ export default function Addresses() {
                         <input type="hidden" name="defaultAddress" value="on" />
                         <button
                           type="submit"
-                          onClick={() => handleSetDefault(address.id)}
                           className="text-[#234745] hover:text-[#234745]/80 underline transition-colors whitespace-nowrap"
                         >
                           {isEn ? 'Set as Default' : 'تعيين كافتراضي'}
@@ -881,7 +973,16 @@ export default function Addresses() {
                 <p className="margin-0 !text-[14px] font-medium text-xs md:text-sm text-[#8fa49c] text-start w-full mt-1">
                   {addressText}
                 </p>
-              </div>
+
+                {errorOnCard && (
+                  <p
+                    role="alert"
+                    className="!m-0 text-[13px] font-normal leading-relaxed text-start text-[#A63D2B] bg-[#FFF6F4] px-4 py-3 rounded-xl border border-[#F3D3CC]"
+                  >
+                    {errorOnCard}
+                  </p>
+                )}
+              </PendingOverlay>
             );
           })}
 
@@ -933,51 +1034,39 @@ export default function Addresses() {
           onClose={() => setAddressToDelete(null)}
           addressId={addressToDelete}
           locale={locale}
-          onDeleted={handleAddressDelete}
+          onConfirm={confirmDelete}
         />
       )}
     </div>
   );
 }
 
+/**
+ * Why a delete or «set as default» failed, as a sentence the shopper can read.
+ *
+ * The route returns a plain sentence for these failures (the default-address
+ * rule is the one a shopper can act on); the object shape is read too,
+ * because the shared error handler wraps thrown errors as `{form: message}`.
+ */
+function readActionError(result: any, addressId: string): string | null {
+  const error = result?.error;
+  if (!error) return null;
+  if (typeof error === 'string') return error;
+  return error.form || error[addressId] || null;
+}
+
 function DeleteConfirmationModal({
   onClose,
   addressId,
   locale,
-  onDeleted,
+  onConfirm,
 }: {
   onClose: () => void;
   addressId: string;
   locale: string;
-  onDeleted?: (id: string) => void;
+  onConfirm: (id: string) => void;
 }) {
-  const fetcher = useFetcher<ActionResponse>();
   const isEn = locale === 'en';
-  const isDeleting = fetcher.state !== 'idle';
-
-  useEffect(() => {
-    if (fetcher.data && !fetcher.data.error) {
-      onDeleted?.(addressId);
-      onClose();
-    }
-  }, [fetcher.data, addressId, onDeleted, onClose]);
-
-  /**
-   * A refusal has to be readable, not just non-fatal.
-   *
-   * The effect above closes the dialog on success and leaves it open on
-   * failure — but nothing rendered the reason, so a delete Shopify had
-   * refused looked identical to a button that did nothing at all. The route
-   * returns a plain sentence for delete failures (the default-address rule
-   * is the one a shopper can act on); the object shape is read too, because
-   * the shared error handler wraps thrown errors as `{form: message}`.
-   */
-  const deleteError =
-    typeof (fetcher.data as any)?.error === 'string'
-      ? ((fetcher.data as any).error as string)
-      : (fetcher.data as any)?.error?.form ||
-        (fetcher.data as any)?.error?.[addressId] ||
-        null;
 
   return (
     <div
@@ -1016,39 +1105,17 @@ function DeleteConfirmationModal({
             : 'هل أنت متأكد من رغبتك في حذف هذا العنوان؟ لا يمكن التراجع عن هذا الإجراء.'}
         </p>
 
-        {deleteError && (
-          <p
-            role="alert"
-            className="text-[13px] font-normal leading-relaxed text-start text-[#A63D2B] bg-[#FFF6F4] px-4 py-3 rounded-xl border border-[#F3D3CC] mb-5"
-          >
-            {deleteError}
-          </p>
-        )}
-
         <div className="flex gap-3">
-          <fetcher.Form method="DELETE" className="flex-1">
-            <input type="hidden" name="addressId" value={addressId} />
-            <button
-              type="submit"
-              disabled={isDeleting}
-              className="w-full h-12 rounded-2xl bg-red-500 hover:bg-red-600 active:scale-[0.98] text-white font-bold text-[15px] shadow-lg shadow-red-500/20 transition-all flex items-center justify-center disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {isDeleting ? (
-                <span className="flex items-center gap-2">
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  {isEn ? 'Deleting...' : 'جاري الحذف...'}
-                </span>
-              ) : isEn ? (
-                'Delete'
-              ) : (
-                'حذف'
-              )}
-            </button>
-          </fetcher.Form>
+          <button
+            type="button"
+            onClick={() => onConfirm(addressId)}
+            className="flex-1 h-12 rounded-2xl bg-red-500 hover:bg-red-600 active:scale-[0.98] text-white font-bold text-[15px] shadow-lg shadow-red-500/20 transition-all flex items-center justify-center"
+          >
+            {isEn ? 'Delete' : 'حذف'}
+          </button>
           <button
             type="button"
             onClick={onClose}
-            disabled={isDeleting}
             className="flex-1 h-12 rounded-2xl bg-gray-100 hover:bg-gray-200 active:scale-[0.98] text-gray-700 font-bold text-[15px] transition-all flex items-center justify-center"
           >
             {isEn ? 'Cancel' : 'إلغاء'}

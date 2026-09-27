@@ -1,4 +1,5 @@
 import {Suspense} from 'react';
+import {BrandLoaderBlock} from '~/components/BrandLoader';
 import {
   accountDetailsLabel,
   isCompanyAccount,
@@ -115,11 +116,9 @@ export default function AccountDashboard() {
   return (
     <Suspense
       fallback={
-        <div className="py-20 text-center text-gray-500">
-          {isEn
-            ? 'Loading dashboard details...'
-            : 'جاري تحميل تفاصيل لوحة التحكم...'}
-        </div>
+        <BrandLoaderBlock
+          label={isEn ? 'Loading your account' : 'جاري تحميل حسابك'}
+        />
       }
     >
       <Await resolve={walletPromise}>

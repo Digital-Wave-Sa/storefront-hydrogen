@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import {BrandLoaderBlock} from '~/components/BrandLoader';
 import { createPortal } from 'react-dom';
 import { Await, useFetcher, useRouteLoaderData, Link, useLocation } from 'react-router';
 import { Suspense } from 'react';
@@ -595,7 +596,19 @@ export function DeliveryPickupModal({
                     </svg>
                 </button>
 
-                <Suspense fallback={<div className="dpm-loading"><div className="dpm-loading-spinner" /></div>}>
+                {/*
+                  This used to render two empty divs -- `dpm-loading` has no
+                  CSS anywhere -- so the modal opened blank until the branches
+                  arrived.
+                */}
+                <Suspense
+                    fallback={
+                        <BrandLoaderBlock
+                            label={isEn ? 'Loading branches' : 'جاري تحميل الفروع'}
+                            className="min-h-[320px] py-12"
+                        />
+                    }
+                >
                     <Await resolve={combinedPromise}>
                         {([locationsData, customerData]: [any, any]) => {
                             const nodes = locationsData?.locations?.nodes || [];

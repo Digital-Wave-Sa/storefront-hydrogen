@@ -5,6 +5,7 @@ import {
   type ActionFunctionArgs,
   type MetaFunction,
 } from 'react-router';
+import {BrandLoaderBlock} from '~/components/BrandLoader';
 import {Suspense} from 'react';
 import {
   Link,
@@ -856,9 +857,9 @@ export default function Orders() {
           <Suspense
             key="store"
             fallback={
-              <div className="py-20 text-center text-gray-500">
-                {isEn ? 'Loading in-store purchases...' : 'جاري تحميل مشتريات الفروع...'}
-              </div>
+              <BrandLoaderBlock
+                label={isEn ? 'Loading your in-store purchases' : 'جاري تحميل مشتريات الفروع'}
+              />
             }
           >
             <Await
@@ -874,9 +875,9 @@ export default function Orders() {
         <Suspense
           key="online"
           fallback={
-            <div className="py-20 text-center text-gray-500">
-              {isEn ? 'Loading orders...' : 'جاري تحميل الطلبات...'}
-            </div>
+            <BrandLoaderBlock
+              label={isEn ? 'Loading your orders' : 'جاري تحميل طلباتك'}
+            />
           }
         >
           <Await resolve={ordersPromise}>
@@ -1129,7 +1130,7 @@ function StoreInvoiceCard({invoice, isEn}: {invoice: StoreInvoice; isEn: boolean
     invoice.branchAr ||
     // A till whose Shopify Location has no `custom.ax_store_id` yet.
     (invoice.storeCode
-      ? `${isEn ? 'Branch' : 'فرع'} ${invoice.storeCode}`
+      ? `${isEn ? 'Branch' : 'فرع'} \u2068${invoice.storeCode}\u2069`
       : isEn
         ? 'Branch'
         : 'الفرع');
@@ -1183,12 +1184,22 @@ function StoreInvoiceCard({invoice, isEn}: {invoice: StoreInvoice; isEn: boolean
             {titles || (isEn ? 'Branch purchase' : 'شراء من الفرع')}
           </h3>
           <span className="text-[12px] text-[#5E7F79] font-medium leading-tight truncate">
-            {branch}
-            {dateNode ? <> · {dateNode}</> : null}
+            {/*
+              Each part isolated: «فرع RS-2401» is Arabic with a Latin code
+              inside, and without <bdi> the browser's bidi algorithm pulled
+              the date's digits into the code («فرع 24 · RS-2401 سبتمبر»).
+            */}
+            <bdi>{branch}</bdi>
+            {dateNode ? (
+              <>
+                {' · '}
+                <bdi>{dateNode}</bdi>
+              </>
+            ) : null}
             {invoice.time ? (
               <>
                 {' · '}
-                <span className="font-en">{invoice.time}</span>
+                <bdi className="font-en">{invoice.time}</bdi>
               </>
             ) : null}
           </span>

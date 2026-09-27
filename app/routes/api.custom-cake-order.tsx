@@ -3,6 +3,7 @@ import {adminApiQuery} from '../lib/admin.server';
 import {getAdminToken, getAdminDomain} from '~/lib/shopify-admin.server';
 import {toGiftCardPhone} from '~/lib/phone-validation';
 import {needsRealEmail} from '~/lib/needs-email';
+import {branchDeliveryFee, quoteCake} from '~/lib/cake-quote.server';
 
 /**
  * GET /api/custom-cake-order — Returns 405
@@ -344,14 +345,13 @@ export async function action({request, context}: ActionFunctionArgs) {
       uploadedImage,
       cakePreviewImage,
       prepTime,
-      subtotal,
       finalTotal,
+      cakeSpec,
       isEn,
       // The fulfilment choices, made in the builder before it posts here.
       branchName,
       branchId,
       fulfillmentType,
-      deliveryFee,
       deliveryDate,
       timeSlot,
       address,
@@ -439,10 +439,82 @@ export async function action({request, context}: ActionFunctionArgs) {
       }
     }
 
-    // Use finalTotal (which already includes 15% VAT) so the checkout matches the builder
-    const priceNum = Number(finalTotal || subtotal);
-    if (!priceNum || priceNum <= 0) {
+    /**
+     * The price is worked out here, never taken from the request.
+     *
+     * This used to charge the `finalTotal` the browser posted, so anyone could
+     * send `finalTotal: 1` and receive a real invoice for a 1-riyal cake.
+     * `quoteCake` prices the chosen options from the same `cake_attribute`
+     * rows and the same rules as the builder (VAT-inclusive, like every price
+     * in the shop). The builder's own total is still compared: if it differs,
+     * the prices changed after the page loaded (or the request was tampered
+     * with), and the shopper is asked to review rather than charged a number
+     * they never saw.
+     */
+    const quote = await quoteCake(context, cakeSpec, Boolean(uploadedImage));
+    if (!quote.ok) {
+      if (quote.reason !== 'incomplete') {
+        console.warn('[Custom Cake Order] Could not price cake:', quote.reason, quote.detail || '');
+      }
+      return Response.json(
+        {
+          error:
+            quote.reason === 'unavailable'
+              ? isEn
+                ? 'We could not confirm the price right now. Please try again shortly.'
+                : 'تعذّر تأكيد السعر حالياً. يرجى المحاولة بعد قليل.'
+              : quote.reason === 'unpriced'
+                ? isEn
+                  ? 'This combination is not priced yet. Please pick another, or contact us.'
+                  : 'هذا الاختيار غير مسعّر بعد. اختر غيره أو تواصل معنا.'
+                : isEn
+                  ? 'Please complete your cake before checking out.'
+                  : 'يرجى إكمال تصميم الكيكة قبل إتمام الطلب.',
+        },
+        {status: quote.reason === 'unavailable' ? 503 : 400},
+      );
+    }
+    const priceNum = quote.total;
+    if (!(priceNum > 0)) {
       return Response.json({error: 'Invalid price'}, {status: 400});
+    }
+    const shownTotal = Number(finalTotal);
+    if (!Number.isFinite(shownTotal) || Math.abs(shownTotal - priceNum) > 0.01) {
+      console.warn(
+        `[Custom Cake Order] Builder total ${finalTotal} does not match server price ${priceNum}`,
+      );
+      return Response.json(
+        {
+          error: isEn
+            ? `The price of this cake has been updated to ${priceNum.toFixed(2)} SAR. Please refresh the page and review your cake.`
+            : `تم تحديث سعر هذه الكيكة إلى ${priceNum.toFixed(2)} ر.س. يرجى تحديث الصفحة ومراجعة تصميمك.`,
+          priceChanged: true,
+          total: priceNum,
+        },
+        {status: 409},
+      );
+    }
+
+    /**
+     * The delivery fee, from the branch's own record — the request's
+     * `deliveryFee` was as trustworthy as its `finalTotal`, and is no longer
+     * read. Null means the branch could not be looked up; refusing is safer
+     * than delivering for free.
+     */
+    let deliveryFee = 0;
+    if (fulfillmentType && !isPickup && branchId) {
+      const fee = await branchDeliveryFee(shopDomain, token, String(branchId));
+      if (fee === null) {
+        return Response.json(
+          {
+            error: isEn
+              ? 'We could not confirm the delivery fee for this branch. Please try again shortly.'
+              : 'تعذّر تأكيد رسوم التوصيل لهذا الفرع. يرجى المحاولة بعد قليل.',
+          },
+          {status: 503},
+        );
+      }
+      deliveryFee = fee;
     }
 
     // Securely retrieve active customer details from the session (all login types)

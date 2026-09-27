@@ -174,6 +174,8 @@ const PRODUCT_ITEM_FRAGMENT = `#graphql
   }
 ` as const;
 
+const GIFT_COLLECTION_PREFIX = 'gifts-for-';
+
 export async function loader({context}: LoaderFunctionArgs) {
   const {storefront} = context;
 
@@ -205,16 +207,77 @@ export async function loader({context}: LoaderFunctionArgs) {
         country: storefront.i18n.country,
         language: storefront.i18n.language,
       },
-      cache: storefront.CacheNone(),
+      cache: storefront.CacheShort(),
     });
+
+    /**
+     * Each recipient's products come from its own collection.
+     *
+     * The page used to show only products tagged `gift`/`gifting` and then
+     * match the category against their tags — but the team fills the
+     * «Gifts for …» COLLECTIONS, not tags. gifts-for-fathers held 7 products
+     * and the «الأب» tab still said «لا توجد منتجات لهذه الفئة». Adding a
+     * product to the collection is now all it takes; the tag match stays as a
+     * fallback for a collection that is empty.
+     *
+     * One request: the recipient collections are fetched together by alias.
+     */
+    const giftHandles: string[] = (collections?.nodes || [])
+      .map((c: any) => String(c?.handle || ''))
+      .filter((h: string) => h.startsWith(GIFT_COLLECTION_PREFIX))
+      .slice(0, 20);
+
+    const productsByCategory: Record<string, any[]> = {};
+    if (giftHandles.length) {
+      const aliases = giftHandles
+        .map(
+          (handle, i) => `
+      c${i}: collection(handle: ${JSON.stringify(handle)}) {
+        handle
+        products(first: 50) { nodes { ...GiftingProductItem } }
+      }`,
+        )
+        .join('');
+      const byCollection = (await storefront
+        .query(
+          `#graphql
+          ${PRODUCT_ITEM_FRAGMENT}
+          query GiftingCollectionProducts($country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {${aliases}
+          }`,
+          {
+            variables: {
+              country: storefront.i18n.country,
+              language: storefront.i18n.language,
+            },
+            cache: storefront.CacheShort(),
+          },
+        )
+        .catch((err: any) => {
+          console.error('[Gifting] Collection products failed:', err?.message || err);
+          return null;
+        })) as any;
+
+      for (const value of Object.values(byCollection || {})) {
+        const coll = value as any;
+        if (!coll?.handle) continue;
+        const catId = coll.handle.slice(GIFT_COLLECTION_PREFIX.length);
+        productsByCategory[catId] = coll.products?.nodes || [];
+      }
+    }
 
     return data({
       products: products.nodes,
       collections: collections.nodes,
+      productsByCategory,
       error: null,
     });
   } catch (e: any) {
-    return data({products: [], collections: [], error: e.message});
+    return data({
+      products: [],
+      collections: [],
+      productsByCategory: {} as Record<string, any[]>,
+      error: e.message,
+    });
   }
 }
 
@@ -350,7 +413,8 @@ const staticRecipientsAr = [
 ];
 
 export default function GiftingPage() {
-  const {products, collections, error} = useLoaderData<typeof loader>();
+  const {products, collections, productsByCategory, error} =
+    useLoaderData<typeof loader>();
   const rootData = useRouteLoaderData('root') as any;
   const locale = rootData?.locale || 'ar';
   const isEn = locale === 'en';
@@ -540,7 +604,24 @@ export default function GiftingPage() {
     };
   }, [thumbWidth]);
 
-  // Filter products based on selected category tags
+  /**
+   * The chosen recipient's collection first; the tag match below only when
+   * that collection is missing or empty. «All gifts» is every recipient
+   * collection plus the tagged products, each product once.
+   */
+  const byCategory: Record<string, any[]> = productsByCategory || {};
+  const collectionProducts = (() => {
+    if (!selectedCategory) return [];
+    if (selectedCategory === 'all') {
+      const seen = new Set<string>();
+      return [...Object.values(byCategory).flat(), ...products].filter(
+        (p: any) => p?.id && !seen.has(p.id) && Boolean(seen.add(p.id)),
+      );
+    }
+    return byCategory[selectedCategory.toLowerCase()] || [];
+  })();
+
+  // Fallback: products tagged for this category
   const filteredProducts = products.filter((p: any) => {
     if (!selectedCategory || selectedCategory === 'all') return true;
 
@@ -582,7 +663,8 @@ export default function GiftingPage() {
     return tags.some((t: string) => synonyms.some((s) => t.includes(s)));
   });
 
-  const displayProducts = filteredProducts;
+  const displayProducts =
+    collectionProducts.length > 0 ? collectionProducts : filteredProducts;
   const selectedCatLabel = getCategoryLabel(selectedCategory, isEn);
 
   const isInitialLanding = !selectedCategory;

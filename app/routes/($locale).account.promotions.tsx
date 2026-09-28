@@ -556,7 +556,10 @@ export async function action({request, context}: ActionFunctionArgs) {
           env,
         });
 
-        console.log(`[CRM API SYNC RESULT]`, syncResult);
+        const synced = syncResult.success;
+        const syncNote = synced
+          ? 'A new promotional voucher campaign has been launched in the Storefront Admin Panel and synchronized to the CRM.'
+          : `A new promotional voucher campaign has been launched in the Storefront Admin Panel. <strong>It was NOT synchronized to the CRM</strong> (${'error' in syncResult ? syncResult.error : 'unknown error'}) — add it to the CRM manually.`;
 
         // 2. Notification to CRM Inbox
         const crmEmail = (env as any).SMTP_USER || 'crm@saadeddin.com';
@@ -564,10 +567,10 @@ export async function action({request, context}: ActionFunctionArgs) {
           <div dir="ltr" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #f0f0f0; border-radius: 12px; overflow: hidden; background-color: #ffffff;">
             <div style="background-color: #234745; padding: 30px; text-align: center; color: white;">
               <h2 style="margin: 0; font-size: 20px;">Saadeddin CRM Synchronization</h2>
-              <p style="margin: 5px 0 0 0; opacity: 0.8; font-size: 13px;">New Voucher Campaign Registered Successfully</p>
+              <p style="margin: 5px 0 0 0; opacity: 0.8; font-size: 13px;">${synced ? 'New Voucher Campaign Registered' : 'New Voucher Campaign — CRM sync failed'}</p>
             </div>
             <div style="padding: 30px; color: #333333; line-height: 1.6;">
-              <p style="margin-top: 0;">A new promotional voucher campaign has been launched in the Storefront Admin Panel and successfully synchronized to the CRM.</p>
+              <p style="margin-top: 0;">${syncNote}</p>
               
               <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
                 <tr style="border-bottom: 1px solid #eee;">
@@ -617,15 +620,13 @@ export async function action({request, context}: ActionFunctionArgs) {
 
         await sendEmail({
           to: crmEmail,
-          subject: `[CRM SYNC] New Voucher Campaign Created: ${code}`,
+          subject: `${synced ? '[CRM SYNC]' : '[CRM SYNC FAILED]'} New Voucher Campaign Created: ${code}`,
           html: htmlTemplate,
-          text: `New Voucher Campaign Created: ${code}. Value: ${value} ${valueType}. Min Subtotal: ${minSubtotal}. Limit: ${usageLimit}. Expiry: ${endsAt}.`,
+          text: `New Voucher Campaign Created: ${code}${synced ? '' : ' (NOT synced to the CRM — add it manually)'}. Value: ${value} ${valueType}. Min Subtotal: ${minSubtotal}. Limit: ${usageLimit}. Expiry: ${endsAt}.`,
           env,
         });
 
-        console.log(
-          `[CRM SYNC SUCCESS] Voucher ${code} successfully synchronized to CRM (${crmEmail}).`,
-        );
+        if (synced) console.log(`[CRM] Voucher ${code} synced; notice sent to ${crmEmail}.`);
       } catch (err) {
         console.error('[CRM SYNC ERROR] Failed to sync voucher with CRM:', err);
       }

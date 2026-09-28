@@ -2273,8 +2273,8 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
 
   /**
    * Set when the cart action refunded the points after a line change. The
-   * balance is read again then, or the badge keeps showing the balance from
-   * before the refund.
+   * balance is read again then — and whenever the applied points change
+   * (redeem, remove) — or the badge keeps showing the old balance.
    */
   const loyaltyReset = cart?.attributes?.some(
     (a: any) => a?.key === '_loyalty_reset' && a?.value === '1',
@@ -2338,7 +2338,7 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
     return () => {
       stale = true;
     };
-  }, [customerIdentifier, phone, email, customerId, loyaltyReset]);
+  }, [customerIdentifier, phone, email, customerId, loyaltyReset, initialPoints]);
 
   if (!customerIdentifier) {
     return (
@@ -2462,13 +2462,17 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
             className="w-full mt-1"
           >
             {(fetcher: any) => (
-              <button
-                type="submit"
-                disabled={fetcher.state !== 'idle'}
-                className="w-full text-center py-2 bg-[#e74c3c] hover:bg-[#c0392b] text-white rounded-lg text-[12px] font-bold transition-all shadow-sm"
-              >
-                {fetcher.state !== 'idle' ? (isEn ? 'Removing...' : 'جاري الإزالة...') : (isEn ? 'Remove Loyalty Discount' : 'إزالة الخصم')}
-              </button>
+              <div className="w-full flex flex-col gap-1">
+                <button
+                  type="submit"
+                  disabled={fetcher.state !== 'idle'}
+                  className="w-full text-center py-2 bg-[#e74c3c] hover:bg-[#c0392b] text-white rounded-lg text-[12px] font-bold transition-all shadow-sm"
+                >
+                  {fetcher.state !== 'idle' ? (isEn ? 'Removing...' : 'جاري الإزالة...') : (isEn ? 'Remove Loyalty Discount' : 'إزالة الخصم')}
+                </button>
+                {/* Removing refunds the points first; if that fails the discount stays. */}
+                <PointsRedemptionError message={fetcher.state === 'idle' ? fetcher.data?.error : null} />
+              </div>
             )}
           </CartForm>
         </div>

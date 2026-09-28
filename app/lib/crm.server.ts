@@ -15,52 +15,66 @@ export interface CRMVoucherPayload {
   createdAt: string;
 }
 
+export type CRMVoucherSyncResult =
+  | {success: true; transactionId: string | null; syncedAt: string}
+  | {success: false; skipped?: boolean; error: string};
+
+/**
+ * Sends a new voucher to the CRM.
+ *
+ * `CRM_API_KEY` must come from the environment. There used to be a key
+ * written into this file as a fallback, which put it in the repository and in
+ * every copy of the code; it is gone. Without the variable the call is not
+ * made at all — the voucher itself is already in Shopify, so nothing breaks —
+ * and the result says so.
+ *
+ * Failures used to come back as `success: true` with a made-up transaction id
+ * ("offline fallback"), so the staff email announced a sync that never
+ * happened. The result is now the truth, and the caller words the email
+ * from it.
+ */
 export async function syncVoucherToCRM({
   voucher,
-  env
+  env,
 }: {
   voucher: CRMVoucherPayload;
   env: any;
-}) {
-  const crmUrl = env.CRM_API_URL || 'https://crm.saadeddin.com/api/v1/vouchers/sync';
-  const crmApiKey = env.CRM_API_KEY || 'sec_crm_77fa28c2e9d3d3a01ff6c9d821245e8a';
+}): Promise<CRMVoucherSyncResult> {
+  const crmUrl = env?.CRM_API_URL || 'https://crm.saadeddin.com/api/v1/vouchers/sync';
+  const crmApiKey = env?.CRM_API_KEY;
 
-  console.log(`--- [CRM/ERP API SYNC START] ---`);
-  console.log(`Endpoint: ${crmUrl}`);
-  console.log(`Syncing Voucher: ${voucher.code}`);
+  if (!crmApiKey) {
+    console.warn(
+      `[CRM] CRM_API_KEY is not set — voucher ${voucher.code} was created in Shopify but not sent to the CRM.`,
+    );
+    return {success: false, skipped: true, error: 'CRM_API_KEY is not set'};
+  }
 
   try {
     const response = await fetch(crmUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${crmApiKey}`,
+        Authorization: `Bearer ${crmApiKey}`,
         'X-Saadeddin-Source': 'Storefront-Admin',
       },
       body: JSON.stringify(voucher),
+      signal: AbortSignal.timeout(10000),
     });
 
     if (!response.ok) {
-      throw new Error(`CRM API responded with status ${response.status}`);
+      throw new Error(`CRM responded with HTTP ${response.status}`);
     }
 
-    const result = await response.json() as any;
-    console.log(`--- [CRM/ERP API SYNC SUCCESS] ---`, result);
-
+    const result = (await response.json().catch(() => ({}))) as any;
     return {
       success: true,
-      transactionId: result.transactionId || `crm_tx_${Math.random().toString(36).substr(2, 9)}`,
-      syncedAt: new Date().toISOString()
+      transactionId: result?.transactionId ? String(result.transactionId) : null,
+      syncedAt: new Date().toISOString(),
     };
   } catch (error: any) {
-    console.warn(`--- [CRM/ERP API SYNC OFFLINE FALLBACK] ---`, error.message);
-    // Return a fallback for local developer experience when CRM ERP is offline/local
-    return {
-      success: true,
-      fallback: true,
-      transactionId: `crm_fallback_${Math.random().toString(36).substr(2, 9)}`,
-      syncedAt: new Date().toISOString(),
-      error: error.message
-    };
+    const message = error?.name === 'TimeoutError' ? 'CRM did not answer within 10 s' : error?.message || String(error);
+    console.warn(`[CRM] Voucher ${voucher.code} was not synced: ${message}`);
+    return {success: false, error: message};
   }
 }

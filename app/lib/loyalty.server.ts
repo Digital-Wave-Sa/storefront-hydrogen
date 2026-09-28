@@ -942,7 +942,8 @@ export async function voidLoyaltyPoints({
 /**
  * What a loyalty code is really worth, in SAR, read from its Shopify price
  * rule — never from the cart's `loyalty_points` attribute, which the browser
- * can write. Null when the code cannot be found or read.
+ * can write. 0 when Shopify has no such code (already deleted), null when
+ * it could not be read.
  */
 export async function loyaltyCodeValue(env: any, code: string): Promise<number | null> {
   const submitted = String(code || '').trim();
@@ -957,6 +958,7 @@ export async function loyaltyCodeValue(env: any, code: string): Promise<number |
       `https://${domain}/admin/api/2024-01/discount_codes/lookup.json?code=${encodeURIComponent(submitted)}`,
       {headers: {'X-Shopify-Access-Token': token}, signal: AbortSignal.timeout(5000)},
     );
+    if (lookupRes.status === 404) return 0;
     if (!lookupRes.ok) return null;
     const priceRuleId = ((await lookupRes.json()) as any)?.discount_code?.price_rule_id;
     if (!priceRuleId) return null;
@@ -965,6 +967,7 @@ export async function loyaltyCodeValue(env: any, code: string): Promise<number |
       `https://${domain}/admin/api/2024-01/price_rules/${priceRuleId}.json`,
       {headers: {'X-Shopify-Access-Token': token}, signal: AbortSignal.timeout(5000)},
     );
+    if (ruleRes.status === 404) return 0;
     if (!ruleRes.ok) return null;
     const rule = ((await ruleRes.json()) as any)?.price_rule;
     if (rule?.value_type !== 'fixed_amount') return null;

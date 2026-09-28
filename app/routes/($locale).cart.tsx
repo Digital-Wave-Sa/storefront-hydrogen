@@ -329,16 +329,85 @@ export async function action({request, context, params}: Route.ActionArgs) {
     }
 
     /**
+     * Which loyalty codes THIS shopper redeemed, kept in the signed session
+     * cookie. Refunding a code puts points back on the balance of whoever
+     * asks, and deleting it kills the discount, so both are allowed only for
+     * a code this session created. The cart's `loyalty_code` attribute cannot
+     * be used for this: the browser can write it, and a `LOYAL-` code someone
+     * else redeemed can be typed into any cart.
+     */
+    const OWNED_LOYALTY_KEY = 'loyalty_codes_redeemed';
+    const ownedLoyaltyCodes = async (): Promise<string[]> =>
+      String((await context.session.get(OWNED_LOYALTY_KEY)) || '')
+        .split(',')
+        .map((c) => c.trim().toUpperCase())
+        .filter(Boolean);
+    async function rememberLoyaltyCode(code: string) {
+      const codes = (await ownedLoyaltyCodes()).filter(
+        (c) => c !== code.toUpperCase(),
+      );
+      codes.push(code.toUpperCase());
+      context.session.set(OWNED_LOYALTY_KEY, codes.slice(-10).join(','));
+    }
+    async function forgetLoyaltyCode(code: string) {
+      const codes = await ownedLoyaltyCodes();
+      if (!codes.includes(code.toUpperCase())) return;
+      context.session.set(
+        OWNED_LOYALTY_KEY,
+        codes.filter((c) => c !== code.toUpperCase()).join(','),
+      );
+    }
+
+    /**
+     * Give a redeemed code's points back and retire the code.
+     *
+     * Points leave the SDLP balance the moment they are redeemed, so taking a
+     * `LOYAL-` code off the cart without this simply loses them. Order
+     * matters: SDLP refunds first, and only once it confirms is the code
+     * deleted in Shopify, so a failure never leaves the shopper with neither
+     * the points nor a working code. The number of points comes from the
+     * code's Shopify price rule (value × 100), never from the cart.
+     *
+     *   refunded   points back, code deleted
+     *   not-owned  not this session's code: nothing refunded, code untouched
+     *   gone       the code no longer exists in Shopify: nothing to refund
+     *   failed     SDLP or Shopify did not answer: nothing changed
+     */
+    async function refundLoyaltyCode(
+      code: string,
+      knownValue?: number,
+    ): Promise<{status: 'refunded' | 'not-owned' | 'gone' | 'failed'; points?: number}> {
+      if (!(await ownedLoyaltyCodes()).includes(code.toUpperCase())) {
+        console.warn(`[Loyalty] ${code} was not redeemed in this session; not refunding it.`);
+        return {status: 'not-owned'};
+      }
+      const {loyaltyCodeValue, voidLoyaltyPoints, deleteLoyaltyDiscountCode} =
+        await import('~/lib/loyalty.server');
+      const value = knownValue ?? (await loyaltyCodeValue(context.env, code));
+      if (value === null) return {status: 'failed'};
+      if (value <= 0) {
+        await forgetLoyaltyCode(code);
+        return {status: 'gone'};
+      }
+      const points = Math.round(value * 100);
+      const refund = await voidLoyaltyPoints({code, points, env: context.env, context});
+      if (!refund.success) {
+        console.warn(`[Loyalty] Refund of ${points} pts for ${code} failed: ${refund.reason || 'no reason'}`);
+        return {status: 'failed'};
+      }
+      await deleteLoyaltyDiscountCode(context.env, code);
+      await forgetLoyaltyCode(code);
+      console.log(`[Loyalty] Refunded ${points} pts and retired ${code}.`);
+      return {status: 'refunded', points};
+    }
+
+    /**
      * The same check for loyalty points, with one difference: points are
      * debited from SDLP the moment they are redeemed, not at checkout. So
-     * cancelling the code is not enough — the points are voided back to the
-     * shopper's balance FIRST, and only if SDLP confirms that is the code
-     * removed and deleted. If the refund fails nothing changes (Shopify still
-     * caps the discount at checkout), so points are never lost either way.
-     *
-     * The code's value comes from its Shopify price rule, not from the
-     * `loyalty_points` attribute: that one the browser can write, and it
-     * decides how many points are handed back.
+     * cancelling the code is not enough — the points are refunded to the
+     * shopper's balance FIRST (refundLoyaltyCode), and only if that succeeds
+     * is the code removed. If it fails nothing changes (Shopify still caps the
+     * discount at checkout), so points are never lost either way.
      *
      * Returns the updated cart when it changed anything, otherwise null.
      */
@@ -350,6 +419,8 @@ export async function action({request, context, params}: Route.ActionArgs) {
           return c.startsWith('LOYAL-') || c.startsWith('LOYALTY-');
         })?.code;
         if (!loyaltyCode || !current?.id) return null;
+        // Not ours to refund: leave it for Shopify to cap at checkout.
+        if (!(await ownedLoyaltyCodes()).includes(loyaltyCode.toUpperCase())) return null;
 
         const alloc: any = await context.storefront.query(
           `#graphql
@@ -384,8 +455,7 @@ export async function action({request, context, params}: Route.ActionArgs) {
             0,
           );
 
-        const {loyaltyCodeValue, voidLoyaltyPoints, deleteLoyaltyDiscountCode} =
-          await import('~/lib/loyalty.server');
+        const {loyaltyCodeValue} = await import('~/lib/loyalty.server');
         const value = await loyaltyCodeValue(context.env, loyaltyCode);
         if (value === null) {
           console.warn(`[CART] Could not read the value of ${loyaltyCode}; leaving it applied.`);
@@ -393,24 +463,12 @@ export async function action({request, context, params}: Route.ActionArgs) {
         }
         if (allocated + 0.01 >= value) return null;
 
-        const points = Math.round(value * 100);
         console.log(
-          `[CART] Loyalty ${value} SAR (${points} pts) no longer fits (Shopify allocates ${allocated.toFixed(2)}) — refunding and cancelling it.`,
+          `[CART] Loyalty ${value} SAR no longer fits (Shopify allocates ${allocated.toFixed(2)}) — refunding and cancelling it.`,
         );
-        const refund = await voidLoyaltyPoints({
-          code: loyaltyCode,
-          points,
-          env: context.env,
-          context,
-        });
-        if (!refund.success) {
-          console.warn(
-            `[CART] Loyalty refund for ${loyaltyCode} failed (${refund.reason || 'no reason'}); leaving the code applied.`,
-          );
-          return null;
-        }
+        const refund = await refundLoyaltyCode(loyaltyCode, value);
+        if (refund.status !== 'refunded') return null;
 
-        await deleteLoyaltyDiscountCode(context.env, loyaltyCode);
         await cart.updateDiscountCodes(
           (current.discountCodes || [])
             .map((dc: any) => dc.code)
@@ -531,18 +589,41 @@ export async function action({request, context, params}: Route.ActionArgs) {
             discountCodes = discountCodes.filter((c) => !codesToRemove.has(c));
           }
 
+          /**
+           * Refund before removing. This used to take the code off and stop
+           * there — the points had already left the balance at redeem time,
+           * so «إزالة الخصم» quietly cost the shopper every point on it. If
+           * the refund cannot be done now the code stays applied, so nothing
+           * is lost and the shopper can simply try again.
+           */
+          let refundedPoints = 0;
+          for (const dc of appliedCodes) {
+            const refund = await refundLoyaltyCode(dc.code);
+            if (refund.status === 'failed') {
+              return data(
+                {
+                  error: isEn
+                    ? 'We could not return your points just now, so the discount is still applied. Please try again in a moment.'
+                    : 'تعذّرت إعادة نقاطك الآن، لذا بقي الخصم مطبّقاً. يرجى المحاولة مرة أخرى بعد قليل.',
+                },
+                {status: 502},
+              );
+            }
+            refundedPoints += refund.points || 0;
+          }
+
           await cart.updateDiscountCodes(discountCodes);
           result = (await cart.updateAttributes([
             {key: 'loyalty_points', value: '0'},
             {key: 'loyalty_code', value: ''},
             {key: '_loyalty_reset', value: ''},
           ])) as any;
+          if (refundedPoints > 0) {
+            console.log(`[Loyalty] Removed by the shopper; ${refundedPoints} pts returned.`);
+          }
           break;
         }
 
-        const previousCode = String(
-          currentCart.attributes?.find((a) => a.key === 'loyalty_code')?.value || '',
-        ).trim();
         const previousPoints =
           parseInt(
             currentCart.attributes?.find((a) => a.key === 'loyalty_points')?.value || '0',
@@ -584,19 +665,29 @@ export async function action({request, context, params}: Route.ActionArgs) {
           }
         }
 
-        if (previousPoints > 0 || previousCode) {
-          const {voidLoyaltyPoints, deleteLoyaltyDiscountCode} =
-            await import('~/lib/loyalty.server');
-          if (previousPoints > 0) {
-            await voidLoyaltyPoints({
-              code: previousCode,
-              points: previousPoints,
-              env: context.env,
-              context,
-            });
-          }
-          if (previousCode) {
-            await deleteLoyaltyDiscountCode(context.env, previousCode);
+        /**
+         * The points already on this cart are refunded before new ones are
+         * taken. This used to void whatever `loyalty_points` said and delete
+         * whatever `loyalty_code` named — both cart attributes the browser can
+         * write, so any shopper could delete any discount code in the store.
+         * Now only codes actually applied to this cart AND redeemed in this
+         * session are touched, for the value Shopify holds. If a refund fails,
+         * nothing new is redeemed, so the shopper never pays twice.
+         */
+        const previousLoyalty = (currentCart.discountCodes || []).filter(
+          (dc: any) => dc.code.startsWith('LOYAL-') || dc.code.startsWith('LOYALTY-'),
+        );
+        for (const dc of previousLoyalty) {
+          const refund = await refundLoyaltyCode(dc.code);
+          if (refund.status === 'failed') {
+            return data(
+              {
+                error: isEn
+                  ? 'We could not return the points already applied, so nothing was changed. Please try again in a moment.'
+                  : 'تعذّرت إعادة النقاط المطبّقة حالياً، لذا لم يتغيّر شيء. يرجى المحاولة مرة أخرى بعد قليل.',
+              },
+              {status: 502},
+            );
           }
         }
 
@@ -615,6 +706,17 @@ export async function action({request, context, params}: Route.ActionArgs) {
             redeemRes.reason || redeemRes.error || 'no reason given',
             `(requested ${pointsToRedeem} points)`,
           );
+          // The previous code was refunded above; take it off the cart too.
+          if (previousLoyalty.length) {
+            const kept = (currentCart.discountCodes || [])
+              .map((dc: any) => dc.code)
+              .filter((c: string) => !c.startsWith('LOYAL-') && !c.startsWith('LOYALTY-'));
+            await cart.updateDiscountCodes(kept);
+            await cart.updateAttributes([
+              {key: 'loyalty_points', value: '0'},
+              {key: 'loyalty_code', value: ''},
+            ]);
+          }
           return data(
             {
               error:
@@ -626,6 +728,7 @@ export async function action({request, context, params}: Route.ActionArgs) {
         }
 
         const generatedCode = redeemRes.discountCode;
+        await rememberLoyaltyCode(generatedCode);
 
         const existingCodes =
           currentCart.discountCodes
@@ -1296,12 +1399,22 @@ export async function action({request, context, params}: Route.ActionArgs) {
         try {
           const keptUpper = new Set(discountCodes.map((c) => c.toUpperCase()));
           const priorCodes = (currentCart?.discountCodes || []).map((dc) => dc.code);
-          const droppedLoyalty = priorCodes.some(
+          const droppedLoyaltyCodes = priorCodes.filter(
             (c) =>
               (c.toUpperCase().startsWith('LOYAL-') ||
                 c.toUpperCase().startsWith('LOYALTY-')) &&
               !keptUpper.has(c.toUpperCase()),
           );
+          const droppedLoyalty = droppedLoyaltyCodes.length > 0;
+          // Its points were debited at redeem time: give them back. Best
+          // effort here — the code is already off the cart, and if the refund
+          // fails the code itself stays valid in Shopify, so nothing is lost.
+          for (const code of droppedLoyaltyCodes) {
+            const refund = await refundLoyaltyCode(code);
+            if (refund.status === 'failed') {
+              console.warn(`[CART] ${code} left the cart but its points could not be refunded yet.`);
+            }
+          }
           const droppedCredit = priorCodes.some(
             (c) => c.toUpperCase().startsWith('CREDIT-') && !keptUpper.has(c.toUpperCase()),
           );

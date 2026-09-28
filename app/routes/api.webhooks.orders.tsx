@@ -16,6 +16,7 @@ import {
   readOrderNotificationState,
   markStageNotified,
 } from '~/lib/notified-stages.server';
+import {closeAbandonedCart} from '~/lib/abandoned-cart.server';
 
 /**
  * Shopify order webhooks: `orders/create`, `orders/paid`, `orders/fulfilled`,
@@ -219,6 +220,8 @@ export async function action({request, context}: ActionFunctionArgs) {
     } catch (error: any) {
       console.error('[Order Webhook] Routing error:', error?.message || error);
     }
+
+    await closeAbandonedCart(env, payload);
   }
 
   /**

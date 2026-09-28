@@ -1,5 +1,6 @@
 import type {ActionFunctionArgs} from 'react-router';
 import {syncOrderToCRM} from '~/lib/crm-orders.server';
+import {extractOrderDiscount} from '~/lib/order-discounts';
 import {getAdminToken} from '~/lib/shopify-admin.server';
 import {extractMinTime} from '~/lib/time-utils';
 import {stripCoordsMarker} from '~/lib/address-coords';
@@ -224,6 +225,7 @@ export async function action({request, context}: ActionFunctionArgs) {
     }
 
     // Sync to CRM
+    const discount = extractOrderDiscount(payload);
     const result = await syncOrderToCRM(
       {
         orderName: payload.name || `#${payload.order_number}`,
@@ -235,6 +237,9 @@ export async function action({request, context}: ActionFunctionArgs) {
         shippingAddress: addressString,
         dueDate,
         lineItems,
+        discountCodes: discount.discount_codes,
+        totalDiscounts: discount.total_discounts,
+        totalPrice: discount.total_price,
       },
       env,
     );

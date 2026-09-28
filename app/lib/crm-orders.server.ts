@@ -6,6 +6,8 @@
  * Auth: X-API-Key header
  */
 
+import type { OrderDiscountCode } from '~/lib/order-discounts';
+
 const CRM_BASE_URL = 'https://saadeddinpastry.com/shopifyAPI';
 
 /**
@@ -219,6 +221,9 @@ export async function crmCreateOrder(
     cf_781: 'Pick Up' | 'Delivery';
     bill_street: string;
     items: CRMLineItem[];
+    discount_codes?: OrderDiscountCode[];
+    total_discounts?: number;
+    total_price?: number;
   },
   env?: any
 ): Promise<CRMResponse<CRMOrder>> {
@@ -268,6 +273,9 @@ export async function syncOrderToCRM(
       price: number;
       note?: string;
     }>;
+    discountCodes?: OrderDiscountCode[];
+    totalDiscounts?: number;
+    totalPrice?: number;
   },
   env?: any
 ): Promise<{
@@ -341,6 +349,9 @@ export async function syncOrderToCRM(
     cf_781: shopifyOrder.fulfillmentType,
     bill_street: shopifyOrder.shippingAddress || 'N/A',
     items: crmLineItems,
+    discount_codes: shopifyOrder.discountCodes,
+    total_discounts: shopifyOrder.totalDiscounts,
+    total_price: shopifyOrder.totalPrice,
   }, env);
 
   if (orderResult.success && orderResult.data?.id) {

@@ -1,5 +1,6 @@
 import {createHydrogenContext} from '@shopify/hydrogen';
 import {AppSession} from '~/lib/session';
+import {sessionSecret} from '~/lib/session-secret.server';
 import {CART_QUERY_FRAGMENT} from '~/lib/fragments';
 import {getLocaleFromRequest} from '~/lib/i18n';
 
@@ -31,12 +32,12 @@ export async function createHydrogenRouterContext(
   /**
    * Open a cache instance in the worker and a custom session instance.
    */
-  const sessionSecret = env?.SESSION_SECRET || 'saadeddin-session-secret-key-2026';
+  const secret = sessionSecret(env);
 
   const waitUntil = executionContext.waitUntil.bind(executionContext);
   const [cache, session] = await Promise.all([
     caches.open('hydrogen'),
-    AppSession.init(request, [sessionSecret]),
+    AppSession.init(request, [secret]),
   ]);
 
   const cleanEnv = { ...env };

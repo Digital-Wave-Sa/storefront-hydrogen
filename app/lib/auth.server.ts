@@ -1,3 +1,5 @@
+import {sessionSecret} from '~/lib/session-secret.server';
+
 /**
  * Derives a consistent, secure password from a user's phone number + a server secret.
  * This ensures passwordless logins can generate reliable Shopify customer access tokens.
@@ -78,7 +80,7 @@ export async function remintCustomerAccessToken(
 
     const password = await derivePassword(
       phone,
-      env.SESSION_SECRET || 'saadeddin-otp-secret',
+      sessionSecret(env),
     );
 
     let email: string | null = null;

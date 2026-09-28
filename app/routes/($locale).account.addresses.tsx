@@ -727,26 +727,38 @@ export default function Addresses() {
   const actionData = useActionData<ActionResponse>();
   const fetcher = useFetcher();
 
-  const [localDefaultId, setLocalDefaultId] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('saadeddin_default_address_id');
+  /**
+   * Shopify's default address is the truth; this only bridges the moment
+   * between a «set as default» and the reload that follows it.
+   *
+   * It used to be saved in localStorage and read back FIRST, ahead of what
+   * Shopify said. Once Shopify's default changed anywhere else -- a checkout,
+   * another device, a failed save -- the page kept showing the old address as
+   * the default, and deleting the real default was refused with «هذا هو
+   * عنوانك الافتراضي» on an address the page said was not.
+   */
+  const [localDefaultId, setLocalDefaultId] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      window.localStorage.removeItem('saadeddin_default_address_id');
+    } catch {
+      /* storage unavailable: nothing to clean up */
     }
-    return null;
-  });
+  }, []);
+
+  // Fresh data from Shopify wins over the bridge.
+  useEffect(() => {
+    setLocalDefaultId(null);
+  }, [defaultAddress?.id]);
 
   const handleSetDefault = (id: string) => {
     setLocalDefaultId(id);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('saadeddin_default_address_id', id);
-    }
   };
 
   useEffect(() => {
     if (actionData?.defaultAddress) {
       setLocalDefaultId(actionData.defaultAddress);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('saadeddin_default_address_id', actionData.defaultAddress);
-      }
     }
   }, [actionData]);
 
@@ -755,11 +767,7 @@ export default function Addresses() {
 
   useEffect(() => {
     if ((fetcher.data as any)?.defaultAddress) {
-      const defId = (fetcher.data as any).defaultAddress;
-      setLocalDefaultId(defId);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('saadeddin_default_address_id', defId);
-      }
+      setLocalDefaultId((fetcher.data as any).defaultAddress);
     }
   }, [fetcher.data]);
 

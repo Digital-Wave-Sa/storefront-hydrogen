@@ -18,6 +18,7 @@ import {
 import {LogoSplash} from '~/components/LogoSplash';
 import {SaadeddinApi} from '~/lib/saadeddin-api.server';
 import {derivePassword} from '~/lib/auth.server';
+import {sessionSecret} from '~/lib/session-secret.server';
 import {validatePhoneNumber, sanitizePhoneInput, formatPhoneForDisplay} from '~/lib/phone-validation';
 import {COUNTRY_CODES, parsePhoneCountry} from '~/lib/country-codes';
 import {useIsEn} from '~/lib/i18n';
@@ -342,7 +343,7 @@ export async function action({request, context}: ActionFunctionArgs) {
       // ── Step 2: Get/create Shopify customer via Admin API ────────────────────
       const stablePassword = await derivePassword(
         savedPhone,
-        env.SESSION_SECRET || 'saadeddin-otp-secret',
+        sessionSecret(env),
       );
       /**
        * The CRM's email is a HINT, never a credential.

@@ -134,8 +134,18 @@ export async function action({request, context}: ActionFunctionArgs) {
   return data({error: 'Invalid intent'}, {status: 400});
 }
 
-// In-memory cache for discounts (60s TTL)
-let vouchersCache: {timestamp: number; list: any[]} | null = null;
+/**
+ * Shopify's discount list, cached for 60 s -- RAW, exactly as Shopify sent it.
+ *
+ * This used to cache the FINISHED list, with each card already marked
+ * used / active / expired for whichever customer happened to load the page
+ * first. The variable is shared by every visitor the server instance serves,
+ * so for the next minute other customers saw that first customer's badges:
+ * a voucher they never used shown as «مستخدمة», or one they had used shown as
+ * active and then refused at the cart. The badges are now worked out on every
+ * request from the visitor's own orders; only Shopify's answer is shared.
+ */
+let vouchersRawCache: {timestamp: number; data: any} | null = null;
 
 async function getDiscountsFromGraphQL(
   adminDomain: string,
@@ -144,12 +154,14 @@ async function getDiscountsFromGraphQL(
   lang: string,
 ) {
   const now = Date.now();
-  if (vouchersCache && now - vouchersCache.timestamp < 60000) {
-    return vouchersCache.list;
-  }
 
   try {
-    const res = await fetch(`https://${adminDomain}/admin/api/2024-07/graphql.json`, {
+    let data: any =
+      vouchersRawCache && now - vouchersRawCache.timestamp < 60000
+        ? vouchersRawCache.data
+        : null;
+
+    const res = data ? null : await fetch(`https://${adminDomain}/admin/api/2024-07/graphql.json`, {
       method: 'POST',
       headers: {
         'X-Shopify-Access-Token': adminToken,
@@ -325,7 +337,14 @@ async function getDiscountsFromGraphQL(
     }).catch(() => null);
 
     if (res && res.ok) {
-      const data = (await res.json()) as any;
+      data = (await res.json()) as any;
+      vouchersRawCache = {timestamp: now, data};
+    } else if (!data && vouchersRawCache) {
+      // Shopify did not answer: an older list beats an empty page.
+      data = vouchersRawCache.data;
+    }
+
+    if (data) {
       const parseNode = (n: any, tagType: 'voucher' | 'discountcodepage') => {
         const d = n.discount;
         if (!d) return null;
@@ -485,13 +504,12 @@ async function getDiscountsFromGraphQL(
         }
       }
 
-      vouchersCache = {timestamp: now, list: vouchersList};
       return vouchersList;
     }
   } catch (e) {
     console.error('getDiscountsFromGraphQL error:', e);
   }
-  return vouchersCache?.list || [];
+  return [];
 }
 
 function formatEnglishDate(dateStr: string | Date | undefined, lang: string): string {

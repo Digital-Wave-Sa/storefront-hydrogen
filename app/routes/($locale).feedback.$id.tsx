@@ -240,6 +240,39 @@ export async function loader({params, context, request}: Route.LoaderArgs) {
           o.customer?.first_name ||
           (isEn ? 'Valued Customer' : 'عزيزنا العميل');
 
+        /**
+         * Only the order's own customer gets the order.
+         *
+         * This used to return the full email, phone, name, items and branch
+         * for ANY order number, to anyone -- the page decided in the browser
+         * whether to show them, but they were already in the HTML. Order
+         * numbers are sequential, and an email or phone is exactly what
+         * /track-order accepts to open an order and its invoice. Everyone
+         * else gets the order number (for the sign-in prompt) and nothing
+         * more. The raw email and phone are never sent at all: the review is
+         * submitted against the order on the server, which reads them there.
+         */
+        if (!isAuthorized) {
+          return {
+            notFound: false,
+            alreadyReviewed: false,
+            existingRating: null,
+            isAuthorized,
+            accountMismatch,
+            maskedEmail: '',
+            maskedPhone: '',
+            orderId: id,
+            locale,
+            order: {
+              name: `#${o.order_number}`,
+              customerName: '',
+              items: [] as typeof items,
+              branchName: '',
+              locationId: '',
+            },
+          };
+        }
+
         return {
           notFound: false,
           alreadyReviewed,
@@ -253,8 +286,6 @@ export async function loader({params, context, request}: Route.LoaderArgs) {
           order: {
             name: `#${o.order_number}`,
             customerName,
-            email: o.email || o.customer?.email || o.contact_email || '',
-            phone: o.phone || o.customer?.phone || o.shipping_address?.phone || o.billing_address?.phone || '',
             items,
             branchName,
             locationId,
@@ -305,7 +336,7 @@ export default function FeedbackPage() {
     }
   }, [fetcher.data]);
 
-  if (notFound || !order || !order.items || order.items.length === 0) {
+  if (notFound || !order || (isAuthorized && (!order.items || order.items.length === 0))) {
     return (
       <PageLayout {...({} as any)}>
         <div className="min-h-[70vh] flex items-center justify-center px-4 py-20 bg-[#fdfaf6]">
@@ -643,17 +674,6 @@ export default function FeedbackPage() {
                   className="w-full bg-[#FCFAF7] border border-[#EADFC9] rounded-2xl p-4 text-sm font-bold text-[#234745] focus:bg-white focus:border-[#234745] focus:ring-1 focus:ring-[#234745] outline-none transition-all duration-200 resize-none placeholder-gray-400"
                 />
               </div>
-
-              <input
-                type="hidden"
-                name="customerEmail"
-                value={order.email || ''}
-              />
-              <input
-                type="hidden"
-                name="customerPhone"
-                value={order.phone || ''}
-              />
 
               {/* Submit Action */}
               <div className="pt-4 flex flex-col gap-3">

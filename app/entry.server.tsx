@@ -19,20 +19,48 @@ export default async function handleRequest(
       checkoutDomain: context.env.PUBLIC_CHECKOUT_DOMAIN,
       storeDomain: context.env.PUBLIC_STORE_DOMAIN,
     },
+    /**
+     * Tracking (GTM and the tags it loads).
+     *
+     * GTM was allowed but everything it loads was not, so the browser refused
+     * Meta, TikTok, Snap and Google Ads and the pixels never fired.
+     *
+     * 'strict-dynamic' lets a script this page trusts (every script here
+     * carries the nonce, and the rest are added by those scripts) load further
+     * scripts -- so GTM's tags, including Custom HTML ones and tags added to
+     * the container later, run without listing each script host. Browsers
+     * that support it ignore the host list below for scripts; it stays for
+     * the few that do not. Where the tags SEND data (images, requests,
+     * frames) is not covered by it, so those hosts are listed further down.
+     */
     scriptSrc: [
       "'self'", 
       "'unsafe-inline'",
+      "'strict-dynamic'",
       'https://maps.googleapis.com', 
       'https://cdn.shopify.com',
       'https://www.googletagmanager.com',
+      'https://tagassistant.google.com',
       'https://www.google-analytics.com',
-      'https://ssl.google-analytics.com'
+      'https://ssl.google-analytics.com',
+      // Meta Pixel, TikTok, Snap, Google Ads (loaded by GTM)
+      'https://connect.facebook.net',
+      'https://analytics.tiktok.com',
+      'https://sc-static.net',
+      'https://www.googleadservices.com',
+      'https://googleads.g.doubleclick.net',
+      'https://www.google.com',
     ],
     frameSrc: [
       "'self'", 
       'https://www.google.com', 
       'https://maps.google.com',
-      'https://www.googletagmanager.com'
+      'https://www.googletagmanager.com',
+      'https://tagassistant.google.com',
+      // Tracking tags (Google Ads, Meta)
+      'https://td.doubleclick.net',
+      'https://*.doubleclick.net',
+      'https://www.facebook.com',
     ],
     imgSrc: [
       "'self'", 
@@ -47,6 +75,16 @@ export default async function handleRequest(
       'https://ui-avatars.com',
       'https://www.googletagmanager.com',
       'https://*.google-analytics.com',
+      // Tracking pixels (Meta, TikTok, Snap, Google Ads -- Google Ads also
+      // reports to the country Google domain, google.com.sa here)
+      'https://www.facebook.com',
+      'https://analytics.tiktok.com',
+      'https://tr.snapchat.com',
+      'https://*.doubleclick.net',
+      'https://www.googleadservices.com',
+      'https://www.google.com',
+      'https://www.google.com.sa',
+      'https://*.googlesyndication.com',
       'data:'
     ],
     connectSrc: [
@@ -61,7 +99,17 @@ export default async function handleRequest(
       'https://raw.githubusercontent.com',
       'https://www.googletagmanager.com',
       'https://*.google-analytics.com',
-      'https://*.analytics.google.com'
+      'https://*.analytics.google.com',
+      // Tracking tags (Meta, TikTok, Snap, Google Ads)
+      'https://www.facebook.com',
+      'https://connect.facebook.net',
+      'https://analytics.tiktok.com',
+      'https://tr.snapchat.com',
+      'https://*.snapchat.com',
+      'https://*.doubleclick.net',
+      'https://www.googleadservices.com',
+      'https://www.google.com.sa',
+      'https://*.googlesyndication.com',
     ],
     styleSrc: ["'self'", "'unsafe-inline'", 'https://cdn.shopify.com', 'https://fonts.googleapis.com'],
     fontSrc: ["'self'", 'https://cdn.shopify.com', 'https://fonts.gstatic.com', 'data:'],

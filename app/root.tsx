@@ -748,6 +748,10 @@ export function Layout({children}: {children?: React.ReactNode}) {
       script.id = 'gtm-loader';
       script.src = `https://www.googletagmanager.com/gtm.js?id=${data.env.PUBLIC_GTM_ID}`;
       script.async = true;
+      // The page's CSP nonce, taken from a script the server rendered: GTM
+      // hands it on to the Custom HTML tags it adds.
+      const nonce = (document.querySelector('script[nonce]') as HTMLScriptElement | null)?.nonce;
+      if (nonce) script.nonce = nonce;
       document.head.appendChild(script);
     }
   }, [data?.env?.PUBLIC_GTM_ID]);

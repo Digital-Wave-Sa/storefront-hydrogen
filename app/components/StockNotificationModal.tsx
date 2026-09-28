@@ -49,6 +49,12 @@ export function StockNotificationModal({
      */
     const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
     const [cancelState, setCancelState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+    /**
+     * Alerts need a signed-in customer: the waiting list keys on the
+     * account's phone. The lookup below says whether this shopper is one
+     * (null = not known yet, and the form is shown as before).
+     */
+    const [signedIn, setSignedIn] = useState<boolean | null>(null);
 
     useEffect(() => {
         setMounted(true);
@@ -95,6 +101,7 @@ export function StockNotificationModal({
             .then((res) => (res.ok ? res.json() : null))
             .then((payload: any) => {
                 if (cancelled) return;
+                if (payload) setSignedIn(payload.signedIn !== false);
                 if (payload?.subscribed) {
                     setSubscriptionId(payload.subscriptionId || null);
                     setStatus('subscribed');
@@ -153,6 +160,7 @@ export function StockNotificationModal({
             const payload: any = await response.json().catch(() => ({}));
 
             if (!response.ok || payload?.success === false) {
+                if (payload?.needsLogin) setSignedIn(false);
                 setStatus('error');
                 setError(
                     payload?.error ||
@@ -363,6 +371,23 @@ export function StockNotificationModal({
                                     : `سنقوم بإبلاغك فور توفر ${productTitle} من جديد.`}
                             </p>
 
+                            {signedIn === false ? (
+                                <div className="w-full mt-4 flex flex-col items-center gap-4">
+                                    <p className="text-[#234745] font-bold text-sm leading-relaxed">
+                                        {isEn
+                                            ? 'Sign in and we will alert you as soon as it is back.'
+                                            : 'سجّل الدخول وسننبّهك فور توفره.'}
+                                    </p>
+                                    <a
+                                        href={`${isEn ? '/en' : ''}/account/login?redirectTo=${encodeURIComponent(
+                                            typeof window !== 'undefined' ? window.location.pathname + window.location.search : '/',
+                                        )}`}
+                                        className="w-full text-center bg-[#234745] hover:bg-[#1a3533] !text-white font-black py-4 rounded-2xl text-[15px] transition-colors"
+                                    >
+                                        {isEn ? 'Sign in' : 'تسجيل الدخول'}
+                                    </a>
+                                </div>
+                            ) : (
                             <form onSubmit={handleSubmit} className="w-full mt-4">
                                 {showEmailForm ? (
                                     <div className="mb-6 relative group">
@@ -403,6 +428,7 @@ export function StockNotificationModal({
                                     {isEn ? 'Confirm Notification' : 'تأكيد التنبيه'}
                                 </Button>
                             </form>
+                            )}
                         </>
                     )}
                 </div>

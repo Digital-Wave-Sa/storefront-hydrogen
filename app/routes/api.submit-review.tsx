@@ -91,15 +91,80 @@ export async function action({request, context}: ActionFunctionArgs) {
   const shopDomain = getAdminDomain(env);
 
   const formData = await request.formData();
-  const customerName = String(formData.get('customerName') || 'Verified Customer');
-  const customerEmail = String(formData.get('customerEmail') || formData.get('email') || '');
-  const customerPhone = String(formData.get('customerPhone') || formData.get('phone') || '');
+  const isEnReq =
+    String(formData.get('language') || '') === 'en' ||
+    context.storefront?.i18n?.language === 'EN';
+  const say = (en: string, ar: string) => (isEnReq ? en : ar);
+
+  /**
+   * Signed-in customers only.
+   *
+   * This route used to accept any anonymous POST and publish what it was sent
+   * straight away (status "Approved"): any number of reviews, for any
+   * product, any order, any branch, with any rating. The product page only
+   * shows the form to verified buyers, but nothing stopped a script posting
+   * here directly. Every review now needs a signed-in customer; an order
+   * review also needs that customer to own the order.
+   */
+  const {resolveSelf, resolveNumericCustomerId, identifierMatchesSession} =
+    await import('~/lib/session-identity.server');
+  const self = await resolveSelf(context);
+  if (!self) {
+    return data(
+      {
+        error: say('Please sign in to write a review.', 'يرجى تسجيل الدخول لكتابة تقييم.'),
+        needsLogin: true,
+      },
+      {status: 401},
+    );
+  }
+  const numericCustomerId = await resolveNumericCustomerId(context);
+
+  /**
+   * A per-account ceiling on top of that. The session IS the sign-in, so a
+   * script cannot shed this counter without signing in again by OTP.
+   */
+  const RATE_KEY = 'reviewSubmits';
+  const HOUR = 60 * 60 * 1000;
+  const MAX_PER_HOUR = 10;
+  const recent = String((await context.session.get(RATE_KEY)) || '')
+    .split(',')
+    .map(Number)
+    .filter((t) => Number.isFinite(t) && Date.now() - t < HOUR);
+  if (recent.length >= MAX_PER_HOUR) {
+    return data(
+      {
+        error: say(
+          'You have sent a lot of reviews in a short time. Please try again later.',
+          'أرسلت عدداً كبيراً من التقييمات خلال وقت قصير. يرجى المحاولة لاحقاً.',
+        ),
+      },
+      {status: 429},
+    );
+  }
+
+  /** Everything below is client input: bounded before it is stored. */
+  const clip = (v: unknown, max: number) => String(v ?? '').trim().slice(0, max);
+  const stars = (v: unknown): number => {
+    const n = Math.round(Number(v));
+    return Number.isFinite(n) && n >= 1 && n <= 5 ? n : 0;
+  };
+  const HANDLE = /^[a-z0-9][a-z0-9-]{0,254}$/i;
+
+  const customerName = clip(formData.get('customerName'), 80) || 'Verified Customer';
+  const customerEmail = clip(formData.get('customerEmail') || formData.get('email'), 254);
+  const customerPhone = clip(formData.get('customerPhone') || formData.get('phone'), 32);
   const orderId = formData.get('orderId');
-  const branchRating = formData.get('branchRating') || formData.get('branch_rating');
-  const branchName = formData.get('branchName');
-  const comment = formData.get('comment');
-  const language = String(formData.get('language') || 'en');
-  const finalLocationId = formData.get('locationId') || formData.get('location_id');
+  const branchRatingNum = stars(formData.get('branchRating') || formData.get('branch_rating'));
+  const branchRating = branchRatingNum ? String(branchRatingNum) : null;
+  const branchName = clip(formData.get('branchName'), 120);
+  const comment = clip(formData.get('comment'), 2000);
+  const language = clip(formData.get('language') || 'en', 5);
+  const finalLocationId = clip(formData.get('locationId') || formData.get('location_id'), 64).replace(
+    /[^\w/:]/g,
+    '',
+  );
+  const reviewTitle = clip(formData.get('title'), 150) || 'Order Feedback';
 
   // Check if productRatings JSON is provided from order feedback
   const productRatingsRaw = formData.get('productRatings');
@@ -107,7 +172,8 @@ export async function action({request, context}: ActionFunctionArgs) {
 
   if (productRatingsRaw) {
     try {
-      productRatings = JSON.parse(String(productRatingsRaw));
+      const parsed = JSON.parse(String(productRatingsRaw));
+      if (Array.isArray(parsed)) productRatings = parsed as any[];
     } catch (e) {}
   }
 
@@ -118,12 +184,21 @@ export async function action({request, context}: ActionFunctionArgs) {
   if (!productRatingsRaw && productHandle && singleRating) {
     productRatings.push({
       handle: String(productHandle),
-      rating: parseInt(String(singleRating), 10) || 0,
+      rating: stars(singleRating),
     });
   }
 
+  productRatings = productRatings
+    .slice(0, 30)
+    .map((r: any) => ({
+      handle: clip(r?.handle, 255),
+      rating: stars(r?.rating),
+      ...(r?.title ? {title: clip(r.title, 150)} : {}),
+    }))
+    .filter((r) => r.rating > 0 && (HANDLE.test(r.handle) || r.handle === 'general-feedback'));
+
   if (productRatings.length === 0 && !branchRating) {
-    return data({error: 'Missing rating'}, {status: 400});
+    return data({error: say('Please choose a rating.', 'يرجى اختيار التقييم.')}, {status: 400});
   }
 
   /**
@@ -152,12 +227,63 @@ export async function action({request, context}: ActionFunctionArgs) {
     }
   })();
 
+  /** The same test the feedback page applies before it shows the form. */
+  const ownsOrder = (o: any): boolean => {
+    const orderCustomer = String(o?.customer?.id || '');
+    if (numericCustomerId && orderCustomer && orderCustomer === numericCustomerId) return true;
+    const contacts = [
+      o?.email,
+      o?.contact_email,
+      o?.customer?.email,
+      o?.phone,
+      o?.customer?.phone,
+      o?.billing_address?.phone,
+      o?.shipping_address?.phone,
+    ].filter(Boolean);
+    return contacts.some((c: string) => identifierMatchesSession(self, c));
+  };
+
+  context.session.set(RATE_KEY, [...recent, Date.now()].join(','));
+
   try {
     const token = await getAdminToken(env);
     const timestamp = Date.now();
     const cleanOrdId = orderId ? String(orderId).replace(/^#/, '').trim() : '';
 
     let foundOrder: any = null;
+
+    /**
+     * One product-page review per product per account: the handle is made
+     * from the customer, so a second one for the same product is found here
+     * before anything is written (and Shopify would refuse the duplicate
+     * handle anyway).
+     */
+    const productPageHandle = (handle: string) =>
+      numericCustomerId
+        ? `review-${handle}-c${numericCustomerId}`.slice(0, 255)
+        : `review-${handle}-${timestamp}-${Math.floor(Math.random() * 1000)}`;
+    if (!cleanOrdId && numericCustomerId) {
+      for (const item of productRatings) {
+        if (item.handle === 'general-feedback') continue;
+        const existing = (await adminApiQuery(
+          shopDomain,
+          token,
+          `query ExistingReview($h: MetaobjectHandleInput!) { metaobjectByHandle(handle: $h) { id } }`,
+          {h: {type: 'storefront_review', handle: productPageHandle(item.handle)}},
+        )) as any;
+        if (existing?.data?.metaobjectByHandle?.id) {
+          return data(
+            {
+              error: say(
+                'You have already reviewed this product.',
+                'لقد قيّمت هذا المنتج مسبقاً.',
+              ),
+            },
+            {status: 409},
+          );
+        }
+      }
+    }
 
     // 1. MARK ORDER AS REVIEWED IN SHOPIFY ADMIN (ONCE)
     if (cleanOrdId) {
@@ -184,29 +310,54 @@ export async function action({request, context}: ActionFunctionArgs) {
             const existingTags = targetOrd.tags
               ? targetOrd.tags.split(',').map((t: string) => t.trim())
               : [];
-            if (!existingTags.includes('reviewed')) {
-              existingTags.push('reviewed');
-              await fetch(
-                `https://${shopDomain}/admin/api/2024-01/orders/${targetOrd.id}.json`,
-                {
-                  method: 'PUT',
-                  headers: {
-                    'X-Shopify-Access-Token': token,
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    order: {
-                      id: targetOrd.id,
-                      tags: existingTags.join(', '),
-                    },
-                  }),
-                },
+            if (!ownsOrder(targetOrd)) {
+              return data(
+                {error: say('This order is not on your account.', 'هذا الطلب غير مرتبط بحسابك.')},
+                {status: 403},
               );
             }
+            if (existingTags.includes('reviewed')) {
+              return data(
+                {error: say('This order has already been reviewed.', 'تم تقييم هذا الطلب مسبقاً.')},
+                {status: 409},
+              );
+            }
+            // Only products that were in this order may be rated through it.
+            const inOrder = new Set<string>();
+            for (const li of targetOrd.line_items || []) {
+              if (li?.handle) inOrder.add(String(li.handle));
+              if (li?.product_id) inOrder.add(`product-${li.product_id}`);
+            }
+            productRatings = productRatings.filter(
+              (r) => r.handle === 'general-feedback' || inOrder.has(r.handle),
+            );
+            existingTags.push('reviewed');
+            await fetch(
+              `https://${shopDomain}/admin/api/2024-01/orders/${targetOrd.id}.json`,
+              {
+                method: 'PUT',
+                headers: {
+                  'X-Shopify-Access-Token': token,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  order: {
+                    id: targetOrd.id,
+                    tags: existingTags.join(', '),
+                  },
+                }),
+              },
+            );
           }
         }
       } catch (tagErr) {
         console.warn('[REVIEWS] Failed to tag order as reviewed:', tagErr);
+      }
+      if (!foundOrder) {
+        return data(
+          {error: say('We could not find this order.', 'لم نتمكن من العثور على هذا الطلب.')},
+          {status: 404},
+        );
       }
     }
 
@@ -243,13 +394,13 @@ export async function action({request, context}: ActionFunctionArgs) {
       const randomSuffix = Math.floor(Math.random() * 1000);
       const productReviewHandle = cleanOrdId
         ? `review-${cleanOrdId}-${item.handle}-${timestamp}-${randomSuffix}`
-        : `review-${item.handle}-${timestamp}-${randomSuffix}`;
+        : productPageHandle(item.handle);
 
       const productReviewFields = [
         {key: 'product_handle', value: item.handle},
         {key: 'customer_name', value: customerName},
         {key: 'rating', value: String(Math.round(Number(item.rating) || 5))},
-        {key: 'review_title', value: String(formData.get('title') || 'Order Feedback')},
+        {key: 'review_title', value: reviewTitle},
         {key: 'review_comment', value: String(comment || '')},
         {key: 'language', value: language},
         {key: 'status', value: 'Approved'},
@@ -292,7 +443,7 @@ export async function action({request, context}: ActionFunctionArgs) {
         formattedLocId = `gid://shopify/Location/${formattedLocId}`;
       }
 
-      const submittedRating = parseFloat(String(branchRating || singleRating || 0)) || 0;
+      const submittedRating = Number(branchRating) || stars(singleRating);
 
       if (submittedRating > 0) {
         try {

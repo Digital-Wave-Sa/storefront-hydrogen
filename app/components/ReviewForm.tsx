@@ -1,6 +1,7 @@
 import { useFetcher } from 'react-router';
 import { useState, useEffect } from 'react';
 import { StarRating } from './StarRating';
+import { SubmitError } from './SubmitError';
 
 export function ReviewForm({ 
     productHandle, 
@@ -168,11 +169,12 @@ export function ReviewForm({
                     : (isEn ? 'POST REVIEW' : 'نشر التقييم')}
             </button>
             
-            {fetcher.data?.error && (
-                <p className="mt-4 text-red-500 text-xs font-bold text-center">
-                    {fetcher.data.error}
-                </p>
-            )}
+            <SubmitError
+                className="mt-4"
+                isEn={isEn}
+                error={fetcher.state === 'idle' ? fetcher.data?.error : null}
+                needsLogin={fetcher.data?.needsLogin}
+            />
         </fetcher.Form>
     );
 }

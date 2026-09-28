@@ -4,6 +4,7 @@ import {useLoaderData, useFetcher, useLocation, Link, Form} from 'react-router';
 // @ts-ignore - route types generated during build
 import type {Route} from './+types/feedback.$id';
 import {PageLayout} from '~/components/PageLayout';
+import {SubmitError} from '~/components/SubmitError';
 import {useI18n} from '~/lib/i18n';
 
 export async function loader({params, context, request}: Route.LoaderArgs) {
@@ -655,7 +656,12 @@ export default function FeedbackPage() {
               />
 
               {/* Submit Action */}
-              <div className="pt-4">
+              <div className="pt-4 flex flex-col gap-3">
+                <SubmitError
+                  isEn={isEn}
+                  error={fetcher.state === 'idle' ? (fetcher.data as any)?.error : null}
+                  needsLogin={(fetcher.data as any)?.needsLogin}
+                />
                 <button
                   type="submit"
                   disabled={fetcher.state !== 'idle'}

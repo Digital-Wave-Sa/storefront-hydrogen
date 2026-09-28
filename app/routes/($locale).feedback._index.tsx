@@ -6,6 +6,7 @@ import {
 } from 'react-router';
 import {useLoaderData, useFetcher, useRouteLoaderData} from 'react-router';
 import {useIsEn} from '~/lib/i18n';
+import {SubmitError} from '~/components/SubmitError';
 
 export async function loader({request, params, context}: LoaderFunctionArgs) {
   const url = new URL(request.url);
@@ -164,7 +165,12 @@ export default function GeneralFeedbackPage() {
             </div>
 
             {/* Submit Button */}
-            <div className="pt-4">
+            <div className="pt-4 flex flex-col gap-3">
+              <SubmitError
+                isEn={isEn}
+                error={fetcher.state === 'idle' ? (fetcher.data as any)?.error : null}
+                needsLogin={(fetcher.data as any)?.needsLogin}
+              />
               <button
                 type="submit"
                 disabled={fetcher.state !== 'idle' || branchRating === 0}

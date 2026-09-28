@@ -227,7 +227,6 @@ export async function action({request, context}: ActionFunctionArgs) {
     const body = (await request.json()) as any;
     const {
       email,
-      phone,
       variantId,
       productId,
       productHandle,
@@ -244,6 +243,54 @@ export async function action({request, context}: ActionFunctionArgs) {
     } = body;
 
     const isEnRequest = context.storefront.i18n.language === 'EN';
+
+    /**
+     * Signed-in customers only.
+     *
+     * Subscribing used to be open to anyone: each POST filed a waiting-list
+     * row for whatever email and phone it named, and emailed the product and
+     * regional managers plus the admin inbox. A script could fill those
+     * inboxes and sign strangers' phones up for alerts. The phone now always
+     * comes from the session (the waiting list keys on it), and each account
+     * gets a ceiling that it cannot shed without signing in again by OTP.
+     */
+    const {resolveSelf, resolveSelfPhone} = await import('~/lib/session-identity.server');
+    const self = await resolveSelf(context);
+    if (!self) {
+      return data(
+        {
+          success: false,
+          needsLogin: true,
+          error: isEnRequest
+            ? 'Please sign in to get notified when this is back.'
+            : 'يرجى تسجيل الدخول ليصلك تنبيه عند توفر المنتج.',
+        },
+        {status: 401},
+      );
+    }
+    const NOTIFY_KEY = 'notifySubmits';
+    const recentNotify = String((await context.session.get(NOTIFY_KEY)) || '')
+      .split(',')
+      .map(Number)
+      .filter((t) => Number.isFinite(t) && Date.now() - t < 60 * 60 * 1000);
+    if (recentNotify.length >= 10) {
+      return data(
+        {
+          success: false,
+          error: isEnRequest
+            ? 'You have asked for a lot of alerts in a short time. Please try again later.'
+            : 'طلبت عدداً كبيراً من التنبيهات خلال وقت قصير. يرجى المحاولة لاحقاً.',
+        },
+        {status: 429},
+      );
+    }
+    context.session.set(NOTIFY_KEY, [...recentNotify, Date.now()].join(','));
+
+    /** Customer text goes into staff emails as text, never as markup. */
+    const esc = (v: unknown) =>
+      String(v ?? '').replace(/[&<>"']/g, (c) =>
+        ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[c]!,
+      );
 
     /** Used by the manager-notification step's Admin API call, below. */
     const shopDomain =
@@ -302,11 +349,8 @@ export async function action({request, context}: ActionFunctionArgs) {
      * the button and can be cancelled by id alone. So a signed-in shopper's
      * phone is sent whenever the session has one.
      */
-    const sessionPhone = await context.session.get('loginOtpPhone');
-    const resolvedPhone =
-      (phone && String(phone).trim()) ||
-      (sessionPhone ? String(sessionPhone) : '') ||
-      null;
+    // The account's own phone -- never one from the request body.
+    const resolvedPhone = (await resolveSelfPhone(context)) || null;
 
     let subscribed = false;
     let subscriptionId: string | null = null;
@@ -437,10 +481,10 @@ export async function action({request, context}: ActionFunctionArgs) {
             <p>عزيزي مدير المنتج / مدير المنطقة،</p>
             <p>قام أحد العملاء بطلب إشعار فور توفر المنتج التالي في المخزون:</p>
             <div style="background: #ffffff; padding: 16px; border-radius: 8px; border: 1px solid #ebdcc5; margin: 16px 0;">
-              <p style="margin: 6px 0;"><strong>اسم المنتج:</strong> ${resolvedProductTitle}</p>
-              <p style="margin: 6px 0;"><strong>رمز المعرّف (Variant ID):</strong> ${variantId}</p>
-              <p style="margin: 6px 0;"><strong>الفرع / الموقع:</strong> ${locationName || 'Global'}</p>
-              <p style="margin: 6px 0;"><strong>بريد العميل المطلوب إشعاره:</strong> ${email}</p>
+              <p style="margin: 6px 0;"><strong>اسم المنتج:</strong> ${esc(resolvedProductTitle)}</p>
+              <p style="margin: 6px 0;"><strong>رمز المعرّف (Variant ID):</strong> ${esc(variantId)}</p>
+              <p style="margin: 6px 0;"><strong>الفرع / الموقع:</strong> ${esc(locationName || 'Global')}</p>
+              <p style="margin: 6px 0;"><strong>بريد العميل المطلوب إشعاره:</strong> ${esc(email)}</p>
             </div>
             <p style="font-size: 12px; color: #888888; text-align: center; border-top: 1px solid #ebdcc5; padding-top: 12px;">
               تم إرسال هذا التنبيه آلياً بناءً على الحقول المخصصة لمدير المنتج ومدير المنطقة 

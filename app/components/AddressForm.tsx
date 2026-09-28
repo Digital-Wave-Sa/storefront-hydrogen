@@ -11,11 +11,20 @@
  * in as a prop rather than from the account outlet context, and the fetcher
  * posts to /account/addresses explicitly instead of to the current route.
  */
-import {useState, useEffect, useRef} from 'react';
+import {useState, useEffect, useRef, useCallback, useMemo} from 'react';
 import type {AddressFragment} from 'storefrontapi.generated';
-import {useFetcher} from 'react-router';
+import {useFetcher, useRouteLoaderData} from 'react-router';
 import {Button} from '~/components/layout/Button';
 import {addressCoords, stripCoordsMarker} from '~/lib/address-coords';
+import {formatGeocode} from '~/lib/geocode-format';
+import {
+  checkCoverage,
+  coverageBranches,
+  type Coverage,
+} from '~/lib/delivery-coverage';
+import {useAdminLocations} from '~/lib/locations-meta';
+import {loadGoogleMaps} from '~/lib/google-maps-loader';
+import {PointMap} from '~/components/PointMap';
 import type {ActionResponse} from '~/routes/($locale).account.addresses';
 
 export function AddressForm({
@@ -47,7 +56,14 @@ export function AddressForm({
    */
   mode?: 'standalone' | 'embedded';
   /** Embedded only: the location the host's picker has settled on. */
-  location?: {address: string; city: string; lat: number; lng: number} | null;
+  location?: {
+    address: string;
+    city: string;
+    lat: number;
+    lng: number;
+    countryCode?: string;
+    zip?: string;
+  } | null;
   onSuccess?: (addr: AddressFragment, isDefault?: boolean) => void;
   onClose: () => void;
 }) {
@@ -104,6 +120,14 @@ export function AddressForm({
   const [coords, setCoords] = useState<{lat: number; lng: number} | null>(
     () => addressCoords(address),
   );
+  const [countryCode, setCountryCode] = useState('');
+  const [zip, setZip] = useState(address?.zip ?? '');
+  /** Only a location picked in this form is checked; editing a name is not. */
+  const [locationTouched, setLocationTouched] = useState(type === 'create');
+  const coverage = useCoverage(coords, countryCode, isEn);
+  const outOfArea =
+    locationTouched &&
+    (coverage.status === 'out-of-range' || coverage.status === 'outside-country');
 
   /**
    * Embedded: the host's map is the source of truth for where this address is.
@@ -121,13 +145,19 @@ export function AddressForm({
     setAddressLine1(location.address);
     if (location.city) setCity(location.city);
     setCoords({lat: location.lat, lng: location.lng});
+    setCountryCode(location.countryCode || '');
+    if (location.zip) setZip(location.zip);
+    setLocationTouched(true);
     setIsValidated(true);
   }, [mode, location]);
 
   const handleLocationConfirm = (result: any) => {
     setAddressLine1(result.address);
-    setCity(result.city);
+    if (result.city) setCity(result.city);
     setCoords({lat: result.lat, lng: result.lng});
+    setCountryCode(result.countryCode || '');
+    if (result.zip) setZip(result.zip);
+    setLocationTouched(true);
 
     // Update preview map
     const {lat, lng} = result;
@@ -152,13 +182,14 @@ export function AddressForm({
           `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${googleMapsKey}&language=${isEn ? 'en' : 'ar'}`,
         );
         const data = (await response.json()) as any;
-        if (data.results?.[0]) {
-          const result = data.results[0];
-          setAddressLine1(result.formatted_address);
-          const cityObj = result.address_components.find((c: any) =>
-            c.types.includes('locality'),
-          );
-          if (cityObj) setCity(cityObj.long_name);
+        const line = formatGeocode(data.results, isEn);
+        if (line) {
+          setAddressLine1(line.address);
+          if (line.city) setCity(line.city);
+          setCountryCode(line.countryCode);
+          if (line.zip) setZip(line.zip);
+          setCoords({lat: latitude, lng: longitude});
+          setLocationTouched(true);
           setIsValidated(true);
         }
       } catch (e) {}
@@ -177,13 +208,15 @@ export function AddressForm({
         `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${googleMapsKey}&language=${isEn ? 'en' : 'ar'}`,
       );
       const data = (await response.json()) as any;
-      if (data.results?.[0]) {
-        const result = data.results[0];
-        setAddressLine1(result.formatted_address);
-        const cityObj = result.address_components.find((c: any) =>
-          c.types.includes('locality'),
-        );
-        if (cityObj) setCity(cityObj.long_name);
+      const line = formatGeocode(data.results, isEn);
+      const loc = data.results?.[0]?.geometry?.location;
+      if (line) {
+        setAddressLine1(line.address);
+        if (line.city) setCity(line.city);
+        setCountryCode(line.countryCode);
+        if (line.zip) setZip(line.zip);
+        if (loc) setCoords({lat: loc.lat, lng: loc.lng});
+        setLocationTouched(true);
         setIsValidated(true);
       }
     } catch (e) {}
@@ -205,6 +238,8 @@ export function AddressForm({
           <input type="hidden" name="addressId" value={address?.id ?? 'new'} />
           <input type="hidden" name="lat" value={coords?.lat ?? ''} />
           <input type="hidden" name="lng" value={coords?.lng ?? ''} />
+          {/* From the map; checkout pre-fills it instead of asking. */}
+          <input type="hidden" name="zip" value={zip} />
           {/*
             This form has never shown address2. It was only ever the hiding
             place for the pin, so it is carried through cleaned: a real
@@ -252,13 +287,21 @@ export function AddressForm({
             <div className="w-full h-[200px] bg-gray-50 rounded-2xl overflow-hidden border-2 border-gray-100 relative group">
               {mapUrl ? (
                 <>
-                  <iframe
-                    title="Map Picker"
-                    src={mapUrl}
-                    width="100%"
-                    height="100%"
-                    style={{border: 0}}
-                    loading="lazy"
+                  {/* Pans between places instead of reloading an embed iframe. */}
+                  <PointMap
+                    googleMapsKey={googleMapsKey}
+                    isEn={isEn}
+                    point={coords}
+                    // The saved address, not the field being typed in: a
+                    // live value would ask Google on every keystroke.
+                    query={
+                      coords || !address?.address1
+                        ? undefined
+                        : [address.address1, address.city, 'Saudi Arabia']
+                            .filter(Boolean)
+                            .join(', ')
+                    }
+                    zoom={16}
                   />
                   <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors flex items-center justify-center pointer-events-none">
                     <button
@@ -287,6 +330,9 @@ export function AddressForm({
                 </div>
               )}
             </div>
+            {isValidated && locationTouched && (
+              <CoverageNote coverage={coverage} isEn={isEn} className="mt-3" />
+            )}
             {!isValidated && (
               <p className="text-[11px] text-red-500 mt-2 font-bold uppercase tracking-tight">
                 {isEn
@@ -325,6 +371,9 @@ export function AddressForm({
                     ? 'Move the map to set your location'
                     : 'حرّك الخريطة لتحديد موقعك'}
               </p>
+              {isValidated && (
+                <CoverageNote coverage={coverage} isEn={isEn} className="mt-2" />
+              )}
             </div>
           )}
 
@@ -420,7 +469,9 @@ export function AddressForm({
               variant="primary"
               fullWidth
               size="lg"
-              disabled={isLoading || (!isValidated && type === 'create')}
+              disabled={
+                isLoading || (!isValidated && type === 'create') || outOfArea
+              }
             >
               {isLoading
                 ? isEn
@@ -463,30 +514,35 @@ export function MapPickerDialog({
     city: string;
     lat: number;
     lng: number;
+    countryCode?: string;
+    zip?: string;
   }) => void;
 }) {
   const mapRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const mapObjRef = useRef<any>(null);
   const defaultLoc = initialCoords || {lat: 24.7136, lng: 46.6753}; // Default or current
   const [address, setAddress] = useState(initialAddress || '');
   const [city, setCity] = useState('');
+  const [countryCode, setCountryCode] = useState('');
+  const [zip, setZip] = useState('');
   const [coords, setCoords] = useState<{lat: number; lng: number}>(defaultLoc);
   const [isResolving, setIsResolving] = useState(false);
   const [isSdkLoaded, setIsSdkLoaded] = useState(false);
+  const [isMoving, setIsMoving] = useState(false);
+  const userLocation = useUserLocation(isEn);
+  const coverage = useCoverage(coords, countryCode, isEn);
+  const cannotDeliver =
+    coverage.status === 'out-of-range' || coverage.status === 'outside-country';
 
   useEffect(() => {
-    // Check if script already exists
-    if ((window as any).google?.maps) {
-      setIsSdkLoaded(true);
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsKey}&libraries=places&language=${isEn ? 'en' : 'ar'}`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => setIsSdkLoaded(true);
-    document.head.appendChild(script);
+    let cancelled = false;
+    loadGoogleMaps(googleMapsKey, isEn ? 'en' : 'ar')
+      .then(() => !cancelled && setIsSdkLoaded(true))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, [googleMapsKey, isEn]);
 
   useEffect(() => {
@@ -498,6 +554,7 @@ export function MapPickerDialog({
       disableDefaultUI: true,
       zoomControl: false,
     });
+    mapObjRef.current = map;
 
     const geocoder = new (window as any).google.maps.Geocoder();
     const autocomplete = new (window as any).google.maps.places.Autocomplete(
@@ -509,16 +566,12 @@ export function MapPickerDialog({
       setIsResolving(true);
       setCoords({lat, lng});
       geocoder.geocode({location: {lat, lng}}, (results: any, status: any) => {
-        if (status === 'OK' && results?.[0]) {
-          const res = results[0];
-          setAddress(res.formatted_address);
-          const cityComp = res.address_components.find((c: any) =>
-            c.types.includes('locality') ||
-            c.types.includes('administrative_area_level_2') ||
-            c.types.includes('administrative_area_level_1') ||
-            c.types.includes('sublocality'),
-          );
-          if (cityComp) setCity(cityComp.long_name);
+        const line = status === 'OK' ? formatGeocode(results, isEn) : null;
+        if (line) {
+          setAddress(line.address);
+          setCity(line.city);
+          setCountryCode(line.countryCode);
+          setZip(line.zip);
         } else {
           setAddress((prev) => prev || `${lat.toFixed(6)}, ${lng.toFixed(6)}`);
         }
@@ -526,13 +579,33 @@ export function MapPickerDialog({
       });
     };
 
-    // Initial center pick
-    resolveAddress(defaultLoc.lat, defaultLoc.lng);
+    /**
+     * Look the address up only when the centre has really moved.
+     *
+     * `idle` also fires when the map is merely RESIZED, and the footer below
+     * it changed height between the loading bar and the two-line address —
+     * which resized the map, which fired `idle`, which started another lookup,
+     * which swapped the footer back: an endless loop, seen as blinking, and a
+     * paid Geocoding request on every turn of it.
+     */
+    let last: {lat: number; lng: number} | null = null;
+    const resolveIfMoved = (lat: number, lng: number) => {
+      if (last && Math.abs(last.lat - lat) < 1e-5 && Math.abs(last.lng - lng) < 1e-5) {
+        return;
+      }
+      last = {lat, lng};
+      resolveAddress(lat, lng);
+    };
 
+    // Initial center pick
+    resolveIfMoved(defaultLoc.lat, defaultLoc.lng);
+
+    map.addListener('dragstart', () => setIsMoving(true));
     map.addListener('idle', () => {
+      setIsMoving(false);
       const center = map.getCenter();
       if (center) {
-        resolveAddress(center.lat(), center.lng());
+        resolveIfMoved(center.lat(), center.lng());
       }
     });
 
@@ -544,22 +617,20 @@ export function MapPickerDialog({
       }
     });
 
-    // Handle user location button
-    const locateMe = () => {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition((pos) => {
-          const loc = {lat: pos.coords.latitude, lng: pos.coords.longitude};
-          map.setCenter(loc);
-          map.setZoom(17);
-        });
-      }
-    };
-
-    (window as any)._locateMe = locateMe;
+    /**
+     * Where the shopper is, as a blue dot.
+     *
+     * With no saved pin the map opens on them (the browser asks once); with a
+     * saved pin it stays on the address and the dot only appears if location
+     * access was already granted, so editing an address never prompts.
+     */
+    userLocation.showOnOpen(map, !initialCoords);
 
     return () => {
       (window as any).google.maps.event.clearInstanceListeners(map);
+      mapObjRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSdkLoaded]);
 
   return (
@@ -594,21 +665,11 @@ export function MapPickerDialog({
               className="w-full h-12 pl-12 pr-4 text-[14px] font-bold text-gray-700 outline-none"
             />
           </div>
-          <button
-            onClick={() => (window as any)._locateMe?.()}
-            className="w-12 h-12 bg-white rounded-2xl shadow-lg flex items-center justify-center text-[#234745] shrink-0 border-2 border-[#234745]/5 active:scale-95 transition-transform"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-            >
-              <path d="M12 2L2 12h3v8h6v-6h2v6h6v-8h3L12 2z" />
-            </svg>
-          </button>
+          <LocateButton
+            isEn={isEn}
+            locating={userLocation.locating}
+            onClick={() => userLocation.locate(mapObjRef.current)}
+          />
           <button
             onClick={onClose}
             className="w-12 h-12 bg-white rounded-2xl shadow-lg flex items-center justify-center text-gray-400 shrink-0 border-2 border-[#234745]/5 active:scale-95 transition-transform text-2xl font-light"
@@ -620,17 +681,29 @@ export function MapPickerDialog({
         {/* Map Container */}
         <div className="flex-1 relative bg-gray-100 min-h-[300px]">
           <div ref={mapRef} className="absolute inset-0 z-0" />
+          <LocateError
+            message={userLocation.error}
+            onDismiss={userLocation.clearError}
+            className="top-20"
+          />
 
-          {/* Custom Center Pin */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none mb-8">
-            <div className="relative flex flex-col items-center">
-              <div className="w-10 h-10 bg-[#234745] rounded-full border-4 border-white shadow-xl flex items-center justify-center animate-bounce">
+          {/*
+            The pin's TIP marks the spot, so the pin sits above the centre, not
+            on it: centred, its head covered the very point being chosen — and
+            the blue "you are here" dot with it. It lifts while the map is being
+            dragged and settles when it stops, instead of bouncing for ever.
+          */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full pointer-events-none z-[4]">
+            <div
+              className={`flex flex-col items-center transition-transform duration-200 ${isMoving ? '-translate-y-2' : ''}`}
+            >
+              <div className="w-10 h-10 bg-[#234745] rounded-full border-4 border-white shadow-xl flex items-center justify-center">
                 <div className="w-2 h-2 bg-yellow-400 rounded-full" />
               </div>
-              <div className="w-1 h-3 bg-[#234745] rounded-b-full -mt-0.5 shadow-sm" />
-              <div className="w-3 h-1.5 bg-black/20 rounded-full blur-[2px] mt-1" />
+              <div className="w-1 h-3 bg-[#234745] rounded-b-full -mt-0.5" />
             </div>
           </div>
+
         </div>
 
         {/* Footer Confirmation */}
@@ -653,9 +726,10 @@ export function MapPickerDialog({
                   <circle cx="12" cy="10" r="3" />
                 </svg>
               </div>
-              <div className="flex-1">
+              {/* Fixed height, loading or not, so the map above never resizes. */}
+              <div className="flex-1 min-h-[76px]">
                 {isResolving ? (
-                  <div className="h-4 w-2/3 bg-gray-100 rounded animate-pulse" />
+                  <div className="h-4 w-2/3 bg-gray-100 rounded animate-pulse mt-1" />
                 ) : (
                   <p className="text-[14px] font-bold text-gray-800 leading-snug line-clamp-2">
                     {address ||
@@ -664,25 +738,37 @@ export function MapPickerDialog({
                         : 'حرك الخريطة لتحديد العنوان')}
                   </p>
                 )}
+                {!isResolving && (
+                  <CoverageNote coverage={coverage} isEn={isEn} className="mt-2" />
+                )}
               </div>
             </div>
           </div>
 
           <button
             type="button"
-            disabled={!coords || isResolving}
+            disabled={!coords || isResolving || cannotDeliver}
             onClick={() =>
               coords &&
               onConfirm({
                 address:
                   address || `${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`,
-                city: city || 'Jeddah',
+                // No invented city: the form asks for it when the map has none.
+                city,
+                countryCode,
+                zip,
                 ...coords,
               })
             }
-            className={`w-full py-4 rounded-2xl font-bold text-[15px] shadow-lg transition-all ${!coords || isResolving ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-[#234745] text-white hover:bg-[#153125] active:scale-[0.98] shadow-[#234745]/20'}`}
+            className={`w-full py-4 rounded-2xl font-bold text-[15px] shadow-lg transition-all ${!coords || isResolving || cannotDeliver ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-[#234745] text-white hover:bg-[#153125] active:scale-[0.98] shadow-[#234745]/20'}`}
           >
-            {isEn ? 'Confirm Location' : 'تأكيد الموقع'}
+            {cannotDeliver
+              ? isEn
+                ? 'We don’t deliver here'
+                : 'لا نوصل إلى هذا الموقع'
+              : isEn
+                ? 'Confirm Location'
+                : 'تأكيد الموقع'}
           </button>
         </div>
       </div>
@@ -719,7 +805,14 @@ export function LocationPicker({
   isEn: boolean;
   initialCoords?: {lat: number; lng: number} | null;
   initialAddress?: string;
-  onChange: (res: {address: string; city: string; lat: number; lng: number}) => void;
+  onChange: (res: {
+    address: string;
+    city: string;
+    lat: number;
+    lng: number;
+    countryCode?: string;
+    zip?: string;
+  }) => void;
   className?: string;
 }) {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -728,6 +821,12 @@ export function LocationPicker({
   const [isSdkLoaded, setIsSdkLoaded] = useState(false);
   const [isResolving, setIsResolving] = useState(false);
   const [preview, setPreview] = useState(initialAddress || '');
+  const [pin, setPin] = useState<{lat: number; lng: number} | null>(
+    initialCoords || null,
+  );
+  const [countryCode, setCountryCode] = useState('');
+  const userLocation = useUserLocation(isEn);
+  const coverage = useCoverage(pin, countryCode, isEn);
 
   /**
    * The callback is held in a ref rather than listed as an effect dependency.
@@ -740,22 +839,13 @@ export function LocationPicker({
   }, [onChange]);
 
   useEffect(() => {
-    if ((window as any).google?.maps) {
-      setIsSdkLoaded(true);
-      return;
-    }
-    const existing = document.querySelector<HTMLScriptElement>('script[data-gmaps-sdk]');
-    if (existing) {
-      existing.addEventListener('load', () => setIsSdkLoaded(true));
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsKey}&libraries=places&language=${isEn ? 'en' : 'ar'}`;
-    script.async = true;
-    script.defer = true;
-    script.dataset.gmapsSdk = 'true';
-    script.onload = () => setIsSdkLoaded(true);
-    document.head.appendChild(script);
+    let cancelled = false;
+    loadGoogleMaps(googleMapsKey, isEn ? 'en' : 'ar')
+      .then(() => !cancelled && setIsSdkLoaded(true))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, [googleMapsKey, isEn]);
 
   useEffect(() => {
@@ -776,29 +866,30 @@ export function LocationPicker({
     const resolve = (lat: number, lng: number) => {
       setIsResolving(true);
       geocoder.geocode({location: {lat, lng}}, (results: any, status: any) => {
-        let address = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-        let city = '';
-        if (status === 'OK' && results?.[0]) {
-          const res = results[0];
-          address = res.formatted_address;
-          const cityComp = res.address_components.find(
-            (c: any) =>
-              c.types.includes('locality') ||
-              c.types.includes('administrative_area_level_2') ||
-              c.types.includes('administrative_area_level_1') ||
-              c.types.includes('sublocality'),
-          );
-          if (cityComp) city = cityComp.long_name;
-        }
+        const line = status === 'OK' ? formatGeocode(results, isEn) : null;
+        const address = line?.address || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        const city = line?.city || '';
+        const code = line?.countryCode || '';
         setPreview(address);
+        setPin({lat, lng});
+        setCountryCode(code);
         setIsResolving(false);
-        onChangeRef.current({address, city, lat, lng});
+        onChangeRef.current({address, city, lat, lng, countryCode: code, zip: line?.zip || ''});
       });
     };
 
+    // Same guard as the dialog: a resize is not a move.
+    let last: {lat: number; lng: number} | null = null;
     const idleListener = map.addListener('idle', () => {
       const c = map.getCenter();
-      if (c) resolve(c.lat(), c.lng());
+      if (!c) return;
+      const lat = c.lat();
+      const lng = c.lng();
+      if (last && Math.abs(last.lat - lat) < 1e-5 && Math.abs(last.lng - lng) < 1e-5) {
+        return;
+      }
+      last = {lat, lng};
+      resolve(lat, lng);
     });
 
     let placeListener: any = null;
@@ -814,6 +905,8 @@ export function LocationPicker({
       });
     }
 
+    userLocation.showOnOpen(map, !initialCoords);
+
     return () => {
       google.maps.event.removeListener(idleListener);
       if (placeListener) google.maps.event.removeListener(placeListener);
@@ -824,14 +917,6 @@ export function LocationPicker({
     // shopper is panning it would fight them.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSdkLoaded]);
-
-  const locateMe = () => {
-    if (!navigator.geolocation || !mapObjRef.current) return;
-    navigator.geolocation.getCurrentPosition((pos) => {
-      mapObjRef.current.setCenter({lat: pos.coords.latitude, lng: pos.coords.longitude});
-      mapObjRef.current.setZoom(17);
-    });
-  };
 
   return (
     <div className={`relative w-full h-full bg-gray-100 ${className || ''}`}>
@@ -846,17 +931,18 @@ export function LocationPicker({
             className="w-full h-12 px-4 text-[14px] font-bold text-gray-700 outline-none bg-transparent"
           />
         </div>
-        <button
-          type="button"
-          onClick={locateMe}
-          title={isEn ? 'Use my location' : 'استخدم موقعي'}
-          className="w-12 h-12 bg-white rounded-2xl shadow-lg flex items-center justify-center text-[#234745] shrink-0 border-2 border-[#234745]/5 active:scale-95 transition-transform"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M12 2L2 12h3v8h6v-6h2v6h6v-8h3L12 2z" />
-          </svg>
-        </button>
+        <LocateButton
+          isEn={isEn}
+          locating={userLocation.locating}
+          onClick={() => userLocation.locate(mapObjRef.current)}
+        />
       </div>
+
+      <LocateError
+        message={userLocation.error}
+        onDismiss={userLocation.clearError}
+        className="top-20"
+      />
 
       {/* The pin does not move; the map moves under it. */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full pointer-events-none z-[4]">
@@ -873,7 +959,315 @@ export function LocationPicker({
         <p className="text-[13px] font-bold text-[#234745] line-clamp-2">
           {isResolving ? (isEn ? 'Locating...' : 'جاري التحديد...') : preview || (isEn ? 'Move the map to set your location' : 'حرّك الخريطة لتحديد موقعك')}
         </p>
+        {!isResolving && pin && (
+          <CoverageNote coverage={coverage} isEn={isEn} className="mt-1.5" />
+        )}
       </div>
+    </div>
+  );
+}
+
+/* ── Shared by both maps ───────────────────────────────────────────────────── */
+
+/** Coverage for a point, against the branch list every page already caches. */
+function useCoverage(
+  point: {lat: number; lng: number} | null | undefined,
+  countryCode: string,
+  isEn: boolean,
+): Coverage {
+  const locations = useAdminLocations();
+  const branches = useMemo(
+    () => coverageBranches(locations, isEn),
+    [locations, isEn],
+  );
+  return useMemo(
+    () => checkCoverage(point, branches, countryCode),
+    [point, branches, countryCode],
+  );
+}
+
+/**
+ * «يوصل من فرع العليا · 20 ر.س» or «خارج نطاق التوصيل», under the address.
+ * Nothing while the branch list is still loading: silence is better than a
+ * wrong answer.
+ */
+function CoverageNote({
+  coverage,
+  isEn,
+  className = '',
+}: {
+  coverage: Coverage;
+  isEn: boolean;
+  className?: string;
+}) {
+  /**
+   * The fee is the one checkout charges: Shopify's standard rate, read live by
+   * root — the same number the cart shows. NOT the branch's
+   * `custom.delivery_fee` metafield (25 on most branches), which checkout has
+   * never charged; the cart stopped quoting it for exactly that reason.
+   */
+  const root = useRouteLoaderData('root') as any;
+  const liveFee =
+    root?.deliveryRateLive && typeof root?.standardDeliveryFee === 'number'
+      ? (root.standardDeliveryFee as number)
+      : null;
+  const freeOver =
+    root?.deliveryRateLive && typeof root?.standardFreeDeliveryThreshold === 'number'
+      ? (root.standardFreeDeliveryThreshold as number)
+      : null;
+
+  if (coverage.status === 'unknown') return null;
+
+  if (coverage.status === 'ok') {
+    const {branch} = coverage;
+    const feeText =
+      liveFee === null
+        ? ''
+        : liveFee === 0
+          ? isEn
+            ? ' · free delivery'
+            : ' · توصيل مجاني'
+          : isEn
+            ? ` · ${liveFee} SAR delivery${freeOver ? `, free over ${freeOver} SAR` : ''}`
+            : ` · رسوم التوصيل ${liveFee} ر.س${freeOver ? `، مجاناً للطلبات فوق ${freeOver} ر.س` : ''}`;
+    return (
+      <p
+        role="status"
+        className={`flex items-start gap-1.5 text-[12px] font-bold text-[#2E7D5B] leading-snug ${className}`}
+      >
+        <span aria-hidden className="mt-1 inline-block w-2 h-2 shrink-0 rounded-full bg-[#2E7D5B]" />
+        {isEn ? `Delivered from ${branch.name}${feeText}` : `يوصل من فرع ${branch.name}${feeText}`}
+      </p>
+    );
+  }
+
+  const text =
+    coverage.status === 'outside-country'
+      ? isEn
+        ? 'We deliver inside Saudi Arabia only.'
+        : 'التوصيل متاح داخل السعودية فقط.'
+      : isEn
+        ? `Outside our delivery area — the nearest branch, ${coverage.branch.name}, is ${Math.round(coverage.distanceKm)} km away. You can pick up from a branch instead.`
+        : `خارج نطاق التوصيل — أقرب فرع (${coverage.branch.name}) يبعد ${Math.round(coverage.distanceKm)} كم. يمكنك الاستلام من الفرع بدلاً من ذلك.`;
+
+  return (
+    <p
+      role="alert"
+      className={`flex items-start gap-1.5 text-[12px] font-bold text-[#C0392B] leading-snug ${className}`}
+    >
+      <span aria-hidden className="mt-1 inline-block w-2 h-2 shrink-0 rounded-full bg-[#C0392B]" />
+      {text}
+    </p>
+  );
+}
+
+/**
+ * The shopper's own position on the map: a blue dot with its accuracy ring,
+ * and the locate button's behaviour, including telling them why it failed.
+ */
+function useUserLocation(isEn: boolean) {
+  const dotRef = useRef<any>(null);
+  const ringRef = useRef<any>(null);
+  const [locating, setLocating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(
+    () => () => {
+      dotRef.current?.setMap(null);
+      ringRef.current?.setMap(null);
+    },
+    [],
+  );
+
+  const draw = useCallback((map: any, pos: GeolocationPosition) => {
+    const google = (window as any).google;
+    if (!map || !google?.maps) return;
+    const here = {lat: pos.coords.latitude, lng: pos.coords.longitude};
+    if (!dotRef.current) {
+      dotRef.current = new google.maps.Marker({
+        clickable: false,
+        zIndex: 999,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 8,
+          fillColor: '#1A73E8',
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 3,
+        },
+      });
+      ringRef.current = new google.maps.Circle({
+        clickable: false,
+        strokeWeight: 0,
+        fillColor: '#1A73E8',
+        fillOpacity: 0.12,
+      });
+    }
+    dotRef.current.setPosition(here);
+    dotRef.current.setMap(map);
+    ringRef.current.setCenter(here);
+    ringRef.current.setRadius(Math.min(pos.coords.accuracy || 0, 300));
+    ringRef.current.setMap(map);
+    return here;
+  }, []);
+
+  const request = useCallback(
+    (map: any, recenter: boolean, silent: boolean) => {
+      if (!map) return;
+      if (typeof navigator === 'undefined' || !navigator.geolocation) {
+        if (!silent) {
+          setError(
+            isEn
+              ? 'Your browser cannot share your location.'
+              : 'المتصفح لا يدعم تحديد الموقع.',
+          );
+        }
+        return;
+      }
+      setLocating(true);
+      setError(null);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setLocating(false);
+          const here = {lat: pos.coords.latitude, lng: pos.coords.longitude};
+          // Move first: the dot is a nicety, the position is the point.
+          if (recenter) {
+            map.setCenter(here);
+            map.setZoom(17);
+          }
+          try {
+            draw(map, pos);
+          } catch (e) {
+            console.warn('[map] Could not draw the location dot:', e);
+          }
+        },
+        (err) => {
+          setLocating(false);
+          if (silent) return;
+          setError(
+            err.code === err.PERMISSION_DENIED
+              ? isEn
+                ? 'Location access is blocked. Allow it in your browser settings, or search for your address.'
+                : 'الوصول إلى موقعك محظور. اسمح به من إعدادات المتصفح، أو ابحث عن عنوانك.'
+              : err.code === err.TIMEOUT
+                ? isEn
+                  ? 'Finding your location took too long. Please try again.'
+                  : 'استغرق تحديد موقعك وقتاً طويلاً. حاول مرة أخرى.'
+                : isEn
+                  ? 'We could not find your location. Please search for your address.'
+                  : 'تعذّر تحديد موقعك. ابحث عن عنوانك بدلاً من ذلك.',
+          );
+        },
+        {enableHighAccuracy: true, timeout: 10000, maximumAge: 60000},
+      );
+    },
+    [draw, isEn],
+  );
+
+  /** The button: centre on the shopper and say so if it fails. */
+  const locate = useCallback((map: any) => request(map, true, false), [request]);
+
+  /**
+   * On opening. `centre` is true when there is no saved pin to show: then the
+   * map moves to the shopper (the browser asks once). Otherwise the dot is
+   * drawn only when permission is already granted, so it never prompts.
+   */
+  const showOnOpen = useCallback(
+    (map: any, centre: boolean) => {
+      if (centre) {
+        request(map, true, true);
+        return;
+      }
+      const perms = (navigator as any)?.permissions;
+      perms
+        ?.query({name: 'geolocation'})
+        .then((status: any) => {
+          if (status?.state === 'granted') request(map, false, true);
+        })
+        .catch(() => {});
+    },
+    [request],
+  );
+
+  const clearError = useCallback(() => setError(null), []);
+
+  return {locate, showOnOpen, locating, error, clearError};
+}
+
+/** A crosshair, the icon people know for "my location" — not a house. */
+function LocateButton({
+  isEn,
+  locating,
+  onClick,
+}: {
+  isEn: boolean;
+  locating: boolean;
+  onClick: () => void;
+}) {
+  const label = isEn ? 'Use my current location' : 'استخدم موقعي الحالي';
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={locating}
+      title={label}
+      aria-label={label}
+      className="w-12 h-12 bg-white rounded-2xl shadow-lg flex items-center justify-center text-[#1A73E8] shrink-0 border-2 border-[#234745]/5 active:scale-95 transition-transform disabled:opacity-70"
+    >
+      {locating ? (
+        <span
+          aria-hidden
+          className="w-5 h-5 rounded-full border-2 border-[#1A73E8]/25 border-t-[#1A73E8] animate-spin"
+        />
+      ) : (
+        <svg
+          aria-hidden
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        >
+          <circle cx="12" cy="12" r="7" />
+          <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" />
+          <line x1="12" y1="1.5" x2="12" y2="4.5" />
+          <line x1="12" y1="19.5" x2="12" y2="22.5" />
+          <line x1="1.5" y1="12" x2="4.5" y2="12" />
+          <line x1="19.5" y1="12" x2="22.5" y2="12" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
+function LocateError({
+  message,
+  onDismiss,
+  className = '',
+}: {
+  message: string | null;
+  onDismiss: () => void;
+  className?: string;
+}) {
+  if (!message) return null;
+  return (
+    <div
+      role="alert"
+      className={`absolute inset-x-4 z-[6] flex items-start gap-3 rounded-2xl bg-white px-4 py-3 shadow-lg border border-red-100 ${className}`}
+    >
+      <p className="flex-1 text-[13px] font-bold text-[#C0392B] leading-snug">
+        {message}
+      </p>
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label="Close"
+        className="text-gray-400 text-xl leading-none"
+      >
+        &times;
+      </button>
     </div>
   );
 }

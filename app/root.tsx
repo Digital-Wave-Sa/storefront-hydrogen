@@ -473,6 +473,7 @@ function loadDeferredData(
          * coordinates, today's behaviour — rather than losing the customer.
          */
         const coordsById = new Map<string, {latitude: number; longitude: number}>();
+        const pinsById = new Map<string, {latitude: number; longitude: number}>();
         try {
           const coordsRes = await fetch(
             `https://${adminDomain}/admin/api/2024-07/graphql.json`,
@@ -487,6 +488,7 @@ function loadDeferredData(
                   query CustomerAddressCoords($id: ID!) {
                     customer(id: $id) {
                       addressesV2(first: 30) { nodes { id latitude longitude } }
+                      pins: metafield(namespace: "custom", key: "address_pins") { value }
                     }
                   }`,
                 variables: {id: `gid://shopify/Customer/${adminCust.id}`},
@@ -496,6 +498,20 @@ function loadDeferredData(
           );
           if (coordsRes.ok) {
             const coordsJson = (await coordsRes.json()) as any;
+            /**
+             * The shopper's own map pins win over Shopify's geocoding of the
+             * text: the pin is where they said the door is, the geocode is a
+             * guess from words (and missing for a new address for minutes).
+             * See ~/lib/address-pins.server.
+             */
+            try {
+              const pins = JSON.parse(coordsJson?.data?.customer?.pins?.value || '{}');
+              for (const [numericId, value] of Object.entries(pins as Record<string, any>)) {
+                if (Array.isArray(value) && typeof value[0] === 'number' && typeof value[1] === 'number') {
+                  pinsById.set(String(numericId), {latitude: value[0], longitude: value[1]});
+                }
+              }
+            } catch {}
             for (const node of
               coordsJson?.data?.customer?.addressesV2?.nodes || []) {
               /**
@@ -526,7 +542,8 @@ function loadDeferredData(
           );
         }
 
-        const coordsFor = (id: any) => coordsById.get(String(id)) || {};
+        const coordsFor = (id: any) =>
+          pinsById.get(String(id)) || coordsById.get(String(id)) || {};
 
         return {
           customer: {

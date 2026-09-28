@@ -9,6 +9,8 @@ import { useI18n } from '~/lib/i18n';
 import { StarRating } from './StarRating';
 import { addressCoords, sameAddressId } from '~/lib/address-coords';
 import { AddressForm, LocationPicker } from './AddressForm';
+import { effectiveRadiusKm } from '~/lib/delivery-coverage';
+import { PointMap } from './PointMap';
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 export type Tab = 'delivery' | 'pickup';
@@ -418,7 +420,9 @@ export function parseLocationToBranch(node: any, isEn: boolean = false): Branch 
         pickupOpenUntil: pickup.openUntil,
         deliveryOpenUntil: delivery.openUntil,
         deliveryAvailable: true,
-        deliveryRadius: getMeta('delivery_radius', 99999),
+        // Unset on every branch today; the shared default keeps this modal and
+        // the map pickers' «خارج نطاق التوصيل» in agreement.
+        deliveryRadius: effectiveRadiusKm(getMeta('delivery_radius', 0)),
         minOrder: getMeta('minimum_order_value', 0),
         deliveryFee: getMeta('delivery_fee', 0),
         baseDeliveryFee: getMeta('delivery_fee', 0),
@@ -933,14 +937,23 @@ function ModalContent({
         customerObj?.data?.customer?.defaultAddress?.id ||
         rootData?.customer?.defaultAddress?.id ||
         null;
+    /**
+     * A new address goes FIRST, where the shopper is looking.
+     *
+     * It used to be appended after the saved ones, so with four or five
+     * addresses it landed below the fold: selected, on the map, but not in
+     * sight — and only a reload (which lists newest first) showed it.
+     */
     const addresses = useMemo(
         () => [
-            ...loadedAddresses,
             // Anything saved in this modal that the loader has not seen yet.
-            ...newAddresses.filter(
-                (fresh: any) =>
-                    !loadedAddresses.some((known: any) => sameAddressId(known?.id, fresh?.id)),
-            ),
+            ...newAddresses
+                .filter(
+                    (fresh: any) =>
+                        !loadedAddresses.some((known: any) => sameAddressId(known?.id, fresh?.id)),
+                )
+                .reverse(),
+            ...loadedAddresses,
         ],
         [loadedAddresses, newAddresses],
     );
@@ -952,15 +965,34 @@ function ModalContent({
         setAddrDraft(null);
     }, []);
 
+    const [justAddedId, setJustAddedId] = useState<string | null>(null);
+
     const handleAddressCreated = React.useCallback((addr: any) => {
         if (!addr?.id) return;
         setNewAddresses((prev) =>
             prev.some((a) => sameAddressId(a?.id, addr.id)) ? prev : [...prev, addr],
         );
         setSelectedBranch(addr.id);
+        setJustAddedId(addr.id);
         setIsAddingAddress(false);
         setAddrDraft(null);
     }, [setSelectedBranch]);
+
+    /** Bring the new row into view once the list is back on screen. */
+    useEffect(() => {
+        if (!justAddedId || isAddingAddress) return;
+        const frame = requestAnimationFrame(() => {
+            const rows = document.querySelectorAll<HTMLElement>('[data-address-id]');
+            for (const row of rows) {
+                if (sameAddressId(row.dataset.addressId, justAddedId)) {
+                    row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                    break;
+                }
+            }
+            setJustAddedId(null);
+        });
+        return () => cancelAnimationFrame(frame);
+    }, [justAddedId, isAddingAddress]);
     
     /**
      * Address ids are compared with `sameAddressId`, never `===`.
@@ -1130,21 +1162,23 @@ function ModalContent({
          b.city.toLowerCase().includes(branchSearch.toLowerCase()))
     );
 
-    // Map Logic: Handle both Branch and User Address
-    const getMapUrl = () => {
-        if (isUserAddressSelected && currentAddress) {
-            // Prefer the coordinates Shopify already resolved; fall back to
-            // letting Google geocode the address string itself.
-            const pin = addressCoords(currentAddress);
-            const query = pin
-                ? `${pin.lat},${pin.lng}`
-                : encodeURIComponent(`${currentAddress.address1}, ${currentAddress.city}, SA`);
-            return `https://www.google.com/maps/embed/v1/place?key=${googleMapsKey}&q=${query}&zoom=16`;
-        }
-        return `https://www.google.com/maps/embed/v1/place?key=${googleMapsKey}&q=${currentBranch.lat},${currentBranch.lng}&zoom=${zoom}`;
-    };
-
-    const mapUrl = getMapUrl();
+    /**
+     * What the map shows: the selected address, else the selected branch.
+     * Coordinates when Shopify resolved them; otherwise the address text for
+     * Google to find. `PointMap` pans between them instead of reloading.
+     */
+    const addressPin = isUserAddressSelected && currentAddress ? addressCoords(currentAddress) : null;
+    const mapPoint =
+        isUserAddressSelected && currentAddress
+            ? addressPin
+            : currentBranch?.lat && currentBranch?.lng
+                ? { lat: Number(currentBranch.lat), lng: Number(currentBranch.lng) }
+                : null;
+    const mapQuery =
+        isUserAddressSelected && currentAddress && !addressPin
+            ? `${currentAddress.address1}, ${currentAddress.city}, Saudi Arabia`
+            : undefined;
+    const mapZoom = isUserAddressSelected ? 16 : zoom;
 
     return (
         <>
@@ -1158,16 +1192,15 @@ function ModalContent({
                     locationPicker
                 ) : (
                 <>
-                <iframe
-                    title="Location Map"
-                    src={mapUrl}
-                    width="100%"
-                    height="100%"
-                    style={{ border: 0 }}
-                    allowFullScreen={false}
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                />
+                {googleMapsKey ? (
+                    <PointMap
+                        googleMapsKey={googleMapsKey}
+                        isEn={isEn}
+                        point={mapPoint}
+                        query={mapQuery}
+                        zoom={mapZoom}
+                    />
+                ) : null}
 
                 {(currentBranch || currentAddress) && (
                     <div className="dpm-map-floating-card animate-slide-up">
@@ -1342,6 +1375,7 @@ function ModalContent({
                                 addresses.map((addr: any) => (
                                     <button
                                         key={addr.id}
+                                        data-address-id={addr.id}
                                         className={`w-full p-5 mb-3 text-start border-2 rounded-2xl transition-all ${sameAddressId(effectiveSelectedBranch, addr.id) ? 'border-[#234745] bg-[#fcfaf5]' : 'border-gray-50 hover:border-gray-200 bg-white'}`}
                                         onClick={() => setSelectedBranch(addr.id)}
                                     >

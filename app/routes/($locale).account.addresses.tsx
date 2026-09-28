@@ -400,6 +400,7 @@ export async function action({request, context}: ActionFunctionArgs) {
       'firstName',
       'lastName',
       'phone',
+      'zip',
       'lat',
       'lng',
     ];
@@ -411,11 +412,10 @@ export async function action({request, context}: ActionFunctionArgs) {
           address.phone = formatAddressPhone(value);
         } else if (key === 'lat' || key === 'lng') {
           /**
-           * The map pin is accepted and deliberately not stored. Shopify has
-           * no field for it, so it used to be written over address2 - the
-           * shopper's apartment/floor line, which checkout prints and which
-           * they had just typed. Nearest-branch matching reads Shopify's own
-           * geocoding of the address instead; see ~/lib/address-coords.
+           * The map pin never goes on the address itself — Shopify has no
+           * field for it, and it used to be smuggled into address2. It is
+           * kept beside the address instead (`pin`, below, saved to the
+           * customer's `custom.address_pins`); see ~/lib/address-pins.server.
            */
         } else {
           (address as any)[key] = value;
@@ -425,6 +425,24 @@ export async function action({request, context}: ActionFunctionArgs) {
 
     // Never carry a legacy marker back into Shopify on save.
     address.address2 = stripCoordsMarker(address.address2);
+
+    const pinLat = parseFloat(String(form.get('lat') ?? ''));
+    const pinLng = parseFloat(String(form.get('lng') ?? ''));
+    const pin =
+      Number.isFinite(pinLat) && Number.isFinite(pinLng) && (pinLat !== 0 || pinLng !== 0)
+        ? {lat: pinLat, lng: pinLng}
+        : null;
+    /**
+     * Keep the pin, and hand it straight back on the saved address so the
+     * delivery modal matches the nearest branch from it at once — Shopify's
+     * own geocoding of a new address takes minutes to appear.
+     */
+    const withPin = async <T extends {id?: string}>(saved: T): Promise<T> => {
+      if (!pin || !saved?.id) return saved;
+      const {savePin} = await import('~/lib/address-pins.server');
+      if (customerNumericId) await savePin(env, customerNumericId, saved.id, pin);
+      return {...saved, latitude: pin.lat, longitude: pin.lng};
+    };
 
     if (!address.country) {
       address.country = 'Saudi Arabia';
@@ -449,7 +467,7 @@ export async function action({request, context}: ActionFunctionArgs) {
                   },
                 });
               }
-              return data({error: null, createdAddress, defaultAddress});
+              return data({error: null, createdAddress: await withPin(createdAddress), defaultAddress});
             }
           } catch (_) {}
         }
@@ -460,7 +478,7 @@ export async function action({request, context}: ActionFunctionArgs) {
             address,
             env,
           });
-          const createdAddress = formatAdminAddressToFragment(adminAddr);
+          const createdAddress = await withPin(formatAdminAddressToFragment(adminAddr));
           if (defaultAddress && adminAddr.id) {
             await adminSetDefaultAddress({
               customerId: customerNumericId,
@@ -542,7 +560,7 @@ export async function action({request, context}: ActionFunctionArgs) {
               }
               return data({
                 error: null,
-                updatedAddress: res.customerAddressUpdate.customerAddress,
+                updatedAddress: await withPin(res.customerAddressUpdate.customerAddress),
                 defaultAddress,
               });
             }
@@ -556,7 +574,7 @@ export async function action({request, context}: ActionFunctionArgs) {
             address,
             env,
           });
-          const updatedAddress = formatAdminAddressToFragment(adminAddr);
+          const updatedAddress = await withPin(formatAdminAddressToFragment(adminAddr));
           if (defaultAddress) {
             await adminSetDefaultAddress({
               customerId: customerNumericId,
@@ -578,7 +596,19 @@ export async function action({request, context}: ActionFunctionArgs) {
         const targetGid = formatAddressGid(addressId);
         const numericAddrId = getNumericId(addressId);
 
-        if (!isSessionToken) {
+        /**
+         * Admin first when it can do the job.
+         *
+         * The Storefront mutation below needs a classic customer access token,
+         * which this shop (New Customer Accounts) does not issue: it failed on
+         * every call with «Invalid id: gid://shopify/MailingAddress/…», and
+         * Hydrogen printed that failure as a full error box in the dev log each
+         * time before the Admin fallback quietly did the delete. It is kept
+         * only for the case where Admin cannot identify the customer.
+         */
+        const adminCanDelete = Boolean(customerNumericId && numericAddrId);
+
+        if (!isSessionToken && !adminCanDelete) {
           try {
             const res = await storefront.mutate(DELETE_ADDRESS_MUTATION, {
               variables: {

@@ -16,6 +16,12 @@ export async function action({request, context}: ActionFunctionArgs) {
     context.session.set('fulfillmentType', fulfillmentType);
   }
   if (typeof locationId === 'string') {
+    // A new location without its branch code: drop the previous branch's code
+    // and AX store id so they cannot follow the order (see api.location-id).
+    if (locationId !== (await context.session.get('selectedLocationId'))) {
+      context.session.set('selectedCustomBranchId', '');
+      context.session.set('selectedAxStoreId', '');
+    }
     context.session.set('selectedLocationId', locationId);
   }
   if (typeof locationName === 'string') {

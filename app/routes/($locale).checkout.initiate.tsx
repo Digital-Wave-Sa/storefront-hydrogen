@@ -768,14 +768,31 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
     return existing || sessionVal || '';
   };
 
-  let customBranchVal =
-    sessionCustomBranchId ||
-    getAttr('custom.branch_id', '') ||
-    getAttr('branch_id', '') ||
-    (sessionBranchId && !sessionBranchId.includes('gid://') ? sessionBranchId : '');
+  /**
+   * The branch code (`custom.branch_id`) and AX store id come from the
+   * location the shopper chose, not from what the session remembered.
+   *
+   * The session kept them in their own keys, and those were only overwritten
+   * when a picker happened to send new ones. The cake builder, api.fulfillment
+   * and the root loader's resets change the location without sending them, so
+   * the previous branch's code stayed behind -- and this code used to put it
+   * first, sending the order to the old branch while `Branch` named the new
+   * one. Reading both from the chosen location's own metafields makes a stale
+   * value impossible.
+   *
+   * With no location id to go on, or if the lookup fails, it falls back to the
+   * previous rule (session, then cart attributes), so checkout never stops
+   * here.
+   */
+  const chosenLocationGid = [sessionBranchId, getAttr('Branch ID', '')].find(
+    (v: any) => typeof v === 'string' && v.startsWith('gid://shopify/Location/'),
+  ) as string | undefined;
 
-  const rawLocId = sessionBranchId || getAttr('Branch ID', '');
-  if (!customBranchVal && rawLocId && rawLocId.includes('gid://shopify/Location/')) {
+  let customBranchVal = '';
+  let axStoreVal = '';
+  let branchResolvedFromLocation = false;
+
+  if (chosenLocationGid) {
     try {
       const locRes = await context.storefront.query(
         `#graphql
@@ -786,22 +803,40 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
               branch_id: metafield(namespace: "custom", key: "branch_id") {
                 value
               }
+              ax_store_id: metafield(namespace: "custom", key: "ax_store_id") {
+                value
+              }
             }
           }
         }`,
         {
-          cache: context.storefront.CacheNone(),
+          cache: context.storefront.CacheShort(),
         },
       );
-      const matchedNode = locRes?.locations?.nodes?.find((n: any) => n.id === rawLocId);
-      if (matchedNode?.branch_id?.value) {
-        customBranchVal = matchedNode.branch_id.value;
+      const matchedNode = locRes?.locations?.nodes?.find(
+        (n: any) => n.id === chosenLocationGid,
+      );
+      if (matchedNode) {
+        branchResolvedFromLocation = true;
+        customBranchVal = String(matchedNode.branch_id?.value || '').trim();
+        axStoreVal = String(matchedNode.ax_store_id?.value || '').trim();
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('[CHECKOUT] Branch metafield lookup failed; using the session values:', e);
+    }
   }
 
-  // `Branch ID` above resolves SESSION FIRST (sessionCustomBranchId, then
-  // sessionBranchId). `Branch` used to resolve ATTRIBUTE first, so when the
+  if (!branchResolvedFromLocation) {
+    customBranchVal =
+      sessionCustomBranchId ||
+      getAttr('custom.branch_id', '') ||
+      getAttr('branch_id', '') ||
+      (sessionBranchId && !sessionBranchId.includes('gid://') ? sessionBranchId : '');
+    axStoreVal = sessionAxStoreId || '';
+  }
+
+  // `Branch ID` above resolves from the SESSION's chosen location first.
+  // `Branch` used to resolve ATTRIBUTE first, so when the
   // session and the cart attribute disagreed an order could be created naming
   // one branch while carrying another branch's routing id -- the customer sees
   // one shop, the kitchen gets another. Both now resolve session first, so the
@@ -823,7 +858,14 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
 
   const finalAttributes = [
     {key: 'Branch', value: branchNameForOrder},
-    {key: 'Branch ID', value: customBranchVal || getAttr('Branch ID', sessionBranchId)},
+    {
+      key: 'Branch ID',
+      // A location with no branch code is sent as its own location id -- what
+      // the header writes for such branches; the order webhook resolves both.
+      value: branchResolvedFromLocation
+        ? customBranchVal || (chosenLocationGid as string)
+        : customBranchVal || getAttr('Branch ID', sessionBranchId),
+    },
     {key: 'Fulfillment Type', value: fulfillmentForOrder},
   ];
 
@@ -865,7 +907,13 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
     const isAxKey = ['custom.ax_store_id', 'ax_store_id', 'ax store id'].includes(
       attr.key.toLowerCase().trim(),
     );
-    if (!isAxKey && !finalAttributes.find((f) => f.key === attr.key)) {
+    // When the branch came from the chosen location, a code left on the cart
+    // by an earlier branch must not ride along (a location with no code sets
+    // none above, so the old one would otherwise be copied here).
+    const isStaleBranchKey =
+      branchResolvedFromLocation &&
+      ['custom.branch_id', 'branch_id'].includes(attr.key.toLowerCase().trim());
+    if (!isAxKey && !isStaleBranchKey && !finalAttributes.find((f) => f.key === attr.key)) {
       finalAttributes.push({key: attr.key, value: attr.value || ''});
     }
   });
@@ -1018,7 +1066,7 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
     pointsToRedeem,
     deliveryType: isPickup ? 'Pick Up' : 'Delivery',
     branchId: customBranchVal || branchId || '',
-    axStoreId: sessionAxStoreId || '',
+    axStoreId: axStoreVal,
     noteAttributes: finalAttributes.map((a: any) => ({
       name: a.key,
       value: a.key === 'Time Slot' ? extractMinTime(a.value) : a.value,

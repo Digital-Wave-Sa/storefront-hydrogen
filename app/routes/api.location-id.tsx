@@ -20,6 +20,11 @@ export async function action({request, context}: ActionFunctionArgs) {
     if (typeof fulfillmentType === 'string') {
       context.session.set('fulfillmentType', fulfillmentType);
     }
+    // Read before it is overwritten: a branch change is when the stored code
+    // and AX store id must go (see below).
+    const previousLocationId = await context.session.get('selectedLocationId');
+    const locationChanged =
+      typeof locationId === 'string' && locationId !== previousLocationId;
     if (typeof locationId === 'string') {
       context.session.set('selectedLocationId', locationId);
     }
@@ -38,11 +43,22 @@ export async function action({request, context}: ActionFunctionArgs) {
     if (typeof manualLocationSelection === 'string') {
       context.session.set('manualLocationSelection', manualLocationSelection);
     }
+    /**
+     * The branch code and AX store id belong to one location. Pickers that
+     * know them send them; the cake builder and the automatic resets change
+     * the location without them, and the previous branch's values used to stay
+     * behind -- then the cart's `Branch ID` (rebuilt below) and checkout named
+     * the old branch. On a branch change without them, they are cleared.
+     */
     if (typeof axStoreId === 'string') {
       context.session.set('selectedAxStoreId', axStoreId);
+    } else if (locationChanged) {
+      context.session.set('selectedAxStoreId', '');
     }
     if (typeof customBranchId === 'string') {
       context.session.set('selectedCustomBranchId', customBranchId);
+    } else if (locationChanged) {
+      context.session.set('selectedCustomBranchId', '');
     }
 
     /**

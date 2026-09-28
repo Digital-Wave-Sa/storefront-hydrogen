@@ -354,6 +354,12 @@ export async function action({request, context}: ActionFunctionArgs) {
 
     let subscribed = false;
     let subscriptionId: string | null = null;
+    /**
+     * The middleware answers `alreadySubscribed: true` when this phone was
+     * already waiting for this product at this branch. The staff emails below
+     * went out again on every such repeat; they now go out once.
+     */
+    let alreadySubscribed = false;
 
     try {
       const res = await fetch(`${middlewareUrl}/notify-me/subscribe`, {
@@ -382,6 +388,7 @@ export async function action({request, context}: ActionFunctionArgs) {
       const payload = (await res.json().catch(() => ({}))) as any;
       subscribed = res.ok && payload?.success === true;
       subscriptionId = payload?.data?.id || null;
+      alreadySubscribed = payload?.data?.alreadySubscribed === true;
 
       if (!subscribed) {
         console.error(
@@ -415,7 +422,7 @@ export async function action({request, context}: ActionFunctionArgs) {
     }
 
     // 4. Send email notification to Product Manager & Regional Manager from Product Metafields (custom.product_manager, custom.regional_manager)
-    try {
+    if (!alreadySubscribed) try {
       const {getAdminToken} = await import('~/lib/shopify-admin.server');
       const {sendEmail, sendFormEmailNotification} = await import('~/lib/email.server');
       const adminToken = await getAdminToken(env || {}).catch(() => null);

@@ -57,7 +57,7 @@ export function BrandLoaderTile({size = 82}: {size?: number}) {
     >
       <BrandMark
         className="text-[#234745] sd-loader-mark"
-        style={{height: size * 0.52, width: 'auto'}}
+        style={{height: size * 0.6, width: 'auto'}}
       />
     </div>
   );

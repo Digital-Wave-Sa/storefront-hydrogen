@@ -9,12 +9,14 @@ import {BrandLoaderTile} from '~/components/BrandLoader';
  * resolves. On /account and /vouchers that is seconds, and nothing on screen
  * acknowledged the click for that whole time.
  *
- * The first answer to that was an overlay on top of the page being left. It
- * read wrong: the shopper had asked to go somewhere and was shown a spinner
- * over where they already were. So now the page content itself is swapped
- * for the loader (root renders `PageLoader` in place of the Outlet), the same
- * way product and collection pages swap to their skeletons: the header stays,
- * the old page goes, and the wait happens on the way to the new one.
+ * History, because it went both ways. The first answer was an overlay on
+ * the page being left; it read as if the click had done nothing, so the page
+ * was swapped for the loader on a blank background instead. That read as a
+ * blank page (29 Sep), and the overlay came back with one change that makes
+ * it read as leaving: the whole screen -- header, page and footer -- is
+ * BLURRED and dimmed under the mark, and nothing can be clicked until the
+ * next page arrives (`PageLoader`). Product and collection pages still swap
+ * to their skeletons, which show the shape of what is arriving.
  *
  * Decisions worth keeping if the visual is ever redesigned:
  *
@@ -69,21 +71,27 @@ export function useSlowNavigation(delay = 250): boolean {
     return () => clearTimeout(timer);
   }, [pending, delay]);
 
-  // Start the wait at the top, where the next page will begin.
-  useEffect(() => {
-    if (slow) window.scrollTo({top: 0});
-  }, [slow]);
+  // No scroll here: the page being left stays on screen, blurred, where the
+  // shopper was. ScrollRestoration takes the new page to the top on arrival.
 
   return slow;
 }
 
-/** What stands in for the page while the next one loads. */
+/**
+ * The mark over the whole screen while the next page loads.
+ *
+ * A fixed layer above everything, header (z-50) and its menus (z-60)
+ * included: `backdrop-blur` blurs whatever is behind it -- header, page and
+ * footer alike -- and the cream tint dims it. The layer takes the clicks, so
+ * nothing underneath can be used mid-change. Fixed, so the mark is in the
+ * middle of the screen however far down the page was scrolled.
+ */
 export function PageLoader({isEn}: {isEn: boolean}) {
   return (
     <div
       role="status"
       aria-live="polite"
-      className="flex min-h-[70vh] w-full items-center justify-center py-24"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-[#FEF8EB]/40 backdrop-blur-[4px]"
     >
       <BrandLoaderTile size={96} />
       <span className="sr-only">{isEn ? 'Loading' : 'جاري التحميل'}</span>

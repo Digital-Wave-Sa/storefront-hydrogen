@@ -941,9 +941,9 @@ export default function App() {
     navigation.location.pathname !== currentLocation.pathname;
 
   /*
-    Any other page that takes more than a moment: the old page is replaced by
-    the brand mark under the header, so the click visibly leaves where the
-    shopper was. See ~/components/NavigationProgress.
+    Any other page that takes more than a moment: the whole screen (header
+    and footer included) is blurred and dimmed behind the brand mark until the
+    next page arrives. See ~/components/NavigationProgress.
   */
   const isSlowNavigation = useSlowNavigation();
 
@@ -961,15 +961,16 @@ export default function App() {
             <ProductSkeleton isEn={pageLocale === 'en'} />
           ) : isNavigatingToCollection ? (
             <CollectionPageSkeleton isEn={pageLocale === 'en'} />
-          ) : isSlowNavigation ? (
-            <PageLoader isEn={pageLocale === 'en'} />
           ) : (
-            <Outlet context={{ 
-              locale: pageLocale,
-              selectedLocationId: data!.selectedLocationId,
-              selectedLocationName: data!.selectedLocationName,
-              fulfillmentType: data!.fulfillmentType
-            }} />
+            <>
+              <Outlet context={{ 
+                locale: pageLocale,
+                selectedLocationId: data!.selectedLocationId,
+                selectedLocationName: data!.selectedLocationName,
+                fulfillmentType: data!.fulfillmentType
+              }} />
+              {isSlowNavigation && <PageLoader isEn={pageLocale === 'en'} />}
+            </>
           )}
         </PageLayout>
       </WishlistProvider>

@@ -468,31 +468,48 @@ export async function fetchLiveLoyaltyBalance(
     url += `&customerId=${encodeURIComponent(customerId)}`;
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
-  try {
-    const res = await fetch(url, {
-      headers: {Accept: 'application/json'},
-      signal: controller.signal,
-    });
-    if (!res.ok) {
-      console.error('[Loyalty] Live balance check failed with status', res.status);
-      return null;
+  /**
+   * SDLP is slow at times — the same balance call took 3.6 s for the wallet
+   * widget and passed 5 s on the redemption, which aborted and refused a
+   * shopper who plainly had 1,560 points. So: a longer wait, and one retry
+   * when the first attempt times out or the server stumbles (5xx).
+   */
+  const attempt = async (timeoutMs: number): Promise<number | null | 'retry'> => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const started = Date.now();
+    try {
+      const res = await fetch(url, {
+        headers: {Accept: 'application/json'},
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        console.error('[Loyalty] Live balance check failed with status', res.status);
+        return res.status >= 500 ? 'retry' : null;
+      }
+      const data = (await res.json()) as any;
+      const raw =
+        data?.data?.points ??
+        data?.points ??
+        data?.data?.balance ??
+        data?.balance;
+      const balance = typeof raw === 'number' ? raw : parseFloat(String(raw));
+      return Number.isFinite(balance) ? balance : null;
+    } catch (err: any) {
+      console.error(
+        `[Loyalty] Live balance check errored after ${Date.now() - started} ms:`,
+        err?.message || err,
+      );
+      return 'retry';
+    } finally {
+      clearTimeout(timeoutId);
     }
-    const data = (await res.json()) as any;
-    const raw =
-      data?.data?.points ??
-      data?.points ??
-      data?.data?.balance ??
-      data?.balance;
-    const balance = typeof raw === 'number' ? raw : parseFloat(String(raw));
-    return Number.isFinite(balance) ? balance : null;
-  } catch (err: any) {
-    console.error('[Loyalty] Live balance check errored:', err?.message || err);
-    return null;
-  } finally {
-    clearTimeout(timeoutId);
-  }
+  };
+
+  const first = await attempt(8000);
+  if (first !== 'retry') return first;
+  const second = await attempt(8000);
+  return second === 'retry' ? null : second;
 }
 
 export async function getLoyaltyPoints(params: LoyaltyParams): Promise<number> {
@@ -607,7 +624,24 @@ export async function redeemLoyaltyPoints({
     context,
   });
 
-  if (available === null) {
+  /**
+   * SDLP did not answer. The balance this server read from SDLP itself in the
+   * last two minutes (the cart shows it before the shopper can redeem) is the
+   * fallback — it is our own read, not anything the browser sent, so it
+   * cannot be inflated by the client. Older than that, or none: refuse.
+   */
+  let balanceToCheck: number | null = available;
+  if (balanceToCheck === null) {
+    const recent = LOYALTY_CACHE.get(
+      `${resolvedPhone || phone || ''}_${resolvedCustomerId || ''}`.trim(),
+    );
+    if (recent && Date.now() - recent.timestamp < 2 * 60 * 1000) {
+      console.warn('[Loyalty] Live balance unavailable; using the balance read', Math.round((Date.now() - recent.timestamp) / 1000), 's ago.');
+      balanceToCheck = recent.data.balance;
+    }
+  }
+
+  if (balanceToCheck === null) {
     return {
       success: false,
       error: t(
@@ -616,12 +650,13 @@ export async function redeemLoyaltyPoints({
       ),
     };
   }
-  if (requested > available) {
+  const availableBalance = balanceToCheck;
+  if (requested > availableBalance) {
     return {
       success: false,
       error: t(
-        `Insufficient points: ${available} available, ${requested} requested.`,
-        `رصيد النقاط غير كافٍ: لديك ${available} نقطة والمطلوب ${requested} نقطة.`,
+        `Insufficient points: ${availableBalance} available, ${requested} requested.`,
+        `رصيد النقاط غير كافٍ: لديك ${availableBalance} نقطة والمطلوب ${requested} نقطة.`,
       ),
     };
   }
@@ -901,6 +936,43 @@ export async function voidLoyaltyPoints({
     const thrown = e?.name === 'AbortError' ? 'timed out after 8s' : e?.message || String(e);
     console.warn('[SDLP Loyalty] Void threw:', thrown);
     return {success: false, reason: thrown};
+  }
+}
+
+/**
+ * What a loyalty code is really worth, in SAR, read from its Shopify price
+ * rule — never from the cart's `loyalty_points` attribute, which the browser
+ * can write. Null when the code cannot be found or read.
+ */
+export async function loyaltyCodeValue(env: any, code: string): Promise<number | null> {
+  const submitted = String(code || '').trim();
+  if (!submitted) return null;
+  try {
+    const {getAdminToken, getAdminDomain} = await import('~/lib/shopify-admin.server');
+    const token = await getAdminToken(env);
+    const domain = getAdminDomain(env);
+    if (!token || !domain) return null;
+
+    const lookupRes = await fetch(
+      `https://${domain}/admin/api/2024-01/discount_codes/lookup.json?code=${encodeURIComponent(submitted)}`,
+      {headers: {'X-Shopify-Access-Token': token}, signal: AbortSignal.timeout(5000)},
+    );
+    if (!lookupRes.ok) return null;
+    const priceRuleId = ((await lookupRes.json()) as any)?.discount_code?.price_rule_id;
+    if (!priceRuleId) return null;
+
+    const ruleRes = await fetch(
+      `https://${domain}/admin/api/2024-01/price_rules/${priceRuleId}.json`,
+      {headers: {'X-Shopify-Access-Token': token}, signal: AbortSignal.timeout(5000)},
+    );
+    if (!ruleRes.ok) return null;
+    const rule = ((await ruleRes.json()) as any)?.price_rule;
+    if (rule?.value_type !== 'fixed_amount') return null;
+    const value = Math.abs(parseFloat(rule?.value));
+    return Number.isFinite(value) && value > 0 ? value : null;
+  } catch (e: any) {
+    console.warn('[Loyalty] Could not read code value:', e?.message || e);
+    return null;
   }
 }
 

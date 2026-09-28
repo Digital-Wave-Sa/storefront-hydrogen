@@ -328,6 +328,106 @@ export async function action({request, context, params}: Route.ActionArgs) {
       }
     }
 
+    /**
+     * The same check for loyalty points, with one difference: points are
+     * debited from SDLP the moment they are redeemed, not at checkout. So
+     * cancelling the code is not enough — the points are voided back to the
+     * shopper's balance FIRST, and only if SDLP confirms that is the code
+     * removed and deleted. If the refund fails nothing changes (Shopify still
+     * caps the discount at checkout), so points are never lost either way.
+     *
+     * The code's value comes from its Shopify price rule, not from the
+     * `loyalty_points` attribute: that one the browser can write, and it
+     * decides how many points are handed back.
+     *
+     * Returns the updated cart when it changed anything, otherwise null.
+     */
+    async function cancelOverAppliedLoyalty() {
+      try {
+        const current = await cart.get();
+        const loyaltyCode = (current?.discountCodes || []).find((dc: any) => {
+          const c = String(dc?.code || '').toUpperCase();
+          return c.startsWith('LOYAL-') || c.startsWith('LOYALTY-');
+        })?.code;
+        if (!loyaltyCode || !current?.id) return null;
+
+        const alloc: any = await context.storefront.query(
+          `#graphql
+          query LoyaltyAllocation($id: ID!) {
+            cart(id: $id) {
+              discountAllocations {
+                discountedAmount { amount }
+                ... on CartCodeDiscountAllocation { code }
+              }
+              lines(first: 100) {
+                nodes {
+                  discountAllocations {
+                    discountedAmount { amount }
+                    ... on CartCodeDiscountAllocation { code }
+                  }
+                }
+              }
+            }
+          }`,
+          {variables: {id: current.id}, cache: context.storefront.CacheNone()},
+        );
+        const same = (a: any) =>
+          String(a?.code || '').toUpperCase() === String(loyaltyCode).toUpperCase();
+        const sum = (list: any[]) =>
+          (list || [])
+            .filter(same)
+            .reduce((n, a) => n + (parseFloat(a?.discountedAmount?.amount) || 0), 0);
+        const allocated =
+          sum(alloc?.cart?.discountAllocations) +
+          (alloc?.cart?.lines?.nodes || []).reduce(
+            (n: number, line: any) => n + sum(line?.discountAllocations),
+            0,
+          );
+
+        const {loyaltyCodeValue, voidLoyaltyPoints, deleteLoyaltyDiscountCode} =
+          await import('~/lib/loyalty.server');
+        const value = await loyaltyCodeValue(context.env, loyaltyCode);
+        if (value === null) {
+          console.warn(`[CART] Could not read the value of ${loyaltyCode}; leaving it applied.`);
+          return null;
+        }
+        if (allocated + 0.01 >= value) return null;
+
+        const points = Math.round(value * 100);
+        console.log(
+          `[CART] Loyalty ${value} SAR (${points} pts) no longer fits (Shopify allocates ${allocated.toFixed(2)}) — refunding and cancelling it.`,
+        );
+        const refund = await voidLoyaltyPoints({
+          code: loyaltyCode,
+          points,
+          env: context.env,
+          context,
+        });
+        if (!refund.success) {
+          console.warn(
+            `[CART] Loyalty refund for ${loyaltyCode} failed (${refund.reason || 'no reason'}); leaving the code applied.`,
+          );
+          return null;
+        }
+
+        await deleteLoyaltyDiscountCode(context.env, loyaltyCode);
+        await cart.updateDiscountCodes(
+          (current.discountCodes || [])
+            .map((dc: any) => dc.code)
+            .filter((c: string) => c !== loyaltyCode),
+        );
+        return await cart.updateAttributes([
+          {key: 'loyalty_points', value: '0'},
+          {key: 'loyalty_code', value: ''},
+          {key: '_loyalty_reset', value: '1'},
+        ]);
+      } catch (e) {
+        /** Never fail the line change itself over this. */
+        console.error('[CART] Could not re-check loyalty points:', e);
+        return null;
+      }
+    }
+
     switch (action) {
       case CartForm.ACTIONS.LinesAdd: {
         const cleanLines = (inputs.lines || []).map((line: any) => ({
@@ -399,11 +499,13 @@ export async function action({request, context, params}: Route.ActionArgs) {
         result = await withRetry(() => cart.updateLines(inputs.lines));
         result = (await dropCouponsIfCartIsEmpty()) ?? result;
         result = (await cancelOverAppliedCredit()) ?? result;
+        result = (await cancelOverAppliedLoyalty()) ?? result;
         break;
       case CartForm.ACTIONS.LinesRemove:
         result = await withRetry(() => cart.removeLines(inputs.lineIds));
         result = (await dropCouponsIfCartIsEmpty()) ?? result;
         result = (await cancelOverAppliedCredit()) ?? result;
+        result = (await cancelOverAppliedLoyalty()) ?? result;
         break;
       case 'LoyaltyUpdate':
       case 'CustomLoyaltyUpdate': {
@@ -433,6 +535,7 @@ export async function action({request, context, params}: Route.ActionArgs) {
           result = (await cart.updateAttributes([
             {key: 'loyalty_points', value: '0'},
             {key: 'loyalty_code', value: ''},
+            {key: '_loyalty_reset', value: ''},
           ])) as any;
           break;
         }
@@ -536,6 +639,7 @@ export async function action({request, context, params}: Route.ActionArgs) {
         result = (await cart.updateAttributes([
           {key: 'loyalty_points', value: String(pointsToRedeem)},
           {key: 'loyalty_code', value: generatedCode},
+          {key: '_loyalty_reset', value: ''},
         ])) as any;
         break;
       }

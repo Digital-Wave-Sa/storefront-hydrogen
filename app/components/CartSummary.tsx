@@ -2199,12 +2199,24 @@ function amountStillPayable(cart: any): number {
 function PointsRedemptionError({message}: {message?: string | null}) {
   if (!message) return null;
   return (
-    <p
+    <div
       role="alert"
-      className="text-[11px] font-normal leading-relaxed text-start text-[#A63D2B] bg-[#FFF6F4] px-4 py-3 rounded-xl border border-[#F3D3CC] mt-2"
+      className="mt-2 flex items-start gap-3 rounded-2xl border border-[#F1D5CE] bg-[#FFF7F5] px-4 py-3.5"
     >
-      {message}
-    </p>
+      <span
+        aria-hidden
+        className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#FBE3DD] text-[#B2452F]"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="9" />
+          <line x1="12" y1="7.5" x2="12" y2="12.5" />
+          <circle cx="12" cy="16" r="0.6" fill="currentColor" />
+        </svg>
+      </span>
+      <p className="text-[13px] font-light leading-relaxed text-start text-[#8A3B2B]">
+        {message}
+      </p>
+    </div>
   );
 }
 
@@ -2258,6 +2270,15 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
   }
 
   const customerIdentifier = phone || email || customerId;
+
+  /**
+   * Set when the cart action refunded the points after a line change. The
+   * balance is read again then, or the badge keeps showing the balance from
+   * before the refund.
+   */
+  const loyaltyReset = cart?.attributes?.some(
+    (a: any) => a?.key === '_loyalty_reset' && a?.value === '1',
+  );
 
   useEffect(() => {
     const q = new URLSearchParams();
@@ -2317,7 +2338,7 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
     return () => {
       stale = true;
     };
-  }, [customerIdentifier, phone, email, customerId]);
+  }, [customerIdentifier, phone, email, customerId, loyaltyReset]);
 
   if (!customerIdentifier) {
     return (
@@ -2391,6 +2412,37 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
       {errorMsg && (
         <p className="text-red-500 text-[12px] font-bold mb-1">{errorMsg}</p>
       )}
+
+      {/*
+        Set by the cart action when a line change left the redeemed points
+        worth more than the cart could use; it refunded them to the balance
+        and cancelled the code rather than let checkout quietly use less.
+      */}
+      {!isApplied &&
+        cart?.attributes?.some(
+          (a: any) => a?.key === '_loyalty_reset' && a?.value === '1',
+        ) && (
+          <div
+            role="status"
+            className="flex items-start gap-3 rounded-2xl border border-[#EADFC8] bg-[#FDF9F0] px-4 py-3.5"
+          >
+            <span
+              aria-hidden
+              className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#F5E9CF] text-[#9A6B12]"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9" />
+                <line x1="12" y1="8" x2="12" y2="12.5" />
+                <circle cx="12" cy="16" r="0.6" fill="currentColor" />
+              </svg>
+            </span>
+            <p className="text-[13px] font-light leading-relaxed text-start text-[#6B5320]">
+              {isEn
+                ? 'Your cart total changed, so the points redemption was cancelled and your points were returned to your balance. Redeem them again for the new total.'
+                : 'تغيّرت قيمة السلة، فأُلغي استبدال النقاط وأُعيدت نقاطك إلى رصيدك. استبدلها مجدداً على الإجمالي الجديد.'}
+            </p>
+          </div>
+        )}
 
       {/* Applied Discount State */}
       {isApplied ? (

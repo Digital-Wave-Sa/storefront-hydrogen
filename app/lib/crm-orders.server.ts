@@ -228,6 +228,14 @@ export async function crmCreateOrder(
   env?: any
 ): Promise<CRMResponse<CRMOrder>> {
   console.log(`[CRM] Creating order: ${order.cf_891} for account ${order.account_id}`);
+  console.log(
+    `[CRM] ${order.cf_891} discount details -> CRM/ERP:`,
+    JSON.stringify({
+      discount_codes: order.discount_codes ?? [],
+      total_discounts: order.total_discounts ?? null,
+      total_price: order.total_price ?? null,
+    }),
+  );
   return crmFetch<CRMOrder>('/createOrder', order, env);
 }
 

@@ -238,6 +238,96 @@ export async function action({request, context, params}: Route.ActionArgs) {
       }
     }
 
+    /**
+     * Cancel wallet credit the cart can no longer use in full.
+     *
+     * The credit is a fixed-amount `CREDIT-` code for the amount the shopper
+     * chose, checked against the cart only when it is applied. Remove a line
+     * afterwards and the code stays at its old value: 96 applied to what is
+     * now an 89 cart. Shopify quietly caps it at 89 at checkout, the cart kept
+     * showing «-96.00», and the order still said `store_credit_amount: 96`.
+     *
+     * So after any change to the lines, the credit Shopify is ACTUALLY
+     * allocating is compared with what was applied, and if it falls short the
+     * credit is cancelled — code and attributes — and the shopper re-applies
+     * against the new total. `_wallet_credit_reset` tells the wallet widget to
+     * say why it disappeared. (The wallet is charged when the order is placed,
+     * not on apply — the balance shown does not move when credit is applied —
+     * so cancelling here costs the shopper nothing.)
+     *
+     * Returns the updated cart when it changed anything, otherwise null.
+     */
+    async function cancelOverAppliedCredit() {
+      try {
+        const current = await cart.get();
+        const creditCode = (current?.discountCodes || []).find((dc: any) =>
+          String(dc?.code || '').toUpperCase().startsWith('CREDIT-'),
+        )?.code;
+        if (!creditCode || !current?.id) return null;
+
+        const applied =
+          parseFloat(
+            current?.attributes?.find((a: any) => a.key === 'store_credit_amount')
+              ?.value || '0',
+          ) || 0;
+        if (applied <= 0) return null;
+
+        // What Shopify really takes off for this code, cart- and line-level.
+        const alloc: any = await context.storefront.query(
+          `#graphql
+          query CreditAllocation($id: ID!) {
+            cart(id: $id) {
+              discountAllocations {
+                discountedAmount { amount }
+                ... on CartCodeDiscountAllocation { code }
+              }
+              lines(first: 100) {
+                nodes {
+                  discountAllocations {
+                    discountedAmount { amount }
+                    ... on CartCodeDiscountAllocation { code }
+                  }
+                }
+              }
+            }
+          }`,
+          {variables: {id: current.id}, cache: context.storefront.CacheNone()},
+        );
+        const same = (a: any) =>
+          String(a?.code || '').toUpperCase() === String(creditCode).toUpperCase();
+        const sum = (list: any[]) =>
+          (list || [])
+            .filter(same)
+            .reduce((n, a) => n + (parseFloat(a?.discountedAmount?.amount) || 0), 0);
+        const allocated =
+          sum(alloc?.cart?.discountAllocations) +
+          (alloc?.cart?.lines?.nodes || []).reduce(
+            (n: number, line: any) => n + sum(line?.discountAllocations),
+            0,
+          );
+
+        if (allocated + 0.01 >= applied) return null;
+
+        console.log(
+          `[CART] Wallet credit ${applied} no longer fits (Shopify allocates ${allocated.toFixed(2)}) — cancelling it.`,
+        );
+        await cart.updateDiscountCodes(
+          (current.discountCodes || [])
+            .map((dc: any) => dc.code)
+            .filter((c: string) => c !== creditCode),
+        );
+        return await cart.updateAttributes([
+          {key: 'store_credit_amount', value: '0'},
+          {key: 'store_credit_code', value: ''},
+          {key: '_wallet_credit_reset', value: '1'},
+        ]);
+      } catch (e) {
+        /** Never fail the line change itself over this. */
+        console.error('[CART] Could not re-check wallet credit:', e);
+        return null;
+      }
+    }
+
     switch (action) {
       case CartForm.ACTIONS.LinesAdd: {
         const cleanLines = (inputs.lines || []).map((line: any) => ({
@@ -308,10 +398,12 @@ export async function action({request, context, params}: Route.ActionArgs) {
       case CartForm.ACTIONS.LinesUpdate:
         result = await withRetry(() => cart.updateLines(inputs.lines));
         result = (await dropCouponsIfCartIsEmpty()) ?? result;
+        result = (await cancelOverAppliedCredit()) ?? result;
         break;
       case CartForm.ACTIONS.LinesRemove:
         result = await withRetry(() => cart.removeLines(inputs.lineIds));
         result = (await dropCouponsIfCartIsEmpty()) ?? result;
+        result = (await cancelOverAppliedCredit()) ?? result;
         break;
       case 'LoyaltyUpdate':
       case 'CustomLoyaltyUpdate': {
@@ -473,6 +565,7 @@ export async function action({request, context, params}: Route.ActionArgs) {
           result = (await cart.updateAttributes([
             {key: 'store_credit_amount', value: '0'},
             {key: 'store_credit_code', value: ''},
+            {key: '_wallet_credit_reset', value: ''},
           ])) as any;
           break;
         }
@@ -588,6 +681,7 @@ export async function action({request, context, params}: Route.ActionArgs) {
         result = (await cart.updateAttributes([
           {key: 'store_credit_amount', value: String(amountToApply)},
           {key: 'store_credit_code', value: generatedCode},
+          {key: '_wallet_credit_reset', value: ''},
         ])) as any;
         break;
       }

@@ -2724,6 +2724,37 @@ function StoreCreditRedemptionUI({ isEn, cart }: { isEn: boolean; cart: any }) {
         )}
       </div>
 
+      {/*
+        Set by the cart action when a line change left the applied credit
+        larger than the cart could use; it cancelled the credit rather than
+        let checkout silently use less than the order said.
+      */}
+      {!isApplied &&
+        cart?.attributes?.some(
+          (a: any) => a?.key === '_wallet_credit_reset' && a?.value === '1',
+        ) && (
+          <div
+            role="status"
+            className="flex items-start gap-3 rounded-2xl border border-[#EADFC8] bg-[#FDF9F0] px-4 py-3.5"
+          >
+            <span
+              aria-hidden
+              className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#F5E9CF] text-[#9A6B12]"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9" />
+                <line x1="12" y1="8" x2="12" y2="12.5" />
+                <circle cx="12" cy="16" r="0.6" fill="currentColor" />
+              </svg>
+            </span>
+            <p className="text-[13px] font-light leading-relaxed text-[#6B5320]">
+              {isEn
+                ? 'Your cart total changed, so the wallet credit was removed. Apply it again for the new total.'
+                : 'تغيّرت قيمة السلة، فأُلغي رصيد المحفظة المطبّق. طبّقه مجدداً على الإجمالي الجديد.'}
+            </p>
+          </div>
+        )}
+
       {isApplied ? (
         <div className="bg-[#EBF3F1] border border-[#234745]/20 rounded-xl p-3.5 flex items-center justify-between">
           <div className="flex items-center gap-2">

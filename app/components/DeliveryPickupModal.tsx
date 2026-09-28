@@ -953,7 +953,19 @@ function ModalContent({
                         !loadedAddresses.some((known: any) => sameAddressId(known?.id, fresh?.id)),
                 )
                 .reverse(),
-            ...loadedAddresses,
+            /**
+             * Once the loader has the new address, its copy replaces ours --
+             * but a copy read right after saving can lack coordinates (Shopify
+             * has not geocoded it yet), while ours carries the map pin the
+             * save returned. Keep the pin, or the branch is matched by city
+             * name instead of distance.
+             */
+            ...loadedAddresses.map((known: any) => {
+                if (addressCoords(known)) return known;
+                const fresh = newAddresses.find((a: any) => sameAddressId(a?.id, known?.id));
+                const pin = fresh ? addressCoords(fresh) : null;
+                return pin ? {...known, latitude: pin.lat, longitude: pin.lng} : known;
+            }),
         ],
         [loadedAddresses, newAddresses],
     );

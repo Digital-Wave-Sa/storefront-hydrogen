@@ -359,6 +359,66 @@ async function loadCriticalData({context}: Route.LoaderArgs) {
  * fetched after the initial page load. If it's unavailable, the page should still 200.
  * Make sure to not throw any errors here, as it will cause the page to 500.
  */
+/**
+ * Put the shopper's own map pins on addresses read through the Storefront API.
+ *
+ * The Admin fallback below already prefers pins (`custom.address_pins`) over
+ * Shopify's geocoding. This path did not: it used Shopify's latitude and
+ * longitude alone, and for an address saved seconds ago Shopify has not
+ * geocoded it yet. The delivery modal then had no coordinates, matched the
+ * branch by city name instead of distance, and a Riyadh address added on the
+ * map next to ضاحية لبن went to أنس بن مالك. This path is taken whenever the
+ * session holds a real customer token -- which sign-in now refreshes -- so
+ * both paths have to agree.
+ *
+ * Best effort: on any failure the addresses are returned exactly as read.
+ */
+async function withSavedPins(res: any, env: any) {
+  try {
+    const nodes: any[] = res?.customer?.addresses?.nodes || [];
+    const customerId = String(res?.customer?.id || '').split('/').pop();
+    if (!nodes.length || !customerId) return res;
+
+    const {getAdminToken, getAdminDomain} = await import('~/lib/shopify-admin.server');
+    const adminToken = await getAdminToken(env);
+    const adminDomain = getAdminDomain(env);
+    if (!adminToken || !adminDomain) return res;
+
+    const pinsRes = await fetch(`https://${adminDomain}/admin/api/2024-07/graphql.json`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-Shopify-Access-Token': adminToken},
+      body: JSON.stringify({
+        query: `query Pins($id: ID!) { customer(id: $id) { metafield(namespace: "custom", key: "address_pins") { value } } }`,
+        variables: {id: `gid://shopify/Customer/${customerId}`},
+      }),
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!pinsRes.ok) return res;
+    const json = (await pinsRes.json()) as any;
+    const {parsePins, pinFor} = await import('~/lib/address-pins.server');
+    const pins = parsePins(json?.data?.customer?.metafield?.value);
+    if (!Object.keys(pins).length) return res;
+
+    const withPin = (addr: any) => {
+      const pin = addr ? pinFor(pins, addr.id) : null;
+      return pin ? {...addr, latitude: pin.lat, longitude: pin.lng} : addr;
+    };
+    return {
+      ...res,
+      customer: {
+        ...res.customer,
+        ...(res.customer.defaultAddress
+          ? {defaultAddress: withPin(res.customer.defaultAddress)}
+          : {}),
+        addresses: {...res.customer.addresses, nodes: nodes.map(withPin)},
+      },
+    };
+  } catch (e) {
+    console.warn('[ROOT] Could not read saved address pins:', (e as any)?.message || e);
+    return res;
+  }
+}
+
 function loadDeferredData(
   {context}: Route.LoaderArgs,
   customerAccessToken: any,
@@ -396,7 +456,7 @@ function loadDeferredData(
           variables: { customerAccessToken: token },
           cache: storefront.CacheNone(),
         });
-        if (res?.customer) return res;
+        if (res?.customer) return await withSavedPins(res, context.env);
       } catch (err) {
         console.warn('[ROOT] Storefront customer addresses query failed, attempting Admin API fallback:', err);
       }

@@ -53,22 +53,27 @@ async function hmacBase64(secret: string, body: string): Promise<string> {
 export async function verifyShopifyWebhook(
   request: Request,
   env: any,
+  extraSecrets: Array<string | undefined> = [],
 ): Promise<WebhookVerification> {
   const rawBody = await request.text();
-  const secret =
-    env?.SHOPIFY_WEBHOOK_SECRET ||
-    env?.SHOPIFY_WEBHOOK_SIGNING_SECRET ||
-    '';
+  const secrets = [
+    env?.SHOPIFY_WEBHOOK_SECRET,
+    env?.SHOPIFY_WEBHOOK_SIGNING_SECRET,
+    ...extraSecrets,
+  ]
+    .map((s) => (typeof s === 'string' ? s.trim() : ''))
+    .filter(Boolean);
 
-  if (!secret) return {ok: false, reason: 'no-secret', rawBody};
+  if (!secrets.length) return {ok: false, reason: 'no-secret', rawBody};
 
   const provided = request.headers.get(HMAC_HEADER) || '';
   if (!provided) return {ok: false, reason: 'no-signature', rawBody};
 
-  const expected = await hmacBase64(secret, rawBody);
-  return safeEqual(provided, expected)
-    ? {ok: true, rawBody}
-    : {ok: false, reason: 'mismatch', rawBody};
+  for (const secret of secrets) {
+    const expected = await hmacBase64(secret, rawBody);
+    if (safeEqual(provided, expected)) return {ok: true, rawBody};
+  }
+  return {ok: false, reason: 'mismatch', rawBody};
 }
 
 /** Log line for a rejected delivery — enough to debug, no secrets. */

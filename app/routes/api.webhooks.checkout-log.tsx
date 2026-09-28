@@ -1,4 +1,5 @@
 import type {ActionFunctionArgs} from 'react-router';
+import {verifyShopifyWebhook, describeRejection} from '~/lib/webhook-verify.server';
 
 /**
  * Abandoned checkouts, forwarded to the CRM's `/logCartCheckout`.
@@ -28,9 +29,17 @@ export async function action({request, context}: ActionFunctionArgs) {
 
   const {env} = context;
 
+  const verification = await verifyShopifyWebhook(request, env, [
+    env?.SHOPIFY_CLIENT_SECRET,
+  ]);
+  if (!verification.ok) {
+    console.warn(describeRejection('Checkout Log', verification, request));
+    return Response.json({success: false, error: 'Unauthorized'}, {status: 401});
+  }
+
   try {
     const topic = request.headers.get('x-shopify-topic') || '';
-    const payload = (await request.json()) as any;
+    const payload = JSON.parse(verification.rawBody) as any;
 
     if (!payload?.id) {
       return Response.json({success: false, error: 'Invalid payload'}, {status: 400});

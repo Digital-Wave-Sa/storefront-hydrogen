@@ -9,6 +9,27 @@ import {Form, useNavigation, useActionData, useLoaderData} from 'react-router';
 import {Button} from '~/components/layout/Button';
 import {SaadeddinApi} from '~/lib/saadeddin-api.server';
 import {validatePhoneNumber, sanitizePhoneInput} from '~/lib/phone-validation';
+import {
+  MAX_OTP_ATTEMPTS,
+  OTP_BLOCK_MS,
+  classifyOtpError,
+  otpAttemptsLeftMessage,
+  otpBlockedMessage,
+} from '~/lib/otp-errors';
+
+/**
+ * This page's own wrong-code counter -- deliberately NOT the login page's
+ * keys (`loginOtpAttempts`, `loginOtpBlockUntil`), so nothing here can block
+ * or reset a sign-in or a registration.
+ *
+ * The form used to accept unlimited guesses: any signed-in session could post
+ * any phone number here and keep guessing its code, and a correct guess made
+ * that phone the session's phone for wallet and points. Same rule as sign-in
+ * now: 3 wrong codes, then 60 seconds. Like sign-in's, it lives in the cookie;
+ * the per-phone limit that stops a script belongs to the middleware.
+ */
+const VERIFY_PHONE_ATTEMPTS_KEY = 'verifyPhoneOtpAttempts';
+const VERIFY_PHONE_BLOCK_KEY = 'verifyPhoneOtpBlockUntil';
 
 export async function loader({request, context}: LoaderFunctionArgs) {
   const {session, storefront} = context;
@@ -109,10 +130,44 @@ export async function action({request, context}: ActionFunctionArgs) {
   if (intent === 'verify-otp') {
     const phone = String(form.get('phone') || '');
     const code = String(form.get('otp') || '');
+    const lang: 'en' | 'ar' = isEn ? 'en' : 'ar';
+
+    const blockedUntil = Number((await session.get(VERIFY_PHONE_BLOCK_KEY)) || 0);
+    if (blockedUntil > Date.now()) {
+      return data(
+        {error: otpBlockedMessage((blockedUntil - Date.now()) / 1000, lang)},
+        {status: 429},
+      );
+    }
 
     try {
       // 1. Verify OTP with Saadeddin auth service
-      await api.verifyOtp(phone, code, 'login');
+      try {
+        await api.verifyOtp(phone, code, 'login');
+      } catch (verifyErr: any) {
+        const info = classifyOtpError(verifyErr?.message || '', verifyErr?.retryAfter);
+        // A wrong code (or an answer we cannot read) counts; an expired code
+        // or an unreachable service does not.
+        if (info.kind === 'invalid' || info.kind === 'unknown') {
+          const used = Number((await session.get(VERIFY_PHONE_ATTEMPTS_KEY)) || 0) + 1;
+          if (used >= MAX_OTP_ATTEMPTS) {
+            session.set(VERIFY_PHONE_ATTEMPTS_KEY, 0);
+            session.set(VERIFY_PHONE_BLOCK_KEY, Date.now() + OTP_BLOCK_MS);
+            return data(
+              {error: otpBlockedMessage(OTP_BLOCK_MS / 1000, lang)},
+              {status: 429, headers: {'Set-Cookie': await session.commit()}},
+            );
+          }
+          session.set(VERIFY_PHONE_ATTEMPTS_KEY, used);
+          return data(
+            {error: otpAttemptsLeftMessage(MAX_OTP_ATTEMPTS - used, lang)},
+            {status: 400, headers: {'Set-Cookie': await session.commit()}},
+          );
+        }
+        throw verifyErr;
+      }
+      session.unset(VERIFY_PHONE_ATTEMPTS_KEY);
+      session.unset(VERIFY_PHONE_BLOCK_KEY);
 
       // 2. Write the verified phone number to the customer profile in Shopify
       const updated = await storefront.mutate(CUSTOMER_PHONE_UPDATE_MUTATION, {

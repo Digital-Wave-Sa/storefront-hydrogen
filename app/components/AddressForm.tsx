@@ -553,6 +553,10 @@ export function MapPickerDialog({
       zoom: initialCoords ? 16 : 15,
       disableDefaultUI: true,
       zoomControl: false,
+      // One finger moves the map. Inside a modal the default ('auto' ->
+      // cooperative on phones) asks for two fingers and a one-finger drag
+      // scrolls the sheet instead, so the map felt impossible to move.
+      gestureHandling: 'greedy',
     });
     mapObjRef.current = map;
 
@@ -800,11 +804,18 @@ export function LocationPicker({
   initialAddress,
   onChange,
   className,
+  stacked = false,
 }: {
   googleMapsKey: string;
   isEn: boolean;
   initialCoords?: {lat: number; lng: number} | null;
   initialAddress?: string;
+  /**
+   * Phones: the map gets its own height and no card floats over it. In a
+   * 260px box the search bar, an error and the card covered almost the whole
+   * map; the address and coverage show in the form below instead.
+   */
+  stacked?: boolean;
   onChange: (res: {
     address: string;
     city: string;
@@ -857,7 +868,10 @@ export function LocationPicker({
       center: start,
       zoom: initialCoords ? 16 : 13,
       disableDefaultUI: true,
-      zoomControl: true,
+      // Zoom buttons only where there is room; phones pinch.
+      zoomControl: !stacked,
+      // See MapPickerDialog: one finger moves the map inside the sheet.
+      gestureHandling: 'greedy',
     });
     mapObjRef.current = map;
 
@@ -918,30 +932,58 @@ export function LocationPicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSdkLoaded]);
 
-  return (
-    <div className={`relative w-full h-full bg-gray-100 ${className || ''}`}>
+  const addressCard = (
+    <div
+      className={
+        stacked
+          ? 'bg-white rounded-2xl px-4 py-3 border-2 border-[#234745]/5 mt-3'
+          : 'absolute bottom-4 inset-x-4 z-[5] bg-white rounded-2xl shadow-lg px-4 py-3 border-2 border-[#234745]/5'
+      }
+    >
+      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
+        {isEn ? 'Delivering to' : 'التوصيل إلى'}
+      </p>
+      <p className="text-[13px] font-bold text-[#234745] line-clamp-2">
+        {isResolving ? (isEn ? 'Locating...' : 'جاري التحديد...') : preview || (isEn ? 'Move the map to set your location' : 'حرّك الخريطة لتحديد موقعك')}
+      </p>
+      {!isResolving && pin && (
+        <CoverageNote coverage={coverage} isEn={isEn} className="mt-1.5" />
+      )}
+    </div>
+  );
+
+  const mapArea = (
+    <div
+      className={
+        stacked
+          ? 'relative w-full h-[320px] bg-gray-100 rounded-2xl overflow-hidden border-2 border-gray-100'
+          : `relative w-full h-full bg-gray-100 ${className || ''}`
+      }
+    >
       <div ref={mapRef} className="absolute inset-0 z-0" />
 
-      <div className="absolute top-4 inset-x-4 z-[5] flex gap-2">
+      <div className={`absolute inset-x-3 z-[5] flex gap-2 ${stacked ? 'top-3' : 'top-4 inset-x-4'}`}>
         <div className="flex-1 relative bg-white rounded-2xl shadow-lg border-2 border-[#234745]/5 overflow-hidden">
           <input
             ref={searchRef}
             type="text"
             placeholder={isEn ? 'Search for location...' : 'ابحث عن موقع...'}
-            className="w-full h-12 px-4 text-[14px] font-bold text-gray-700 outline-none bg-transparent"
+            className={`w-full px-4 text-[14px] font-bold text-gray-700 outline-none bg-transparent ${stacked ? 'h-11' : 'h-12'}`}
           />
         </div>
         <LocateButton
           isEn={isEn}
           locating={userLocation.locating}
           onClick={() => userLocation.locate(mapObjRef.current)}
+          compact={stacked}
         />
       </div>
 
+      {/* Errors sit at the bottom of the map, clear of the pin and the search. */}
       <LocateError
         message={userLocation.error}
         onDismiss={userLocation.clearError}
-        className="top-20"
+        className={stacked ? 'bottom-3' : 'top-20'}
       />
 
       {/* The pin does not move; the map moves under it. */}
@@ -952,19 +994,15 @@ export function LocationPicker({
         </svg>
       </div>
 
-      <div className="absolute bottom-4 inset-x-4 z-[5] bg-white rounded-2xl shadow-lg px-4 py-3 border-2 border-[#234745]/5">
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
-          {isEn ? 'Delivering to' : 'التوصيل إلى'}
-        </p>
-        <p className="text-[13px] font-bold text-[#234745] line-clamp-2">
-          {isResolving ? (isEn ? 'Locating...' : 'جاري التحديد...') : preview || (isEn ? 'Move the map to set your location' : 'حرّك الخريطة لتحديد موقعك')}
-        </p>
-        {!isResolving && pin && (
-          <CoverageNote coverage={coverage} isEn={isEn} className="mt-1.5" />
-        )}
-      </div>
+      {!stacked && addressCard}
     </div>
   );
+
+  // Stacked (phones): the form under the map already shows the chosen
+  // address and its coverage («الموقع المحدد»), so the map adds no card of
+  // its own -- two identical cards read as a bug.
+  if (!stacked) return mapArea;
+  return <div className={className || ''}>{mapArea}</div>;
 }
 
 /* ── Shared by both maps ───────────────────────────────────────────────────── */
@@ -1126,7 +1164,14 @@ function useUserLocation(isEn: boolean) {
       }
       setLocating(true);
       setError(null);
-      navigator.geolocation.getCurrentPosition(
+      /**
+       * Two tries. The first asks for GPS precision; some phones (Samsung
+       * Internet among them) count its timeout while their «Allow location?»
+       * sheet is still open, so it could fail before the shopper had even
+       * answered. On a timeout, ask once more without high accuracy (network
+       * position, usually instant) before saying anything.
+       */
+      const attempt = (highAccuracy: boolean) => navigator.geolocation.getCurrentPosition(
         (pos) => {
           setLocating(false);
           const here = {lat: pos.coords.latitude, lng: pos.coords.longitude};
@@ -1142,6 +1187,10 @@ function useUserLocation(isEn: boolean) {
           }
         },
         (err) => {
+          if (err.code === err.TIMEOUT && highAccuracy) {
+            attempt(false);
+            return;
+          }
           setLocating(false);
           if (silent) return;
           setError(
@@ -1158,11 +1207,21 @@ function useUserLocation(isEn: boolean) {
                   : 'تعذّر تحديد موقعك. ابحث عن عنوانك بدلاً من ذلك.',
           );
         },
-        {enableHighAccuracy: true, timeout: 10000, maximumAge: 60000},
+        highAccuracy
+          ? {enableHighAccuracy: true, timeout: 20000, maximumAge: 60000}
+          : {enableHighAccuracy: false, timeout: 15000, maximumAge: 300000},
       );
+      attempt(true);
     },
     [draw, isEn],
   );
+
+  // A message that stays forever covers the map; it clears itself after 6 s.
+  useEffect(() => {
+    if (!error) return;
+    const t = setTimeout(() => setError(null), 6000);
+    return () => clearTimeout(t);
+  }, [error]);
 
   /** The button: centre on the shopper and say so if it fails. */
   const locate = useCallback((map: any) => request(map, true, false), [request]);
@@ -1199,10 +1258,12 @@ function LocateButton({
   isEn,
   locating,
   onClick,
+  compact = false,
 }: {
   isEn: boolean;
   locating: boolean;
   onClick: () => void;
+  compact?: boolean;
 }) {
   const label = isEn ? 'Use my current location' : 'استخدم موقعي الحالي';
   return (
@@ -1212,7 +1273,7 @@ function LocateButton({
       disabled={locating}
       title={label}
       aria-label={label}
-      className="w-12 h-12 bg-white rounded-2xl shadow-lg flex items-center justify-center text-[#1A73E8] shrink-0 border-2 border-[#234745]/5 active:scale-95 transition-transform disabled:opacity-70"
+      className={`${compact ? 'w-11 h-11' : 'w-12 h-12'} bg-white rounded-2xl shadow-lg flex items-center justify-center text-[#1A73E8] shrink-0 border-2 border-[#234745]/5 active:scale-95 transition-transform disabled:opacity-70`}
     >
       {locating ? (
         <span
@@ -1255,9 +1316,9 @@ function LocateError({
   return (
     <div
       role="alert"
-      className={`absolute inset-x-4 z-[6] flex items-start gap-3 rounded-2xl bg-white px-4 py-3 shadow-lg border border-red-100 ${className}`}
+      className={`absolute inset-x-3 z-[6] flex items-start gap-3 rounded-xl bg-white px-3 py-2 shadow-lg border border-red-100 ${className}`}
     >
-      <p className="flex-1 text-[13px] font-bold text-[#C0392B] leading-snug">
+      <p className="flex-1 text-[12px] font-bold text-[#C0392B] leading-snug">
         {message}
       </p>
       <button

@@ -150,7 +150,7 @@ function HeroSlider({ locale }: { locale: string }) {
                         {/* Content overlay */}
                         <div className={`absolute inset-0 flex flex-col justify-center px-10 md:px-20 text-white ${isEn ? 'text-left' : 'text-right'}`}>
                             <div className="flex items-center gap-3 mb-2">
-                                <img src="https://saadeddin.com/cdn/shop/files/LOGO1_b5cc5efb-bb01-4475-a0bc-cfc9d2f654b1_350x.png" className="h-10 brightness-0 invert" alt="logo" />
+                                <img src="/logo.svg" className="h-10 w-auto brightness-0 invert" alt="SAADEDDIN" />
                                 <div className="w-[1px] h-8 bg-white/50"></div>
                                 <span className="font-en text-sm tracking-[0.2em]">{slide.subtitle}</span>
                             </div>

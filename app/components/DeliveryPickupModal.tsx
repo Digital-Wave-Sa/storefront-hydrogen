@@ -920,6 +920,7 @@ function ModalContent({
             isEn={isEn}
             initialCoords={userCoords}
             onChange={setAddrDraft}
+            stacked={!hasMapPane}
         />
     ) : null;
 
@@ -1349,7 +1350,7 @@ function ModalContent({
                             {googleMapsKey ? (
                                 <>
                                     {!hasMapPane && (
-                                        <div className="h-[260px] w-full rounded-2xl overflow-hidden border-2 border-gray-100 mb-5">
+                                        <div className="w-full mb-5">
                                             {locationPicker}
                                         </div>
                                     )}

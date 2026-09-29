@@ -408,35 +408,6 @@ function renderTextWithRiyalSymbol(
   );
 }
 
-const DEFAULT_LOCATION_DISCOUNTS = [
-  {
-    code: 'RIYADH50',
-    title: {
-      ar: 'عرض فرع العليا المميز',
-      en: 'Olaya Branch Special Offer',
-    },
-    description: {
-      ar: 'احصل على خصم 50% على جميع الطلبات من فرع العليا!',
-      en: 'Enjoy 50% off on all orders from Olaya Branch!',
-    },
-    type: 'branch' as const,
-    ids: ['91178139881'],
-  },
-  {
-    code: 'JEDDAH20',
-    title: {
-      ar: 'عرض فرع جدة',
-      en: 'Jeddah Branch Offer',
-    },
-    description: {
-      ar: 'خصم 20% حصري على طلبات فرع جدة',
-      en: 'Exclusive 20% off on Jeddah branch orders',
-    },
-    type: 'branch' as const,
-    ids: ['91178074345'],
-  },
-];
-
 export default function PromotionsPage() {
   const {
     failed,
@@ -476,9 +447,17 @@ export default function PromotionsPage() {
   const selectedCity = routeData?.selectedCity;
   const rawLocationDiscounts = routeData?.locationDiscounts;
 
-  const parsedDiscounts = parseLocationDiscountsJSON(rawLocationDiscounts);
-  const discountsToEvaluate =
-    parsedDiscounts.length > 0 ? parsedDiscounts : DEFAULT_LOCATION_DISCOUNTS;
+  /**
+   * Branch offers come ONLY from the shop metafield custom.location_discounts.
+   *
+   * There used to be a hardcoded fallback (RIYADH50 / JEDDAH20) for when the
+   * metafield is empty. It is empty on the live store, so shoppers at Al Olaya
+   * were shown «عرض فرع جدة» with a JEDDAH20 code that does not exist in
+   * Shopify. No metafield, no card. A card without a code is not shown either.
+   */
+  const discountsToEvaluate = parseLocationDiscountsJSON(rawLocationDiscounts).filter(
+    (d: any) => typeof d?.code === 'string' && d.code.trim(),
+  );
 
   const activeLocationDiscount = discountsToEvaluate.find((d: any) => {
     const validById = selectedLocationId
@@ -1224,14 +1203,14 @@ export default function PromotionsPage() {
               <div className="flex items-center gap-3 w-full pt-2" dir="ltr">
                 <div className="bg-white/50 border border-[#9FB7AE] rounded-xl px-4 py-2.5 flex items-center justify-center flex-1">
                   <span className="font-mono text-[17px] font-extrabold text-[#234745] tracking-wider select-all">
-                    {activeLocationDiscount.code || 'RIYADH50'}
+                    {activeLocationDiscount.code}
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => {
                     navigator.clipboard.writeText(
-                      activeLocationDiscount.code || 'RIYADH50',
+                      activeLocationDiscount.code,
                     );
                     setShowToast(true);
                     setTimeout(() => setShowToast(false), 2000);

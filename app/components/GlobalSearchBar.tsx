@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useFetcher, Form, useNavigate, useLocation, Link } from 'react-router';
 import { Image, Money } from '@shopify/hydrogen';
 import { useI18n } from '~/lib/i18n';
+import {NoImage} from '~/components/NoImage';
 import type { NormalizedPredictiveSearchResults } from './Search';
 
 import { isCorporateProduct } from '~/lib/stock';
@@ -403,7 +404,7 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
                                 </div>
                               ) : (
                                 <div className="shrink-0 w-12 h-12 bg-[#f5f3f1] border border-[#e8e4e1] rounded-lg overflow-hidden flex items-center justify-center">
-                                  <img src="/images/placeholder/sample.png" alt={item.title || ''} className="w-full h-full object-cover" />
+                                  <NoImage title={item.title} size="sm" />
                                 </div>
                               )}
                               <div className="flex-1 min-w-0">

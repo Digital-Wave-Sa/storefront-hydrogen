@@ -8,6 +8,7 @@ import { useBranchAvailability } from '~/lib/useBranchAvailability';
 import { getVisibilityStatus } from '~/lib/visibility';
 import { Price } from '~/components/Price';
 import { AddToCartButton } from '~/components/AddToCartButton';
+import {NoImage} from '~/components/NoImage';
 import { StockNotificationModal } from '~/components/StockNotificationModal';
 import { useWishlist } from '~/context/WishlistContext';
 import { fixMojibake } from '~/lib/mojibake';
@@ -371,11 +372,7 @@ function ProductItemCard({
                 style={{ opacity: isVisibilityBlocked ? 0.5 : (showOutOfStock ? 0.4 : 1), filter: isVisibilityBlocked ? 'grayscale(1)' : 'none' }}
               />
             ) : (
-              <img
-                src="/images/placeholder/sample.png"
-                alt={product.title || ''}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-              />
+              <NoImage title={product.title} size="sm" />
             )}
             {/* Promo Badges (List View) */}
             <div className={`absolute top-2 ${isEn ? 'right-2' : 'left-2'} z-10 flex flex-col gap-1 ${isEn ? 'items-end' : 'items-start'}`}>
@@ -485,11 +482,7 @@ function ProductItemCard({
             const imageToDisplay = product.featuredImage || product.image || product.images?.nodes?.[0] || product.variants?.nodes?.[0]?.image;
             if (!imageToDisplay) {
               return (
-                <img
-                  src="/images/placeholder/sample.png"
-                  alt={product.title || ''}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                />
+                <NoImage title={product.title} />
               );
             }
             return (

@@ -10,6 +10,7 @@ import {isGiftCardProduct} from '~/lib/digital-lines';
 import {useBranchAvailability} from '~/lib/useBranchAvailability';
 import {StockNotificationModal} from '~/components/StockNotificationModal';
 import {ProductUpsellModal} from '~/components/ProductUpsellModal';
+import {NoImage} from '~/components/NoImage';
 import {Price, SaudiRiyalSymbol} from '~/components/Price';
 import {AddToCartButton} from '~/components/AddToCartButton';
 import {StarRating, parseRatingValue} from '~/components/StarRating';
@@ -2989,11 +2990,7 @@ export default function Product() {
                                         sizes="80px"
                                       />
                                     ) : (
-                                      <img
-                                        src="/images/placeholder/sample.png"
-                                        alt={component.title || ''}
-                                        className="object-cover w-full h-full"
-                                      />
+                                      <NoImage title={component.title} size="sm" />
                                     )}
                                   </div>
                                   <div className="flex flex-col flex-grow text-start">
@@ -5232,8 +5229,8 @@ function ProductGallery({images, product}: {images: any[]; product: any}) {
 
   if (!images || images.length === 0)
     return (
-      <div className="w-full bg-gray-200 aspect-square flex items-center justify-center animate-pulse rounded-[32px]">
-        لا يوجد صورة
+      <div className="w-full aspect-square rounded-[32px] overflow-hidden">
+        <NoImage title={product?.title} size="lg" />
       </div>
     );
 

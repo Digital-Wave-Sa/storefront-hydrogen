@@ -10,6 +10,7 @@ import {
 } from 'react-router';
 import {ProductItem} from '~/components/ProductItem';
 import {PageHeader} from '~/components/layout/PageHeader';
+import {NoImage} from '~/components/NoImage';
 
 import {pageTitle} from '~/lib/seo';
 export const meta: MetaFunction = ({matches}) => {
@@ -383,19 +384,27 @@ function CorporateProductCard({
             onClick={onOpenCustomModal}
             className="block w-full h-full text-start"
           >
-            <img
-              src={product.featuredImage?.url || '/images/placeholder/sample.png'}
-              alt={product.featuredImage?.altText || displayTitle}
-              className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-            />
+            {product.featuredImage?.url ? (
+              <img
+                src={product.featuredImage.url}
+                alt={product.featuredImage?.altText || displayTitle}
+                className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+              />
+            ) : (
+              <NoImage title={displayTitle} />
+            )}
           </button>
         ) : (
           <Link to={productUrl} className="block w-full h-full">
-            <img
-              src={product.featuredImage?.url || '/images/placeholder/sample.png'}
-              alt={product.featuredImage?.altText || displayTitle}
-              className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-            />
+            {product.featuredImage?.url ? (
+              <img
+                src={product.featuredImage.url}
+                alt={product.featuredImage?.altText || displayTitle}
+                className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+              />
+            ) : (
+              <NoImage title={displayTitle} />
+            )}
           </Link>
         )}
 

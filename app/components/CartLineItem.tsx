@@ -1,5 +1,6 @@
 import type { CartLineUpdateInput } from '@shopify/hydrogen/storefront-api-types';
 import type { CartLayout, LineItemChildrenMap } from '~/components/CartMain';
+import {NoImage} from '~/components/NoImage';
 import { CartForm, Image, type OptimisticCartLine } from '@shopify/hydrogen';
 import { usePendingCartMutations, lineTotalOf } from '~/lib/cart-pending';
 import { useVariantUrl } from '~/lib/variants';
@@ -367,11 +368,7 @@ export function CartLineItem({
               className="w-full h-full object-cover"
             />
           ) : (
-            <img
-              src="/images/placeholder/sample.png"
-              alt={title || ''}
-              className="w-full h-full object-cover"
-            />
+            <NoImage title={title} size="sm" />
           )}
         </LineImageFrame>
 
@@ -577,11 +574,7 @@ export function CartLineItem({
                 className="w-full h-full object-cover"
               />
             ) : (
-              <img
-                src="/images/placeholder/sample.png"
-                alt={title || ''}
-                className="w-full h-full object-cover"
-              />
+              <NoImage title={title} size="sm" />
             )}
           </LineImageFrame>
 

@@ -458,7 +458,10 @@ export async function action({request, context}: ActionFunctionArgs) {
               variables: {customerAccessToken: tokenStr, address},
             });
             if (!res?.customerAddressCreate?.customerUserErrors?.length && res?.customerAddressCreate?.customerAddress) {
-              const createdAddress = res.customerAddressCreate.customerAddress;
+              const createdAddress = {
+                ...res.customerAddressCreate.customerAddress,
+                address2: stripCoordsMarker(res.customerAddressCreate.customerAddress.address2),
+              };
               if (defaultAddress && createdAddress?.id) {
                 await storefront.mutate(UPDATE_DEFAULT_ADDRESS_MUTATION, {
                   variables: {
@@ -560,7 +563,10 @@ export async function action({request, context}: ActionFunctionArgs) {
               }
               return data({
                 error: null,
-                updatedAddress: await withPin(res.customerAddressUpdate.customerAddress),
+                updatedAddress: await withPin({
+                  ...res.customerAddressUpdate.customerAddress,
+                  address2: stripCoordsMarker(res.customerAddressUpdate.customerAddress.address2),
+                }),
                 defaultAddress,
               });
             }
@@ -1213,7 +1219,9 @@ function AddressModal({
 const UPDATE_ADDRESS_MUTATION = `#graphql
   mutation customerAddressUpdate($address: MailingAddressInput!, $customerAccessToken: String!, $id: ID!) {
     customerAddressUpdate(address: $address, customerAccessToken: $customerAccessToken, id: $id) {
-      customerAddress { id }
+      customerAddress {
+        id firstName lastName address1 address2 city province zip country phone company
+      }
       customerUserErrors { message }
     }
   }
@@ -1237,10 +1245,20 @@ const UPDATE_DEFAULT_ADDRESS_MUTATION = `#graphql
   }
 ` as const;
 
+/**
+ * Create and update return the WHOLE address, not just its id.
+ *
+ * The delivery modal shows the saved address straight from this response --
+ * its customer data was loaded before the address existed. With `{ id }`
+ * alone the new row rendered blank (no name, street or city) until a reload.
+ * Same fields as formatAdminAddressToFragment, so both save paths agree.
+ */
 const CREATE_ADDRESS_MUTATION = `#graphql
   mutation customerAddressCreate($address: MailingAddressInput!, $customerAccessToken: String!) {
     customerAddressCreate(address: $address, customerAccessToken: $customerAccessToken) {
-      customerAddress { id }
+      customerAddress {
+        id firstName lastName address1 address2 city province zip country phone company
+      }
       customerUserErrors { message }
     }
   }

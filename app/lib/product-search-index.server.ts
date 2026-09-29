@@ -92,6 +92,16 @@ function isUsable(idx: IndexCache | null): idx is IndexCache {
 
 /** One in-flight build at a time, so a burst of first keystrokes shares it. */
 let building: Promise<IndexCache | null> | null = null;
+let buildingSince = 0;
+/**
+ * A crawl whose request was cancelled never settles, so `building` would stay
+ * set and every later search would wait on it for nothing. Past this age it is
+ * treated as dead and a new crawl may start. 422 products take ~5-10 s.
+ */
+const BUILD_STALE_MS = 60_000;
+function dropDeadBuild(): void {
+  if (building && Date.now() - buildingSince > BUILD_STALE_MS) building = null;
+}
 
 /**
  * The index also lives in the Oxygen cache, not only in this module.
@@ -364,8 +374,10 @@ const BUILD_WAIT_MS = 2500;
 const COLD_BUILD_WAIT_MS = 8000;
 
 function startBuild(env: any): Promise<IndexCache | null> {
+  dropDeadBuild();
   if (!building) {
-    building = buildIndex(env)
+    buildingSince = Date.now();
+    const mine: Promise<IndexCache | null> = buildIndex(env)
       .then(async (built) => {
         if (built) {
           /**
@@ -390,8 +402,10 @@ function startBuild(env: any): Promise<IndexCache | null> {
         return cache; // serve the stale copy rather than nothing
       })
       .finally(() => {
-        building = null;
+        // Only clear it if a newer crawl has not replaced this one.
+        if (building === mine) building = null;
       });
+    building = mine;
   }
   return building;
 }
@@ -416,6 +430,12 @@ export function warmProductIndex(
       // A soft-expired shared copy is worth having AND worth refreshing.
       if (isFresh(shared)) return;
     }
+    /**
+     * Re-checked after the await: another request may have started a crawl
+     * meanwhile, and its promise must not be joined from here (see
+     * waitForOtherBuild).
+     */
+    if (building) return;
     await startBuild(env);
   })().catch(() => {});
   if (waitUntil) {
@@ -443,6 +463,29 @@ function revalidateInBackground(
       waitUntil(work);
     } catch (e) {}
   }
+}
+
+/**
+ * Wait for a crawl that ANOTHER request started, without touching its promise.
+ *
+ * `building` belongs to the request that created it. The Workers runtime
+ * (Oxygen, and MiniOxygen locally) will not resume one request on a promise
+ * settled by another: it cancels the continuation and logs «A promise was
+ * resolved or rejected from a different request context», and a request left
+ * with nothing else to wait on fails with «The script will never generate a
+ * response». That is what two quick searches on a cold index produced.
+ *
+ * So this request watches module memory on its own timer instead: the crawl
+ * writes `cache` when it finishes, and `building` goes back to null either way.
+ */
+async function waitForOtherBuild(ms: number): Promise<IndexCache | null> {
+  const deadline = Date.now() + ms;
+  while (Date.now() < deadline) {
+    if (isUsable(cache)) return cache;
+    if (!building) break; // the crawl ended without a usable index
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  return isUsable(cache) ? cache : null;
 }
 
 /**
@@ -478,6 +521,12 @@ async function getIndex(
     return shared;
   }
 
+  // Nothing to fall back on, so give the crawl a real chance to finish.
+  const coldWait = Math.max(waitMs, COLD_BUILD_WAIT_MS);
+
+  dropDeadBuild();
+  if (building) return waitForOtherBuild(coldWait);
+
   const build = startBuild(env);
 
   /**
@@ -492,8 +541,6 @@ async function getIndex(
     } catch (e) {}
   }
 
-  // Nothing to fall back on, so give the crawl a real chance to finish.
-  const coldWait = Math.max(waitMs, COLD_BUILD_WAIT_MS);
   return Promise.race([
     build,
     new Promise<IndexCache | null>((resolve) =>

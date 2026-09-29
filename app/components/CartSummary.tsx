@@ -3699,17 +3699,21 @@ function CartCalendarPicker({
             type="button"
             onClick={handlePrevMonth}
             disabled={displayedMonth.getMonth() === today.getMonth() && displayedMonth.getFullYear() === today.getFullYear()}
+            aria-label={isEn ? 'Previous month' : 'الشهر السابق'}
             className="p-1.5 rounded-lg border border-[#f0ece8] text-[#234745] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#fcfaf8] transition-all"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6" /></svg>
+            {/* Arrows point the way the months move: mirrored in Arabic, where
+                the previous month is on the right and the next on the left. */}
+            <svg className="rtl:-scale-x-100" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6" /></svg>
           </button>
           <span className="font-bold text-[14px] text-[#234745]">{monthLabel}</span>
           <button
             type="button"
             onClick={handleNextMonth}
+            aria-label={isEn ? 'Next month' : 'الشهر التالي'}
             className="p-1.5 rounded-lg border border-[#f0ece8] text-[#234745] hover:bg-[#fcfaf8] transition-all"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+            <svg className="rtl:-scale-x-100" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
           </button>
         </div>
 

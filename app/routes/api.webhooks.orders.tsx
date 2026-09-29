@@ -27,7 +27,8 @@ import {
  *      order (see fulfillment-routing.server.ts). Subscribe `orders/paid` to
  *      this same URL in admin — the retry does nothing until you do.
  *   2. Send the stage notification (confirmed / ready / out for delivery /
- *      delivered).
+ *      delivered) -- only for the stages listed in STOREFRONT_NOTIFY_STAGES
+ *      (see enabledNotifyStages); none by default.
  *
  * Every request must carry a valid `X-Shopify-Hmac-Sha256`. The signing secret
  * is `SHOPIFY_WEBHOOK_SECRET` (the value the admin shows under Settings →
@@ -46,6 +47,26 @@ const STAGE_RANK: Record<string, number> = {
   OUT_FOR_DELIVERY: 4,
   DELIVERED: 5,
 };
+
+/**
+ * Which stages THIS webhook may notify the customer about.
+ *
+ * Shopify (order confirmation, ready for pickup, local delivery), Flow (the
+ * review email) and possibly the middleware (SMS) already message customers.
+ * With this webhook registered for branch routing, every stage it also sent
+ * arrived twice. So notifying is opt-in, per stage, from the Oxygen variable
+ * STOREFRONT_NOTIFY_STAGES, a comma-separated list, e.g.
+ * `PREPARING,READY_FOR_DELIVERY`. Unset or empty = routing only, no email or
+ * SMS from here. Unknown names are ignored.
+ */
+function enabledNotifyStages(env: any): Set<string> {
+  return new Set(
+    String(env?.STOREFRONT_NOTIFY_STAGES || '')
+      .split(',')
+      .map((s) => s.trim().toUpperCase())
+      .filter((s) => s in STAGE_RANK),
+  );
+}
 
 /** Older spellings the ERP and staff have used for "done". */
 const EXTRA_DONE_TOKENS = ['completed', 'مكتمل', 'pickedup'];
@@ -171,6 +192,8 @@ export async function action({request, context}: ActionFunctionArgs) {
 
   console.log(`[Order Webhook] ${topic} for order #${payload.order_number ?? payload.name ?? payload.id}`);
 
+  const notifyStages = enabledNotifyStages(env);
+
   /**
    * 1. Branch routing — never blocks notifications.
    *
@@ -235,7 +258,10 @@ export async function action({request, context}: ActionFunctionArgs) {
    * rather than copied, so the email and the timeline cannot disagree.
    */
   let ready: any = null;
-  if (topic === 'orders/updated' || topic === 'orders/create') {
+  if (
+    (topic === 'orders/updated' || topic === 'orders/create') &&
+    (notifyStages.has('READY_FOR_PICKUP') || notifyStages.has('READY_FOR_DELIVERY'))
+  ) {
     try {
       const {sent, orderStatus} = await readOrderNotificationState(env, payload);
       const kind = readyKind(payload, orderStatus);
@@ -252,6 +278,8 @@ export async function action({request, context}: ActionFunctionArgs) {
         console.log(
           `[Order Webhook] Ready check #${payload.order_number ?? payload.id}: not ready — tags=[${[...t.erp].join(', ')}] fulfillment=[${t.fulfillment.join(', ')}] fulfillment_status=${payload.fulfillment_status ?? 'null'}`,
         );
+      } else if (!notifyStages.has(stage)) {
+        ready = {skipped: 'not in STOREFRONT_NOTIFY_STAGES', stage};
       } else if (sent.includes(stage)) {
         ready = {skipped: 'already sent', stage};
         console.log(`[Order Webhook] ${stage} already sent for #${payload.order_number ?? payload.id} — not resending`);
@@ -308,10 +336,12 @@ export async function action({request, context}: ActionFunctionArgs) {
    */
   let notified = false;
   let progress: any = null;
+  const progressStages = ['CONFIRMED', 'PREPARING', 'OUT_FOR_DELIVERY', 'DELIVERED'];
   if (
-    topic === 'orders/create' ||
-    topic === 'orders/updated' ||
-    topic === 'orders/fulfilled'
+    (topic === 'orders/create' ||
+      topic === 'orders/updated' ||
+      topic === 'orders/fulfilled') &&
+    progressStages.some((s) => notifyStages.has(s))
   ) {
     try {
       // The confirmation must not depend on the Admin read: if that fails on
@@ -332,6 +362,9 @@ export async function action({request, context}: ActionFunctionArgs) {
 
       if (!stage) {
         progress = {skipped: 'no progress stage'};
+      } else if (!notifyStages.has(stage)) {
+        // Another sender (Shopify, Flow) owns this step. Not recorded as sent.
+        progress = {skipped: 'not in STOREFRONT_NOTIFY_STAGES', stage};
       } else if (sent.includes(stage)) {
         progress = {skipped: 'already sent', stage};
       } else if (rank(stage) <= furthestSent) {
@@ -360,6 +393,8 @@ export async function action({request, context}: ActionFunctionArgs) {
       console.error('[Order Webhook] Notification error:', error?.message || error);
       progress = {error: error?.message || String(error)};
     }
+  } else if (notifyStages.size === 0) {
+    console.log('[Order Webhook] Notifications off (STOREFRONT_NOTIFY_STAGES empty) — routing only');
   } else {
     console.log(`[Order Webhook] No notification for topic: ${topic}`);
   }

@@ -11,10 +11,18 @@ export async function loader({
     storefront,
     request,
     params,
-    locales: ['EN-US', 'EN-CA', 'FR-CA'],
+    /**
+     * The site's two languages: Arabic at the root, English under /en.
+     *
+     * This used to be the Hydrogen template's ['EN-US', 'EN-CA', 'FR-CA'],
+     * which told Google every page also lived at /EN-US/..., /EN-CA/... and
+     * /FR-CA/... -- addresses that 404 here. Each <url> now lists its Arabic
+     * address as the main one, with hreflang alternates for ar and en.
+     */
+    locales: ['ar', 'en'],
     getLink: ({type, baseUrl, handle, locale}) => {
-      if (!locale) return `${baseUrl}/${type}/${handle}`;
-      return `${baseUrl}/${locale}/${type}/${handle}`;
+      if (locale === 'en') return `${baseUrl}/en/${type}/${handle}`;
+      return `${baseUrl}/${type}/${handle}`;
     },
   });
 

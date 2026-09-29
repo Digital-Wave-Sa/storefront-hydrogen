@@ -45,11 +45,22 @@ export async function notifyOrderUpdate({
   ).toLowerCase();
   const lang: Language = localeRaw.startsWith('en') ? 'EN' : 'AR';
   
+  /**
+   * The storefront's address. PUBLIC_SITE_URL can override it (e.g. for a
+   * staging site); otherwise the live domain. Not PUBLIC_STORE_DOMAIN: that is
+   * the myshopify.com address, which serves the old theme, not this site.
+   */
+  const siteUrl = String(env?.PUBLIC_SITE_URL || 'https://saadeddin.com').replace(/\/+$/, '');
+
   // 2. Prepare Data for Templates
   const orderData = {
     orderNumber: order.orderNumber || order.order_number?.toString() || order.name?.replace('#', ''),
     customerName: `${order.customer?.firstName || order.customer?.first_name || ''} ${order.customer?.lastName || order.customer?.last_name || ''}`.trim() || 'Valued Customer',
-    trackingUrl: order.statusPageUrl || order.order_status_url || `https://${env.PUBLIC_STORE_DOMAIN}/account/orders`,
+    trackingUrl:
+      order.statusPageUrl ||
+      order.order_status_url ||
+      `${siteUrl}${lang === 'EN' ? '/en' : ''}/account/orders`,
+    siteUrl,
     totalPrice: order.totalPriceSet?.shopMoney?.amount ? 
       `${order.totalPriceSet.shopMoney.amount} ${order.totalPriceSet.shopMoney.currencyCode}` : 
       (order.total_price ? `${order.total_price} ${order.currency}` : 'N/A'),

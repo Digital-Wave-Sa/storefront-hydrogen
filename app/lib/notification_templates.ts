@@ -23,6 +23,13 @@ interface OrderData {
   orderNumber: string;
   customerName: string;
   trackingUrl?: string;
+  /**
+   * The storefront's own address, e.g. https://saadeddin.com (no trailing
+   * slash). Links to pages that exist only on the Hydrogen site -- the review
+   * page -- are built from this, never from trackingUrl: that is Shopify's
+   * order-status page, which lives on the checkout domain.
+   */
+  siteUrl?: string;
   totalPrice?: string;
   items?: Array<{ title: string; quantity: number; price: string }>;
   expectedDelivery?: string;
@@ -91,7 +98,7 @@ function getEmailTemplate(stage: OrderStage, lang: Language, data: OrderData) {
   const isEn = lang === 'EN';
   const dir = isEn ? 'ltr' : 'rtl';
   const textAlign = isEn ? 'left' : 'right';
-  const { customerName, orderNumber, items, totalPrice, trackingUrl, expectedDelivery, branchName } = data;
+  const { customerName, orderNumber, items, totalPrice, trackingUrl, expectedDelivery, branchName, siteUrl } = data;
 
   const stageTitles = {
     CONFIRMED: isEn ? 'Order Confirmed' : 'تم تأكيد طلبك',
@@ -207,13 +214,15 @@ function getEmailTemplate(stage: OrderStage, lang: Language, data: OrderData) {
             <div style="margin-top: 40px;">
               ${(() => {
                 if (stage === 'DELIVERED') {
-                  let fUrl = '';
-                  try {
-                    const parsedUrl = new URL(trackingUrl || 'https://localhost:3000');
-                    fUrl = `${parsedUrl.protocol}//${parsedUrl.host}${isEn ? '/en' : ''}/feedback/${orderNumber}`;
-                  } catch (e) {
-                    fUrl = `http://localhost:3000${isEn ? '/en' : ''}/feedback/${orderNumber}`;
-                  }
+                  /*
+                    The review page is on the storefront, so the link is built
+                    from its address. It used to take the host of trackingUrl
+                    (falling back to localhost:3000) -- and trackingUrl is
+                    Shopify's order-status page, now on checkout.saadeddin.com,
+                    where /feedback does not exist.
+                  */
+                  const base = (siteUrl || 'https://saadeddin.com').replace(/\/+$/, '');
+                  const fUrl = `${base}${isEn ? '/en' : ''}/feedback/${encodeURIComponent(orderNumber)}`;
                   return `
                     <a href="${fUrl}" style="background: #d4a06a; color: #fff; padding: 18px 40px; text-decoration: none; border-radius: 14px; font-weight: 900; display: inline-block; font-size: 15px; box-shadow: 0 10px 20px rgba(212,160,106,0.2);">
                       ${isEn ? 'SHARE YOUR EXPERIENCE' : 'شاركنا تجربتك ورأيك'}

@@ -1305,7 +1305,7 @@ export default function Register() {
                           <input
                             name="lastName"
                             type="text"
-                            placeholder={isEn ? 'Doe' : 'العبدلي'}
+                            placeholder={isEn ? 'Doe' : 'القحطاني'}
                             className="w-full bg-white border border-[#BBCFCD] rounded-[12px] px-4 py-3 h-[48px] focus:border-[#234745] outline-none text-[#171717] font-medium text-[14px] placeholder:text-[#BBCFCD] transition-colors"
                             value={formData.lastName}
                             onChange={(e) => setFormData({...formData, lastName: e.target.value})}

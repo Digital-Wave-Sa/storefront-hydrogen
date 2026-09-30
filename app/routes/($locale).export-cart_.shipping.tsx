@@ -485,7 +485,7 @@ export default function ExportShipping() {
                     </label>
                     <input
                       type="text"
-                      placeholder="محمد العبدلي"
+                      placeholder="محمد القحطاني"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       className={`export-input ${formErrors.fullName ? 'error' : ''}`}

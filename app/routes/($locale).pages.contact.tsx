@@ -484,7 +484,7 @@ export default function ContactPage() {
                         name="fullName"
                         label={isEn ? 'Full Name' : 'الاسم الكامل'}
                         placeholder={
-                          isEn ? 'Mohamed Al-Abdali' : 'محمد العبدلي'
+                          isEn ? 'Mohammed Al-Qahtani' : 'محمد القحطاني'
                         }
                         required
                         isEn={isEn}

@@ -40,6 +40,69 @@ function updateGa4Consent(granted: boolean) {
   }
 }
 
+/**
+ * Tell Shopify the visitor's choice, so checkout follows it.
+ *
+ * The banner used to keep the choice only in localStorage, which checkout
+ * (checkout.saadeddin.com) cannot read: Shopify never got a
+ * `_tracking_consent` cookie (checked on the live site 30 Sep), so checkout
+ * fell back to its own default for the visitor's region. Shopify's Customer
+ * Privacy API writes that cookie on the root domain (.saadeddin.com), which
+ * checkout reads.
+ *
+ * <Analytics.Provider consent> in root.tsx loads the API and fills in the
+ * headless fields (storefront token, root domains); we only pass the choice.
+ * The script loads after hydration, so a click in the first moments waits
+ * for it (up to ~10 s) instead of being lost.
+ */
+function syncShopifyConsent(granted: boolean, attempt = 0) {
+  if (typeof window === 'undefined') return;
+  const api = (window as any).Shopify?.customerPrivacy;
+  if (!api?.setTrackingConsent) {
+    if (attempt < 20) {
+      setTimeout(() => syncShopifyConsent(granted, attempt + 1), 500);
+    }
+    return;
+  }
+  try {
+    api.setTrackingConsent(
+      {
+        analytics: granted,
+        marketing: granted,
+        preferences: granted,
+        sale_of_data: granted,
+      },
+      (result?: {error?: string}) => {
+        if (result?.error) {
+          console.warn('[consent] Shopify did not save the choice:', result.error);
+        }
+      },
+    );
+  } catch (error) {
+    console.warn('[consent] Shopify consent call failed:', error);
+  }
+}
+
+/**
+ * A visitor who chose before this fix has the choice in localStorage but no
+ * Shopify cookie: send it once, without showing the banner again.
+ */
+function syncStoredConsentIfMissing(granted: boolean, attempt = 0) {
+  if (typeof window === 'undefined') return;
+  const api = (window as any).Shopify?.customerPrivacy;
+  if (!api?.currentVisitorConsent) {
+    if (attempt < 20) {
+      setTimeout(() => syncStoredConsentIfMissing(granted, attempt + 1), 500);
+    }
+    return;
+  }
+  const current = api.currentVisitorConsent() || {};
+  const want = granted ? 'yes' : 'no';
+  if (current.analytics !== want || current.marketing !== want) {
+    syncShopifyConsent(granted);
+  }
+}
+
 interface CookieConsentBannerProps {
   locale: string; // 'en' | 'ar'
 }
@@ -57,17 +120,20 @@ export function CookieConsentBanner({ locale }: CookieConsentBannerProps) {
     }
     // Restore previous consent on mount
     updateGa4Consent(stored === 'accepted');
+    syncStoredConsentIfMissing(stored === 'accepted');
   }, []);
 
   const handleAccept = () => {
     localStorage.setItem(CONSENT_KEY, 'accepted');
     updateGa4Consent(true);
+    syncShopifyConsent(true);
     setVisible(false);
   };
 
   const handleReject = () => {
     localStorage.setItem(CONSENT_KEY, 'rejected');
     updateGa4Consent(false);
+    syncShopifyConsent(false);
     setVisible(false);
   };
 

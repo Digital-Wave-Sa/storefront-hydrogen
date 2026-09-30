@@ -17,6 +17,8 @@ import {
 } from 'react-router';
 import {Button} from '~/components/layout/Button';
 import {stripCoordsMarker} from '~/lib/address-coords';
+import {parsePhoneCountry} from '~/lib/country-codes';
+import {validatePhoneNumber} from '~/lib/phone-validation';
 import {AddressForm} from '~/components/AddressForm';
 import {PendingOverlay} from '~/components/BrandLoader';
 
@@ -383,7 +385,17 @@ export async function action({request, context}: ActionFunctionArgs) {
     const customerAccessToken = await session.get('customerAccessToken');
 
     if (!customerAccessToken) {
-      return data({error: {[addressId]: 'Unauthorized'}}, {status: 401});
+      // Shown to the shopper as is, so it says what to do, not «Unauthorized».
+      return data(
+        {
+          error: {
+            [addressId]: actionIsEn
+              ? 'Please sign in to save an address.'
+              : 'يرجى تسجيل الدخول لحفظ العنوان.',
+          },
+        },
+        {status: 401},
+      );
     }
     const tokenStr = typeof customerAccessToken === 'string'
       ? customerAccessToken
@@ -409,7 +421,31 @@ export async function action({request, context}: ActionFunctionArgs) {
       const value = form.get(key);
       if (typeof value === 'string') {
         if (key === 'phone') {
-          address.phone = formatAddressPhone(value);
+          /**
+           * Same rules as login. The form checks before sending, but a phone
+           * like «444» used to be saved as «+444», so the server refuses it
+           * too. The form posts the full number (+9665XXXXXXXX); older
+           * spellings (05…, 9665…) are normalised first.
+           */
+          const formatted = formatAddressPhone(value) || '';
+          const parsedPhone = parsePhoneCountry(formatted);
+          const phoneCheck = validatePhoneNumber(
+            parsedPhone.localNumber,
+            parsedPhone.countryCode,
+          );
+          if (!phoneCheck.isValid) {
+            return data(
+              {
+                error: {
+                  [addressId]:
+                    (actionIsEn ? phoneCheck.errorEn : phoneCheck.errorAr) ||
+                    'Invalid mobile number',
+                },
+              },
+              {status: 400},
+            );
+          }
+          address.phone = phoneCheck.fullPhone;
         } else if (key === 'lat' || key === 'lng') {
           /**
            * The map pin never goes on the address itself — Shopify has no

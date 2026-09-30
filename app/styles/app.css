@@ -1601,6 +1601,73 @@ button.reset:hover:not(:has(> *)) {
   background: #fff;
 }
 
+/*
+ * Phone field (components/PhoneField.tsx): an .account-input box holding the
+ * country-code picker and the number. The box keeps the same border, radius
+ * and height as the other fields -- the inner input carries the padding --
+ * and lights up like them when either part has focus.
+ */
+.account-phone {
+  display: flex;
+  align-items: stretch;
+  padding: 0;
+  overflow: hidden;
+}
+.account-phone:focus-within {
+  border-color: #234745;
+  box-shadow: 0 0 0 4px rgba(27, 61, 46, 0.05);
+  background: #fff;
+}
+.account-phone.is-invalid {
+  border-color: #e55c5c;
+}
+.account-phone__code {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 0 14px 0 18px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #234745;
+}
+.account-phone__code select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.account-phone__divider {
+  width: 1px;
+  margin: 12px 0;
+  background: #e5e5e5;
+  flex-shrink: 0;
+}
+.account-phone__number {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 18px 14px 14px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 500;
+  color: #234745;
+  font-family: 'EnglishDigits', 'GE Dinar One', sans-serif;
+}
+.account-phone__number::placeholder {
+  color: #b5b5b5;
+}
+.account-phone__error {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #e55c5c;
+}
+
 /* Orders Table & Cards */
 .order-item-card {
   border: 1px solid #f0eee9;

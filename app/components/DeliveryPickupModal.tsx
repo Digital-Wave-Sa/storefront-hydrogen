@@ -925,6 +925,14 @@ function ModalContent({
     ) : null;
 
     const customerObj = customer?.customer || customer || {};
+    /**
+     * A guest has no customer record, so nothing to save an address to: the
+     * save came back «Unauthorized». Guests get a sign-in link instead of the
+     * form, and return here afterwards (the redirectTo contract).
+     */
+    const isSignedIn = !!(customerObj?.id || customerObj?.data?.customer?.id);
+    const here = useLocation();
+    const signInHref = `${isEn ? '/en' : ''}/account/login?redirectTo=${encodeURIComponent(here.pathname + here.search)}`;
     const loadedAddresses = customerObj?.addresses?.nodes || customerObj?.data?.customer?.addresses?.nodes || [];
 
     /**
@@ -1405,15 +1413,31 @@ function ModalContent({
                                     <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
                                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
                                     </div>
-                                    <p className="text-sm text-gray-400 mb-3">{isEn ? 'No addresses found' : 'لم يتم العثور على عناوين'}</p>
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsAddingAddress(true)}
-                                        className="inline-block px-6 py-3 bg-[#234745] !text-white rounded-xl font-bold text-sm mt-3 transition-colors hover:bg-[#1a3533]"
-                                        style={{ color: '#ffffff' }}
-                                    >
-                                        {isEn ? 'Add New Address' : 'إضافة عنوان جديد'}
-                                    </button>
+                                    {isSignedIn ? (
+                                        <>
+                                            <p className="text-sm text-gray-400 mb-3">{isEn ? 'No addresses found' : 'لم يتم العثور على عناوين'}</p>
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsAddingAddress(true)}
+                                                className="inline-block px-6 py-3 bg-[#234745] !text-white rounded-xl font-bold text-sm mt-3 transition-colors hover:bg-[#1a3533]"
+                                                style={{ color: '#ffffff' }}
+                                            >
+                                                {isEn ? 'Add New Address' : 'إضافة عنوان جديد'}
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <p className="text-sm text-gray-400 mb-3">{isEn ? 'Sign in to add a delivery address' : 'سجّل الدخول لإضافة عنوان التوصيل'}</p>
+                                            <Link
+                                                to={signInHref}
+                                                onClick={onClose}
+                                                className="inline-block px-6 py-3 bg-[#234745] !text-white rounded-xl font-bold text-sm mt-3 transition-colors hover:bg-[#1a3533]"
+                                                style={{ color: '#ffffff' }}
+                                            >
+                                                {isEn ? 'Sign in' : 'تسجيل الدخول'}
+                                            </Link>
+                                        </>
+                                    )}
                                 </div>
                             )}
                             {addresses.length > 0 && (

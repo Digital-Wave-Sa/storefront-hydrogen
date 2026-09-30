@@ -25,6 +25,9 @@ import {
 import {useAdminLocations} from '~/lib/locations-meta';
 import {loadGoogleMaps} from '~/lib/google-maps-loader';
 import {PointMap} from '~/components/PointMap';
+import {PhoneField} from '~/components/PhoneField';
+import {parsePhoneCountry} from '~/lib/country-codes';
+import {validatePhoneNumber} from '~/lib/phone-validation';
 import type {ActionResponse} from '~/routes/($locale).account.addresses';
 
 export function AddressForm({
@@ -106,6 +109,17 @@ export function AddressForm({
   const [isValidated, setIsValidated] = useState(type === 'edit');
   const [isValidating, setIsValidating] = useState(false);
   const [addressLine1, setAddressLine1] = useState(address?.address1 ?? '');
+
+  /**
+   * The phone as login takes it: country code + local number, validated
+   * before the form can be sent (see PhoneField). A saved +9665XXXXXXXX
+   * opens as +966 / 5XXXXXXXX.
+   */
+  const [phone, setPhone] = useState(() => {
+    const parsed = parsePhoneCountry(address?.phone ?? '');
+    return {countryCode: parsed.countryCode, local: parsed.localNumber.replace(/\D/g, '')};
+  });
+  const [phoneError, setPhoneError] = useState<string | null>(null);
 
   // Initial preview URL if we have an address already
   useEffect(() => {
@@ -234,6 +248,13 @@ export function AddressForm({
         <fetcher.Form
           method={type === 'create' ? 'POST' : 'PUT'}
           action={actionPath}
+          onSubmit={(e) => {
+            const check = validatePhoneNumber(phone.local, phone.countryCode);
+            if (!check.isValid) {
+              e.preventDefault();
+              setPhoneError((isEn ? check.errorEn : check.errorAr) || null);
+            }
+          }}
         >
           <input type="hidden" name="addressId" value={address?.id ?? 'new'} />
           <input type="hidden" name="lat" value={coords?.lat ?? ''} />
@@ -423,14 +444,19 @@ export function AddressForm({
           </div>
 
           <div style={{marginTop: '20px'}}>
-            <label className="account-field-label">رقم الجوال</label>
-            <input
+            <label className="account-field-label">
+              {isEn ? 'Mobile number' : 'رقم الجوال'}
+            </label>
+            <PhoneField
               name="phone"
-              defaultValue={address?.phone ?? ''}
-              className="account-input"
-              dir="ltr"
-              placeholder="+966XXXXXXXXX"
-              required
+              countryCode={phone.countryCode}
+              local={phone.local}
+              onChange={(next) => {
+                setPhone(next);
+                setPhoneError(null);
+              }}
+              isEn={isEn}
+              error={phoneError}
             />
           </div>
 

@@ -1,15 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { useFetcher, Form, useNavigate, useLocation, Link } from 'react-router';
+import { Form, useNavigate, useLocation, Link } from 'react-router';
 import { Image, Money } from '@shopify/hydrogen';
 import { useI18n } from '~/lib/i18n';
 import {NoImage} from '~/components/NoImage';
-import type { NormalizedPredictiveSearchResults } from './Search';
-
-import { isCorporateProduct } from '~/lib/stock';
+import { usePredictiveSearch } from '~/lib/use-predictive-search';
 
 export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobile?: boolean }) {
   const isEn = locale === 'en';
-  const fetcher = useFetcher<any>();
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
@@ -17,7 +14,6 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
   const navigate = useNavigate();
   const location = useLocation();
   const [selectedIndex, setSelectedIndex] = useState(-1);
-  const [isTyping, setIsTyping] = useState(false);
 
   /**
    * A half-typed query does not follow the shopper to the next page.
@@ -43,7 +39,6 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
 
     setIsOpen(false);
     setSelectedIndex(-1);
-    setIsTyping(false);
 
     const isSearchPage = location.pathname.replace(/\/+$/, '').endsWith('/search');
     const q = isSearchPage
@@ -84,115 +79,12 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
     sessionStorage.removeItem('searchHistory');
   };
 
-  // Debounce typing state for smoother spinner transition
-  useEffect(() => {
-    if (!query) {
-      setIsTyping(false);
-      return;
-    }
-    setIsTyping(true);
-    const timer = setTimeout(() => {
-      setIsTyping(false);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [query]);
-
   /**
-   * One request per PAUSE in typing, not one per keystroke.
-   *
-   * This fired `fetcher.submit` on every character. Each submit is a real
-   * round trip to the predictive-search route, and each of those can have to
-   * wait on the catalog index — so typing four letters queued four server
-   * requests, every one of them re-rendering this dropdown as its state
-   * changed. On a dev server that is enough to make the input itself feel
-   * stuck: the keystrokes land, but React is busy re-rendering behind them.
-   *
-   * A 300ms debounce collapses a burst of typing into a single request, and
-   * the two-character minimum keeps a single letter — which matches most of
-   * the catalog and tells the shopper nothing — from asking at all.
+   * Requests, retries and the "no results" rule live in the hook, shared
+   * with the mobile search panel (~/lib/use-predictive-search).
    */
-  const searchEndpoint = isEn ? "/en/predictive-search" : "/predictive-search";
-
-  useEffect(() => {
-    const term = query.trim();
-    if (term.length < 2) return;
-    const timer = setTimeout(() => {
-      fetcher.submit(
-        { q: term, predictive: 'true' },
-        { method: 'get', action: searchEndpoint }
-      );
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [query, isEn]);
-
-  /**
-   * Focusing the box warms the catalog index.
-   *
-   * The route has always treated an empty `q` as "the shopper is about to
-   * type, go build the index" — but nothing ever sent that request. The
-   * effect above refuses to fire below two characters, and `onFocus` only
-   * opened the panel, so the first real keystroke was also the one that paid
-   * for the whole catalog crawl. For Arabic, which has no fallback source,
-   * that keystroke answered «لم نجد أي نتائج».
-   *
-   * A bare `fetch` rather than the fetcher: this must not overwrite the
-   * dropdown's data with an empty result set.
-   */
-  const warmedRef = useRef(false);
-  const warmSearchIndex = () => {
-    if (warmedRef.current) return;
-    warmedRef.current = true;
-    fetch(`${searchEndpoint}?q=`, {
-      headers: { Accept: 'application/json' },
-    }).catch(() => {
-      // Warming is best effort; a failure here costs nothing.
-      warmedRef.current = false;
-    });
-  };
-
-  /**
-   * An unanswerable keystroke is retried, not reported as "no results".
-   *
-   * `pending` from the route means the index was not available to look in.
-   * Without this the shopper sees an empty dropdown and has to type another
-   * character to shake it loose — which is exactly what "sometimes it returns
-   * nothing" looked like. Capped at two retries per term so a genuinely
-   * broken index cannot loop.
-   */
-  const MAX_PENDING_RETRIES = 2;
-  const retriesRef = useRef<Record<string, number>>({});
-  /**
-   * The term we stopped retrying for. Without this the panel waited on a
-   * `pending` answer forever once the retries ran out — «جاري البحث...» with
-   * nothing coming. Past the cap, the empty answer is accepted as the answer.
-   */
-  const [gaveUpOn, setGaveUpOn] = useState<string | null>(null);
-
-  // A new query gets a fresh retry budget.
-  useEffect(() => {
-    retriesRef.current = {};
-    setGaveUpOn(null);
-  }, [query]);
-
-  useEffect(() => {
-    const answer: any = fetcher.data;
-    if (!answer?.pending || fetcher.state !== 'idle') return;
-    const term = String(answer.searchTerm || '').trim();
-    if (!term || term !== query.trim()) return;
-    const attempts = retriesRef.current[term] || 0;
-    if (attempts >= MAX_PENDING_RETRIES) {
-      setGaveUpOn(term);
-      return;
-    }
-    retriesRef.current[term] = attempts + 1;
-    const timer = setTimeout(() => {
-      fetcher.submit(
-        { q: term, predictive: 'true' },
-        { method: 'get', action: searchEndpoint }
-      );
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, [fetcher.data, fetcher.state, query, isEn]);
+  const { results, flattenedItems, searching, answeredCurrentTerm, warm } =
+    usePredictiveSearch(query, isEn);
 
   // Click outside listener
   useEffect(() => {
@@ -205,50 +97,8 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  /**
-   * «No results» is only said once the server has answered THIS term.
-   *
-   * The old test was `query.length >= 1 && fetcher.state === 'idle' &&
-   * !isTyping`, which claimed nothing was found in two situations where
-   * nothing had been asked:
-   *
-   *  - At ONE character. The request deliberately does not fire below two
-   *    (see the debounce effect above), so the fetcher sat idle with no data
-   *    and the panel announced «لم نجد أي نتائج» for a search that never ran.
-   *
-   *  - Between the two 300ms timers. `isTyping` clears on one timer and the
-   *    request is submitted on another; `fetcher.state` does not turn
-   *    `loading` until React has processed that submit, so there is a tick
-   *    where the panel is idle, untyped and empty — and it said so.
-   *
-   * Neither was visible on a dev server, where the round trip is a few
-   * milliseconds. Against Oxygen it is hundreds, and the deployed site looked
-   * broken while returning six results perfectly well.
-   *
-   * Comparing the answered term to the typed one settles all of it: stale
-   * data from a previous query cannot be shown as the answer to this one, and
-   * the empty state waits for evidence rather than for a timer.
-   */
-  const trimmedQuery = query.trim();
-  const answeredCurrentTerm =
-    trimmedQuery.length >= 2 &&
-    fetcher.state === 'idle' &&
-    !isTyping &&
-    fetcher.data?.searchTerm === trimmedQuery &&
-    // `pending` is the server saying it had no index to search. That is not
-    // an answer, so the panel keeps waiting rather than declaring no results —
-    // until the retries are spent, after which waiting longer helps nobody.
-    (!fetcher.data?.pending || gaveUpOn === trimmedQuery);
-
-  const rawResults = fetcher.data?.searchResults?.results as NormalizedPredictiveSearchResults | undefined;
-  const results = rawResults?.map(group => ({
-    ...group,
-    items: group.items.filter((item: any) => !isCorporateProduct(item))
-  }));
-  
   // Flatten items for keyboard navigation
   const historyItemsCount = query.length < 1 ? history.length : 0;
-  const flattenedItems = results?.flatMap(group => group.items) || [];
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!isOpen) return;
@@ -315,7 +165,7 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
           onFocus={() => {
             setIsOpen(true);
             setSelectedIndex(-1);
-            warmSearchIndex();
+            warm();
           }}
           placeholder={isEn ? "Search for a product..." : "إبحث عن منتج..."}
           className="w-full bg-white !border-transparent !border-none !outline-none !ring-0 !rounded-full !py-3 !ps-12 !pe-5 !text-[14px] !m-0 font-medium text-[#234745] placeholder:text-gray-400 focus:!outline-none focus:!ring-0 focus:!border-transparent !shadow-sm transition-all"
@@ -359,17 +209,7 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
                     ))}
                 </ul>
             </div>
-          ) : query.length >= 1 &&
-            (fetcher.state === 'loading' ||
-              isTyping ||
-              /**
-               * Still searching covers the whole wait, not just the two
-               * timers. Without the second clause there is a tick after
-               * `isTyping` clears and before `fetcher.state` turns `loading`
-               * where nothing matched and the panel went blank — or, before
-               * the fix below it, announced «لم نجد أي نتائج».
-               */
-              (trimmedQuery.length >= 2 && !answeredCurrentTerm)) ? (
+          ) : searching ? (
             <div className="p-5 text-center text-sm font-medium text-gray-500 animate-pulse">{isEn ? 'Searching...' : 'جاري البحث...'}</div>
           ) : results && flattenedItems.length > 0 ? (
             <div className="max-h-[60vh] lg:max-h-[70vh] overflow-y-auto custom-scrollbar">

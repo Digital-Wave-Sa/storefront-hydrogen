@@ -71,6 +71,7 @@
 
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
+import {randomUUID} from 'node:crypto';
 
 const argv = process.argv.slice(2);
 const has = (f) => argv.includes(f);
@@ -91,7 +92,13 @@ const QTY = parseInt(valueOf('--qty', '1000'), 10);
  */
 const SCAN_PAGE = Math.max(1, parseInt(valueOf('--page-size', '5'), 10) || 5);
 
-const API_VERSION = '2024-04';
+/**
+ * A supported version. 2024-04 was retired, so Shopify served these calls on
+ * its oldest supported version instead -- one where `ignoreCompareQuantity`
+ * no longer exists and every --stock batch would be refused. Same version as
+ * the orders webhook.
+ */
+const API_VERSION = '2026-07';
 const SKIP_PRODUCT_TYPE = 'gift card';
 
 /**
@@ -254,9 +261,16 @@ const ACTIVATE_MUTATION = `
   }
 `;
 
+/**
+ * `@idempotent` is mandatory on inventory mutations from API 2026-04: without
+ * it every batch is refused at runtime ("The @idempotent directive is required
+ * for this mutation"), even though the schema does not mark it required. One
+ * fresh key per batch; the throttle retries inside gql() resend the same
+ * request with the same key, so a batch that did land is not applied twice.
+ */
 const SET_QUANTITIES_MUTATION = `
-  mutation SetQty($input: InventorySetQuantitiesInput!) {
-    inventorySetQuantities(input: $input) {
+  mutation SetQty($input: InventorySetQuantitiesInput!, $idempotencyKey: String!) {
+    inventorySetQuantities(input: $input) @idempotent(key: $idempotencyKey) {
       userErrors { field message }
     }
   }
@@ -461,24 +475,23 @@ async function phaseStock(items, allLocationIds) {
     const batch = rows.slice(i, i + QTY_BATCH);
     try {
       const d = await gql(SET_QUANTITIES_MUTATION, {
+        idempotencyKey: randomUUID(),
         input: {
           name: 'available',
           reason: 'correction',
           /** Names this script in Shopify's inventory history, so the entries are traceable. */
           referenceDocumentUri: 'gid://saadeddin-storefront/StockSeed/all-locations',
           /*
-            Without this Shopify refuses every batch: "The compareQuantity
-            argument must be given to each quantity or ignored using
-            ignoreCompareQuantity." It is the API's guard against two writers
-            racing — you normally send the value you believe is there, and the
-            write fails if someone changed it meanwhile.
-
-            We ignore it on purpose. The scan is minutes old by the time the
-            last batch goes out, and this phase only ever touches levels that
-            read zero or absent, so there is no number here worth protecting.
+            `changeFromQuantity: null` on every row skips Shopify's
+            compare-and-swap check (it replaced the old top-level
+            `ignoreCompareQuantity`). The check exists to stop two writers
+            racing: you send the value you believe is there and the write
+            fails if it changed. We skip it on purpose -- the scan is minutes
+            old by the last batch, and this phase only touches levels that
+            read zero or absent (unless --overwrite), so there is no number
+            here worth protecting.
           */
-          ignoreCompareQuantity: true,
-          quantities: batch,
+          quantities: batch.map((row) => ({...row, changeFromQuantity: null})),
         },
       });
       const errs = d.inventorySetQuantities.userErrors;

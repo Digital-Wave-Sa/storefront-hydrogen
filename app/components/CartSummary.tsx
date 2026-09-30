@@ -3414,6 +3414,10 @@ function UpdateGiftCardForm({
   );
 }
 
+const MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const MONTHS_EN_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTHS_AR = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+
 function CartCalendarPicker({
   isEn,
   cart,
@@ -3628,6 +3632,31 @@ function CartCalendarPicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTimeSlotInvalid, fetcher.state]);
 
+  /**
+   * A chosen day that can no longer be picked is cleared, not kept.
+   *
+   * A date picked yesterday stayed on the cart: the calendar showed it
+   * selected but faded (a disabled day with the selected fill), the time slot
+   * under it still read «5:00 م - 6:00 م», and checkout was refused for a
+   * date in the past. Same for a day that stopped fitting later — the branch
+   * is closed that weekday after a branch switch, or a new item needs more
+   * preparation days. Drop date and slot, say why, let them pick again.
+   */
+  const [droppedPastDate, setDroppedPastDate] = useState<string>('');
+  const selectedDateUnavailable = (() => {
+    if (!localSelectedDate) return false;
+    const d = new Date(localSelectedDate + 'T12:00:00');
+    return !isNaN(d.getTime()) && isDateDisabled(d);
+  })();
+  useEffect(() => {
+    if (!selectedDateUnavailable || fetcher.state !== 'idle') return;
+    setDroppedPastDate(localSelectedDate);
+    setLocalSelectedDate('');
+    setLocalTimeSlot('');
+    submitDateAndSlot('', '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDateUnavailable, fetcher.state]);
+
   const getBranchHoursStr = () => {
     if (!currentBranch) return '';
     const getMeta = (key: string) => {
@@ -3666,10 +3695,20 @@ function CartCalendarPicker({
 
   const branchHoursStr = getBranchHoursStr();
 
-  // Month names
-  const monthNameEn = displayedMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-  const monthNameAr = `${displayedMonth.toLocaleString('ar-SA', { month: 'long' })} ${displayedMonth.getFullYear()}`;
-  const monthLabel = isEn ? monthNameEn : monthNameAr;
+  /**
+   * Month names from fixed lists, not toLocaleString.
+   *
+   * 'ar-SA' formats in the Umm al-Qura calendar, so the header over this
+   * Gregorian grid read a Hijri month (e.g. «ربيع الآخر 2026» over
+   * September). Fixed lists also render the same on the server and in the
+   * browser, whatever locale data each has.
+   */
+  const monthName = (date: Date, short = false) => {
+    const m = date.getMonth();
+    if (isEn) return (short ? MONTHS_EN_SHORT : MONTHS_EN)[m];
+    return MONTHS_AR[m];
+  };
+  const monthLabel = `${monthName(displayedMonth)} ${displayedMonth.getFullYear()}`;
 
   const weekdaysEn = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
   const weekdaysAr = ['ح', 'ن', 'ث', 'ر', 'خ', 'ج', 'س'];
@@ -3740,6 +3779,14 @@ function CartCalendarPicker({
                 onClick={() => {
                   setLocalSelectedDate(dateStr);
                   setLocalTimeSlot(''); // Reset slot locally
+                  setDroppedPastDate('');
+                  // A day from the next month's row turns the page to it, so
+                  // the choice is shown in its own month.
+                  if (!cell.isCurrentMonth) {
+                    setDisplayedMonth(
+                      new Date(cell.date.getFullYear(), cell.date.getMonth(), 1),
+                    );
+                  }
 
                   /**
                    * Merged: AttributesUpdate replaces the whole list, so these
@@ -3748,20 +3795,43 @@ function CartCalendarPicker({
                    */
                   submitDateAndSlot(dateStr, '');
                 }}
+                /*
+                  Colour says "can I pick this", nothing else. Days of the next
+                  month used to be light grey even when bookable, so at the end
+                  of September only the 30th looked choosable. The month
+                  change is marked on the 1st instead.
+                */
+                aria-label={`${cell.date.getDate()} ${monthName(cell.date)}`}
+                aria-pressed={isSelected}
                 className={`
                                   py-2 rounded-xl text-[13px] font-medium transition-all relative
-                                  ${!cell.isCurrentMonth ? 'text-gray-300' : 'text-[#234745]'}
-                                  ${disabled ? 'opacity-25 cursor-not-allowed bg-transparent' : 'hover:bg-[#f3ece6] cursor-pointer'}
-                                  ${isSelected ? '!bg-[#234745] !text-white font-bold shadow-md scale-105' : ''}
+                                  ${disabled ? 'text-[#234745] opacity-25 cursor-not-allowed bg-transparent' : 'text-[#234745] hover:bg-[#f3ece6] cursor-pointer'}
+                                  ${isSelected ? '!bg-[#234745] !text-white !opacity-100 font-bold shadow-md scale-105' : ''}
                                   ${isTodayCell && !isSelected ? 'border border-[#d4a06a] text-[#d4a06a]' : ''}
                               `}
               >
+                {cell.date.getDate() === 1 && !cell.isCurrentMonth && (
+                  <span
+                    aria-hidden="true"
+                    className={`absolute -top-1.5 inset-x-0 text-[9px] leading-none font-bold ${isSelected ? 'text-[#234745]' : 'text-[#c98e54]'}`}
+                  >
+                    {monthName(cell.date, true)}
+                  </span>
+                )}
                 {cell.date.getDate()}
               </button>
             );
           })}
         </div>
       </div>
+
+      {droppedPastDate && !localSelectedDate && (
+        <div className="p-3 bg-[#FFF7E0] border border-[#F3D48A] rounded-xl text-[12px] text-[#8a5a00] font-bold leading-relaxed">
+          {isEn
+            ? `The ${isPickup ? 'pickup' : 'delivery'} date you chose earlier is no longer available. Please choose a new date.`
+            : `موعد ${isPickup ? 'الاستلام' : 'التوصيل'} الذي اخترته سابقاً لم يعد متاحاً. يرجى اختيار موعد جديد.`}
+        </div>
+      )}
 
       {/* Time Slot Picker (Only visible after selecting a date) */}
       {localSelectedDate && (

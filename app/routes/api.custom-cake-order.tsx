@@ -588,16 +588,12 @@ export async function action({request, context}: ActionFunctionArgs) {
       });
     }
 
-    /**
-     * A real email, or the invoice and every order update go to the
-     * `@saadeddin.placeholder` address the phone-OTP login assigns. The builder
-     * catches this and collects an email inline — without navigating away and
-     * losing the cake — then re-submits. Fail-open: only ask when we hold a
-     * CONCRETE placeholder/invalid address, never on a null we couldn't resolve.
+    /*
+     * No email step. A phone-login account may only hold the
+     * `@saadeddin.placeholder` address; email is optional now (decided
+     * 1 Oct 2026), so the order goes through on the phone, and the
+     * placeholder is simply not put on the draft order (below).
      */
-    if (customerEmail && needsRealEmail(customerEmail)) {
-      return Response.json({requireEmail: true});
-    }
 
     /**
      * Built from what the customer actually chose.
@@ -1004,7 +1000,8 @@ export async function action({request, context}: ActionFunctionArgs) {
     if (adminCustomerId) {
       draftOrderInput.customerId = adminCustomerId;
     }
-    if (customerEmail) {
+    // Never the placeholder: an invoice addressed to it reaches nobody.
+    if (customerEmail && !needsRealEmail(customerEmail)) {
       draftOrderInput.email = customerEmail;
     }
     if (customerPhone) {

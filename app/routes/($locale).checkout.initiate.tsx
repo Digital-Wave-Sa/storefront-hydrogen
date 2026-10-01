@@ -5,7 +5,6 @@ import {stripCoordsMarker, sameAddressId, baseAddressId} from '~/lib/address-coo
 import {isSignedIn, loginUrlFor} from '~/lib/checkout-gate.server';
 import {logCheckoutError, type CheckoutErrorStage} from '~/lib/error-log.server';
 import {isDigitalOnlyCart} from '~/lib/digital-lines';
-import {needsRealEmail} from '~/lib/needs-email';
 
 export async function loader({request, context}: LoaderFunctionArgs) {
   return processCheckoutInitiate({request, context});
@@ -978,31 +977,15 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
   }
 
   /**
-   * A signed-in shopper needs a real email, or their order confirmation and
-   * updates go to a `@saadeddin.placeholder` address the phone-OTP login
-   * assigned and nobody reads. Send them to add one, then straight back to this
-   * same URL — checkout re-runs on GET, so once the email is real this gate
-   * passes and the order goes through.
+   * No email step before checkout.
    *
-   * Fail-open by design, in keeping with this gate: it only diverts on a
-   * CONCRETE placeholder/invalid email. A lookup that fails or returns nothing
-   * lets the checkout proceed rather than turning a valid shopper away.
+   * Signed-in shoppers whose account only had the phone-login placeholder
+   * (`@saadeddin.placeholder`) used to be sent to /add-email first. Email is
+   * optional now (decided 1 Oct 2026): the placeholder is never passed to
+   * checkout as the buyer's email (see `buyerIdentity` above), so Shopify's
+   * own contact field is where a shopper adds one if they want, and a real
+   * email can still be added any time from the account profile.
    */
-  {
-    // Resolve the email authoritatively (Admin API by customer id), so this
-    // holds even when the OTP login fell back to a `session-` token the
-    // Storefront API can't read. Fail-open: a null email (nobody signed in, or a
-    // lookup failure) lets checkout proceed rather than turning a shopper away.
-    const {resolveLoggedInCustomer} = await import('~/lib/customer-email.server');
-    const signedInCustomer = await resolveLoggedInCustomer(context);
-    if (signedInCustomer?.currentEmail && needsRealEmail(signedInCustomer.currentEmail)) {
-      const addEmailPath = lang === 'en' ? '/en/add-email' : '/add-email';
-      const back = new URL(request.url);
-      return redirect(
-        `${addEmailPath}?redirectTo=${encodeURIComponent(back.pathname + back.search)}`,
-      );
-    }
-  }
 
   // 4. Update the cart attributes and cart note on Shopify server
   try {

@@ -1,3 +1,4 @@
+import {isAddonOnlyProduct} from '~/lib/photo-print';
 import {
   data,
   type LoaderFunctionArgs,
@@ -841,6 +842,8 @@ const CATALOG_ALL_IDS_QUERY = `#graphql
     products(first: 250, after: $after) {
       nodes {
         id
+        handle
+        tags
       }
       pageInfo {
         hasNextPage
@@ -939,7 +942,8 @@ async function loadGroupedCatalog(storefront: any, cursorParam: string | null) {
         cache: storefront.CacheShort(),
       });
       for (const n of r?.products?.nodes || []) {
-        if (n?.id && !seen.has(n.id)) leftovers.push(n.id);
+        // Add-ons sold only with another product are never listed.
+        if (n?.id && !seen.has(n.id) && !isAddonOnlyProduct(n)) leftovers.push(n.id);
       }
       if (!r?.products?.pageInfo?.hasNextPage) break;
       after = r.products.pageInfo.endCursor;

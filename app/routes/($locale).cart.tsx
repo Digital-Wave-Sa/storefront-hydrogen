@@ -1,4 +1,6 @@
 import {useLoaderData, data, type HeadersFunction} from 'react-router';
+import {reconcilePhotoPrints} from '~/lib/photo-print.server';
+import {PHOTO_ATTR_KEY} from '~/lib/photo-print';
 import type {Route} from './+types/($locale).cart';
 import type {CartQueryDataReturn} from '@shopify/hydrogen';
 import {CartForm} from '@shopify/hydrogen';
@@ -551,16 +553,27 @@ export async function action({request, context, params}: Route.ActionArgs) {
         }
 
         console.log('[CART POST] addLines result:', JSON.stringify(result, null, 2));
+
+        // A cake added with a photo: make sure its paid photo line came too.
+        if (
+          cleanLines.some((l: any) =>
+            (l.attributes || []).some((a: any) => a.key === PHOTO_ATTR_KEY),
+          )
+        ) {
+          result = (await reconcilePhotoPrints(cart)) ?? result;
+        }
         break;
       }
       case CartForm.ACTIONS.LinesUpdate:
         result = await withRetry(() => cart.updateLines(inputs.lines));
+        result = (await reconcilePhotoPrints(cart)) ?? result;
         result = (await dropCouponsIfCartIsEmpty()) ?? result;
         result = (await cancelOverAppliedCredit()) ?? result;
         result = (await cancelOverAppliedLoyalty()) ?? result;
         break;
       case CartForm.ACTIONS.LinesRemove:
         result = await withRetry(() => cart.removeLines(inputs.lineIds));
+        result = (await reconcilePhotoPrints(cart)) ?? result;
         result = (await dropCouponsIfCartIsEmpty()) ?? result;
         result = (await cancelOverAppliedCredit()) ?? result;
         result = (await cancelOverAppliedLoyalty()) ?? result;

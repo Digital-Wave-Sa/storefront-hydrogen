@@ -2,6 +2,7 @@ import {useEffect, useRef, useState} from 'react';
 import {useFetcher} from 'react-router';
 import type {NormalizedPredictiveSearchResults} from '~/components/Search';
 import {isCorporateProduct} from '~/lib/stock';
+import {isAddonOnlyProduct} from '~/lib/photo-print';
 
 /**
  * Suggestions as the shopper types — shared by the desktop header search
@@ -145,7 +146,9 @@ export function usePredictiveSearch(query: string, isEn: boolean) {
     | undefined;
   const results = rawResults?.map((group) => ({
     ...group,
-    items: group.items.filter((item: any) => !isCorporateProduct(item)),
+    items: group.items.filter(
+      (item: any) => !isCorporateProduct(item) && !isAddonOnlyProduct(item),
+    ),
   }));
   const flattenedItems = results?.flatMap((group) => group.items) || [];
 

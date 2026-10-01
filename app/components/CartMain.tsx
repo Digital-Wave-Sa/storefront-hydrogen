@@ -1,4 +1,5 @@
 import { useOptimisticCart, Analytics, CartForm } from '@shopify/hydrogen';
+import { hasPhotoOwner, isPhotoPrintLine } from '~/lib/photo-print';
 import {counted, PRODUCTS} from '~/lib/plural';
 import { Link, useRouteLoaderData, useLocation, useFetcher, useFetchers } from 'react-router';
 import { useEffect, useState, useRef } from 'react';
@@ -449,6 +450,8 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
                   <ul className="flex flex-col gap-4">
                     {(cart?.lines?.nodes ?? []).map((line) => {
                       if ('parentRelationship' in line && line.parentRelationship?.parent) return null;
+                      // A photo print is shown inside its cake's row.
+                      if (isPhotoPrintLine(line) && hasPhotoOwner(line, cart?.lines?.nodes ?? [])) return null;
                       return (
                         <CartLineItem
                           key={line.id}
@@ -536,6 +539,8 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
           <ul className="flex flex-col gap-5">
             {(cart?.lines?.nodes ?? []).map((line) => {
               if ('parentRelationship' in line && line.parentRelationship?.parent) return null;
+              // A photo print is shown inside its cake's row.
+              if (isPhotoPrintLine(line) && hasPhotoOwner(line, cart?.lines?.nodes ?? [])) return null;
               return (
                 <CartLineItem
                   key={line.id}

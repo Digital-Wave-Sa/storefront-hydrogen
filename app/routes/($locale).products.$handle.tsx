@@ -13,6 +13,13 @@ import {ProductUpsellModal} from '~/components/ProductUpsellModal';
 import {NoImage} from '~/components/NoImage';
 import {Price, SaudiRiyalSymbol} from '~/components/Price';
 import {AddToCartButton} from '~/components/AddToCartButton';
+import {CakePhotoUpload} from '~/components/CakePhotoUpload';
+import {
+  PHOTO_ATTR_KEY,
+  isAddonOnlyProduct,
+  offersPhotoPrint,
+} from '~/lib/photo-print';
+import {loadPhotoPrintOffer} from '~/lib/photo-print.server';
 import {StarRating, parseRatingValue} from '~/components/StarRating';
 import {ProductItem} from '~/components/ProductItem';
 import {ReviewForm} from '~/components/ReviewForm';
@@ -336,6 +343,16 @@ export async function loader(args: LoaderFunctionArgs) {
 
     throw new Response(null, {status: 404});
   }
+
+  // Sold only with a cake (the photo print) — it has no page of its own.
+  if (isAddonOnlyProduct(product)) {
+    throw new Response(null, {status: 404});
+  }
+
+  // The paid «photo on the cake» option, for products tagged `photo-print`.
+  const photoPrintPromise = offersPhotoPrint(product)
+    ? loadPhotoPrintOffer(storefront)
+    : Promise.resolve(null);
 
   const variants = storefront.query(VARIANTS_QUERY, {
     variables: {handle: decodedHandle},
@@ -857,6 +874,7 @@ export async function loader(args: LoaderFunctionArgs) {
     recommended: recommendedResult,
     hasPurchased: hasPurchasedResult,
     panelContent,
+    photoPrint: await photoPrintPromise,
   });
 }
 
@@ -895,6 +913,7 @@ export default function Product() {
     recommended,
     hasPurchased,
     panelContent,
+    photoPrint,
   } = useLoaderData<any>();
   const rootData = useRouteLoaderData('root') as any;
   const {open} = useAside();
@@ -1344,6 +1363,33 @@ export default function Product() {
   const [companyMessage, setCompanyMessage] = useState('');
 
   /**
+   * «أضف صورتك على الكيك» — see ~/lib/photo-print. On, with a finished
+   * upload, the cake line carries the photo link and a paid photo-print line
+   * goes in with it; on without one, adding to cart waits.
+   */
+  const photoOffer: {variantId: string; price: number} | null =
+    photoPrint && offersPhotoPrint(product) ? photoPrint : null;
+  const [photoEnabled, setPhotoEnabled] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const photoActive = Boolean(photoOffer && photoEnabled && photoUrl);
+  const photoBlocksAdd = Boolean(photoOffer && photoEnabled && (!photoUrl || photoBusy));
+  const photoAttrs = photoActive ? [{key: PHOTO_ATTR_KEY, value: photoUrl}] : [];
+  const photoLineFor = (groupId: string) =>
+    photoActive && photoOffer
+      ? [
+          {
+            merchandiseId: photoOffer.variantId,
+            quantity,
+            attributes: [
+              {key: '_groupId', value: groupId},
+              {key: '_is_addon', value: 'true'},
+            ],
+          },
+        ]
+      : [];
+
+  /**
    * Whether this add needs a `_groupId` stamp.
    *
    * `_groupId` ties a line to the companion lines added alongside it — add-ons
@@ -1371,7 +1417,8 @@ export default function Product() {
     Boolean(note) ||
     Boolean(companyName) ||
     Boolean(companyLogoName) ||
-    Boolean(companyMessage);
+    Boolean(companyMessage) ||
+    photoActive;
 
   /**
    * Whether this product can be written on -- the gate on the whole «الكتابة
@@ -1515,7 +1562,7 @@ export default function Product() {
   };
 
   const handleBuyNow = async () => {
-    if (!selectedVariant || effectiveOutOfStock || isBuyingNow) return;
+    if (!selectedVariant || effectiveOutOfStock || isBuyingNow || photoBlocksAdd) return;
     setIsBuyingNow(true);
 
     try {
@@ -1529,6 +1576,7 @@ export default function Product() {
         quantity,
         attributes: [
           ...(needsGroupId ? [{key: '_groupId', value: groupId}] : []),
+          ...photoAttrs,
           ...(isBundle && bundleComponents.length > 0
             ? [
                 {
@@ -1594,7 +1642,7 @@ export default function Product() {
         };
       });
 
-      let linesToAdd = [mainLine, ...addonLines];
+      let linesToAdd = [mainLine, ...addonLines, ...photoLineFor(groupId)];
 
       if (isBogoTag) {
         const freeVariantId = bogoFreeVariantId || selectedVariant.id;
@@ -1609,7 +1657,7 @@ export default function Product() {
               {key: '_is_free', value: 'true'},
             ],
           },
-          ...addonLines,
+          ...addonLines, ...photoLineFor(groupId),
         ];
       }
 
@@ -1661,7 +1709,8 @@ export default function Product() {
     return sum + parseFloat(addon?.variants.nodes[0].price.amount || '0');
   }, 0);
 
-  const totalDisplayPrice = (basePrice + addonsTotal) * quantity;
+  const photoTotal = photoOffer && photoEnabled ? photoOffer.price : 0;
+  const totalDisplayPrice = (basePrice + addonsTotal + photoTotal) * quantity;
 
   // --- ESTIMATED DELIVERY CALCULATION ---
   const estimatedDeliveryDate = useMemo(() => {
@@ -3328,6 +3377,19 @@ export default function Product() {
                     </div>
                   )}
 
+                  {/* «أضف صورتك على الكيك» — products tagged photo-print */}
+                  {photoOffer && (
+                    <CakePhotoUpload
+                      isEn={isEn}
+                      price={photoOffer.price}
+                      enabled={photoEnabled}
+                      onEnabledChange={setPhotoEnabled}
+                      photoUrl={photoUrl}
+                      onPhotoUrlChange={setPhotoUrl}
+                      onBusyChange={setPhotoBusy}
+                    />
+                  )}
+
                   {/* Corporate Product Customization Section (Company Logo, Company Name, Card Message) */}
                   {isCorporateProduct && (
                     <div className="w-full mt-[8px] max-w-[519px]">
@@ -3842,7 +3904,7 @@ export default function Product() {
                             },
                           ],
                         }}
-                        disabled={!selectedVariant}
+                        disabled={!selectedVariant || photoBlocksAdd}
                         onClick={() =>
                           window.scrollTo({top: 0, behavior: 'smooth'})
                         }
@@ -3869,6 +3931,7 @@ export default function Product() {
                                     ...(needsGroupId
                                       ? [{key: '_groupId', value: groupId}]
                                       : []),
+                                    ...photoAttrs,
                                     ...(isBundle && bundleComponents.length > 0
                                       ? [
                                           {
@@ -4006,11 +4069,11 @@ export default function Product() {
                                         {key: '_is_free', value: 'true'},
                                       ],
                                     },
-                                    ...addonLines,
+                                    ...addonLines, ...photoLineFor(groupId),
                                   ];
                                 }
 
-                                return [mainLine, ...addonLines];
+                                return [mainLine, ...addonLines, ...photoLineFor(groupId)];
                               })()
                             : []
                         }
@@ -4095,6 +4158,7 @@ export default function Product() {
                         onClick={handleBuyNow}
                         disabled={
                           !selectedVariant ||
+                          photoBlocksAdd ||
                           effectiveOutOfStock ||
                           availabilityUnresolved ||
                           isBuyingNow
@@ -4447,7 +4511,7 @@ export default function Product() {
                               },
                             ],
                           }}
-                          disabled={!selectedVariant || effectiveOutOfStock || availabilityUnresolved}
+                          disabled={!selectedVariant || effectiveOutOfStock || availabilityUnresolved || photoBlocksAdd}
                           onClick={() =>
                             window.scrollTo({top: 0, behavior: 'smooth'})
                           }
@@ -4474,6 +4538,7 @@ export default function Product() {
                                       ...(needsGroupId
                                         ? [{key: '_groupId', value: groupId}]
                                         : []),
+                                      ...photoAttrs,
                                       ...(isBundle &&
                                       bundleComponents.length > 0
                                         ? [
@@ -4619,11 +4684,11 @@ export default function Product() {
                                           {key: '_is_free', value: 'true'},
                                         ],
                                       },
-                                      ...addonLines,
+                                      ...addonLines, ...photoLineFor(groupId),
                                     ];
                                   }
 
-                                  return [mainLine, ...addonLines];
+                                  return [mainLine, ...addonLines, ...photoLineFor(groupId)];
                                 })()
                               : []
                           }
@@ -4708,6 +4773,7 @@ export default function Product() {
                           onClick={handleBuyNow}
                           disabled={
                             !selectedVariant ||
+                            photoBlocksAdd ||
                             effectiveOutOfStock ||
                             availabilityUnresolved ||
                             isBuyingNow

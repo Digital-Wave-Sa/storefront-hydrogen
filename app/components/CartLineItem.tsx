@@ -1,4 +1,5 @@
 import type { CartLineUpdateInput } from '@shopify/hydrogen/storefront-api-types';
+import { PHOTO_ATTR_KEY, isPhotoPrintLine, isShopifyCdnUrl, linePhotoUrl, photoLineOf } from '~/lib/photo-print';
 import type { CartLayout, LineItemChildrenMap } from '~/components/CartMain';
 import {NoImage} from '~/components/NoImage';
 import { CartForm, Image, type OptimisticCartLine } from '@shopify/hydrogen';
@@ -78,6 +79,9 @@ export function CartLineItem({
   const childrenLabelId = `cart-line-children-${id}`;
   const rootData = useRouteLoaderData('root') as any;
   const isEn = location.pathname.startsWith('/en');
+  const isPhotoLine = isPhotoPrintLine(line);
+  /** The paid photo print for this cake, rendered inside this row. */
+  const photoAddon = isPhotoLine ? null : photoLineOf(line, (cart as any)?.lines?.nodes ?? []);
   const isFreeItem = line.attributes?.some((attr: any) => attr.key === '_is_free' && attr.value === 'true') || false;
 
   /**
@@ -350,7 +354,7 @@ export function CartLineItem({
 
         {/* Product Image */}
         <LineImageFrame
-          linked={!isGiftCard}
+          linked={!isGiftCard && !isPhotoLine}
           to={lineItemUrl}
           onNavigate={() => {
             if (layout === 'aside') close();
@@ -410,7 +414,7 @@ export function CartLineItem({
           })()}
 
           {/* Options / Tags & Custom Attributes */}
-          {!isGiftCard && (validOptions.length > 0 || (line.attributes?.filter((a: any) => a.value && !a.key.startsWith('_')).length || 0) > 0) && (
+          {!isGiftCard && (validOptions.length > 0 || (line.attributes?.filter((a: any) => a.value && !a.key.startsWith('_') && a.key !== PHOTO_ATTR_KEY).length || 0) > 0) && (
             <div className="flex flex-wrap items-center gap-2 justify-start mt-2">
               {validOptions.map((o: any) => (
                 <span key={o.name} className="px-3 py-1 border border-[#E9EBD8] text-[#8C9368] rounded-full text-[12px] font-bold">
@@ -418,8 +422,9 @@ export function CartLineItem({
                 </span>
               ))}
               {line.attributes
-                ?.filter((a: any) => a.value && !a.key.startsWith('_'))
+                ?.filter((a: any) => a.value && !a.key.startsWith('_') && a.key !== PHOTO_ATTR_KEY)
                 .map((a: any) => {
+                  if (a.key === PHOTO_ATTR_KEY) return null; // shown as the add-on row below
                   const writeOnVal = line.attributes?.find((attr: any) => attr.key === '_writeOn' || attr.key === 'Write On' || attr.key === 'الكتابة على')?.value;
                   const isBoardWrite = writeOnVal === 'board' || writeOnVal === 'On Board' || writeOnVal === 'على القاعدة' || writeOnVal === 'على لوح الشوكولاته';
 
@@ -556,7 +561,7 @@ export function CartLineItem({
         <div className="flex items-start gap-4 w-full">
           {/* Image */}
           <LineImageFrame
-            linked={!isGiftCard}
+            linked={!isGiftCard && !isPhotoLine}
             to={lineItemUrl}
             onNavigate={() => {
               if (layout === 'aside') close();
@@ -589,7 +594,7 @@ export function CartLineItem({
             {giftSublineEl}
 
             {/* Options */}
-            {!isGiftCard && (validOptions.length > 0 || (line.attributes?.filter((a: any) => a.value && !a.key.startsWith('_')).length || 0) > 0) && (
+            {!isGiftCard && (validOptions.length > 0 || (line.attributes?.filter((a: any) => a.value && !a.key.startsWith('_') && a.key !== PHOTO_ATTR_KEY).length || 0) > 0) && (
               <div className={`flex flex-wrap gap-1.5 mb-3 ${isEn ? 'justify-start' : 'justify-start'}`}>
                 {validOptions.map((o: any) => (
                   <span key={o.name} className="px-2.5 py-0.5 bg-white border border-[#BBCFCD]/40 text-[#8B8B8B] rounded-full text-[11px] font-bold">
@@ -597,8 +602,9 @@ export function CartLineItem({
                   </span>
                 ))}
                 {line.attributes
-                  ?.filter((a: any) => a.value && !a.key.startsWith('_'))
+                  ?.filter((a: any) => a.value && !a.key.startsWith('_') && a.key !== PHOTO_ATTR_KEY)
                   .map((a: any) => {
+                    if (a.key === PHOTO_ATTR_KEY) return null; // shown as the add-on row below
                     const writeOnVal = line.attributes?.find((attr: any) => attr.key === '_writeOn' || attr.key === 'Write On' || attr.key === 'الكتابة على')?.value;
                     const isBoardWrite = writeOnVal === 'board' || writeOnVal === 'On Board' || writeOnVal === 'على القاعدة' || writeOnVal === 'على لوح الشوكولاته';
 
@@ -816,6 +822,14 @@ export function CartLineItem({
         </div>
       )}
       </PendingOverlay>
+      {photoAddon && (
+        <PhotoAddonRow
+          line={photoAddon}
+          photoUrl={linePhotoUrl(line)}
+          isEn={isEn}
+          layout={layout}
+        />
+      )}
     </li>
   );
 }
@@ -833,6 +847,14 @@ function CartLineQuantity({ line }: { line: CartLine }) {
    * and send four separate mutations racing each other.
    */
   const isPending = !!isOptimistic || pendingCart.lineIds.has(lineId);
+  // A photo print follows its cake's quantity; it is not changed on its own.
+  if (isPhotoPrintLine(line)) {
+    return (
+      <span className="text-[15px] font-bold text-[#234745]" style={{ fontFamily: "'Outfit', sans-serif" }}>
+        ×{quantity}
+      </span>
+    );
+  }
   const prevQuantity = Number(Math.max(0, quantity - 1).toFixed(0));
   const nextQuantity = Number((quantity + 1).toFixed(0));
 
@@ -1087,6 +1109,72 @@ function CartLineGiftForm({ line, isEn }: { line: CartLine, isEn: boolean }) {
           </CartLineUpdateButton>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * The paid photo print, drawn as an add-on of its cake rather than a product
+ * of its own: indented under the cake, the uploaded photo as its picture, an
+ * «إضافة» badge, its price, and a remove that takes the photo off the cake
+ * (see reconcilePhotoPrints). Its quantity follows the cake's.
+ */
+function PhotoAddonRow({
+  line,
+  photoUrl,
+  isEn,
+  layout,
+}: {
+  line: any;
+  photoUrl: string;
+  isEn: boolean;
+  layout: CartLayout;
+}) {
+  const unit = parseFloat(line?.merchandise?.price?.amount || '0');
+  const total =
+    parseFloat(line?.cost?.totalAmount?.amount || '') || unit * (line?.quantity || 1);
+  const aside = layout === 'aside';
+  return (
+    <div
+      className={`flex items-center gap-3 rounded-xl border border-dashed border-[#A67B5B]/50 bg-white/70 px-3 py-2 ${aside ? '' : 'md:ms-[144px]'}`}
+    >
+      <span className="text-[#A67B5B] text-[18px] leading-none shrink-0" aria-hidden="true">
+        {isEn ? '↳' : '↲'}
+      </span>
+      {isShopifyCdnUrl(photoUrl) ? (
+        <a href={photoUrl} target="_blank" rel="noopener noreferrer" className="shrink-0">
+          <img
+            src={`${photoUrl}${photoUrl.includes('?') ? '&' : '?'}width=96`}
+            alt={isEn ? 'Your photo' : 'صورتك'}
+            className="w-11 h-11 rounded-lg object-cover border border-[#E9EBD8]"
+          />
+        </a>
+      ) : null}
+      <div className="flex-1 min-w-0 text-start">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="px-2 py-0.5 rounded-full bg-[#234745] text-white text-[11px] font-bold">
+            {isEn ? 'Add-on' : 'إضافة'}
+          </span>
+          <span className="text-[14px] font-bold text-[#1a1a1a] truncate">
+            {isEn ? 'Photo print on the cake' : 'طباعة صورتك على الكيك'}
+          </span>
+        </div>
+        {line?.quantity > 1 && (
+          <span className="block text-[12px] text-[#7D7D7D] mt-0.5">
+            {isEn ? `One per cake × ${line.quantity}` : `صورة لكل كيكة × ${line.quantity}`}
+          </span>
+        )}
+      </div>
+      <span
+        className="shrink-0 font-bold text-[#234745] text-[15px] flex items-center gap-1 flex-row-reverse"
+        style={{ fontFamily: "'Outfit', sans-serif" }}
+      >
+        <SaudiRiyalSymbol className="w-[14px] h-auto text-[#234745]" />
+        <span>+{total.toFixed(2)}</span>
+      </span>
+      <div className="shrink-0 text-[#c1c1c1] hover:text-red-500 transition-colors">
+        <CartLineRemoveButton lineIds={[line.id]} disabled={!!line.isOptimistic} isText isEn={isEn} />
+      </div>
     </div>
   );
 }

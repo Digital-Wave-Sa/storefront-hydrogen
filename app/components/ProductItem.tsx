@@ -13,6 +13,7 @@ import { StockNotificationModal } from '~/components/StockNotificationModal';
 import { useWishlist } from '~/context/WishlistContext';
 import { fixMojibake } from '~/lib/mojibake';
 import { isGiftCardProduct } from '~/lib/digital-lines';
+import { isAddonOnlyProduct } from '~/lib/photo-print';
 
 function formatNumbers(text: string) {
   if (!text) return text;
@@ -248,6 +249,10 @@ function ProductItemCard({
   const isAvailable = !isOutOfStock && !!variant;
 
   if (isCorporateProduct(product) && !isCorporatePage) {
+    return null;
+  }
+  // Sold only with another product (the cake photo print).
+  if (isAddonOnlyProduct(product)) {
     return null;
   }
 

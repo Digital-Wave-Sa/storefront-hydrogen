@@ -1,3 +1,4 @@
+import {isAddonOnlyProduct} from '~/lib/photo-print';
 /**
  * Normalizes a Shopify GID or numeric ID for comparison.
  */
@@ -354,6 +355,9 @@ export function shouldHideProduct(
   if (!isCorporatePage && isCorporateProduct(product)) {
     return true;
   }
+
+  // Sold only with another product (the cake photo print) — never listed.
+  if (isAddonOnlyProduct(product)) return true;
 
   const hideIfUnavailable = product.hide_if_unavailable?.value === 'true';
   if (!hideIfUnavailable) return false;

@@ -2877,11 +2877,11 @@ export default function CustomCakeBuilder({
             <button
               type="button"
               onClick={() => setIsFaqOpen(true)}
-              className={`fixed bottom-6 ${isEn ? 'right-6' : 'left-6'} z-40 flex items-center gap-2.5 bg-[#8c6b54] text-white px-5 py-3 rounded-full font-bold shadow-lg hover:bg-[#7a5c47] transition-all transform hover:scale-105 active:scale-95 ${isEn ? 'flex-row-reverse' : ''}`}
+              className={`fixed bottom-6 ${isEn ? 'right-6' : 'left-6'} z-40 flex items-center gap-2.5 bg-[#294941] text-white px-5 py-3 rounded-full font-bold shadow-lg hover:bg-[#1f3832] transition-all transform hover:scale-105 active:scale-95 ${isEn ? 'flex-row-reverse' : ''}`}
               style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
             >
               <span>{isEn ? 'Have a question?' : 'لديك سؤال؟'}</span>
-              <div className="bg-[#bda061] text-white w-7 h-7 rounded-full flex items-center justify-center font-serif text-sm font-black shadow-inner">?</div>
+              <div className="bg-[#9FB7AE] text-[#234745] w-7 h-7 rounded-full flex items-center justify-center font-serif text-sm font-black shadow-inner">?</div>
             </button>
           </div>
         </div>

@@ -343,7 +343,15 @@ export default function CustomCakeBuilder({
        * than jumping to the top of the document, which would put the cake
        * preview on screen and the step the shopper just opened off it.
        */
-      scroller.scrollIntoView({behavior, block: 'start'});
+      /*
+       * The preview is pinned to the top of the screen on phones, so the
+       * column's top has to land just BELOW it -- scrollIntoView would put
+       * the new step's heading underneath the cake.
+       */
+      const pinned = previewPaneRef.current?.offsetHeight || 0;
+      const top =
+        scroller.getBoundingClientRect().top + window.scrollY - pinned;
+      window.scrollTo({top: Math.max(0, top), behavior});
     }
   }, [currentStep]);
 
@@ -2878,18 +2886,31 @@ export default function CustomCakeBuilder({
           </div>
         </div>
 
-        {/* RIGHT COLUMN */}
+        {/*
+          RIGHT COLUMN — the preview.
+
+          Sticky on phones. The layout stacks there, preview first and the
+          options below, and the page itself scrolls: choosing a colour or a
+          topping three screens down meant scrolling back up to see what it
+          did to the cake, then down again to find where you were. Pinned to
+          the top, the cake changes in front of the shopper as they tap.
+
+          That only works if it leaves room for the options, so on phones it
+          is compact: the circle is capped by the screen height (30svh), the
+          shape pill and the view buttons shrink, and the feature badges are
+          desktop-only. Desktop is unchanged — side by side, nothing sticks.
+        */}
         <div
           ref={previewPaneRef}
-          className="w-full lg:w-1/2 relative flex flex-col items-center justify-center py-10 lg:py-0 lg:h-full shrink-0 overflow-hidden bg-[#EED5D7]"
+          className="w-full lg:w-1/2 sticky top-0 z-20 lg:static lg:z-auto flex flex-col items-center justify-center py-3 sm:py-6 lg:py-0 lg:h-full shrink-0 overflow-hidden bg-[#EED5D7] shadow-[0_8px_16px_-10px_rgba(35,71,69,0.35)] lg:shadow-none"
           style={{ backgroundImage: "url('/images/pattern.svg')", backgroundRepeat: 'repeat', backgroundSize: '600px' }}
         >
 
           {/* Center Content Group (Pills + Circle) */}
-          <div className="relative z-10 flex flex-col items-center justify-center gap-2 lg:gap-4 w-full mt-0">
+          <div className="relative z-10 flex flex-col items-center justify-center gap-1.5 lg:gap-4 w-full mt-0">
 
             {/* Top Pill showing selected shape */}
-            <div className="bg-[#20584A] text-white px-6 py-2 rounded-full font-bold text-sm flex items-center gap-1.5 whitespace-nowrap shadow-sm">
+            <div className="bg-[#20584A] text-white px-4 py-1.5 text-xs sm:px-6 sm:py-2 sm:text-sm rounded-full font-bold flex items-center gap-1.5 whitespace-nowrap shadow-sm">
               <span>
                 {selections.shape
                   ? isEn
@@ -2909,7 +2930,14 @@ export default function CustomCakeBuilder({
               page rather than as a stage the cake sits on, and it ate the
               radius the preview had to render into on a phone.
             */}
-            <div className="relative w-[260px] h-[260px] sm:w-[320px] sm:h-[320px] lg:w-auto lg:h-[50vh] aspect-square rounded-full bg-[#EED5D7] flex items-center justify-center overflow-hidden shrink-0">
+            {/*
+              No fill of its own. It was painted the stage's flat pink, which
+              covered the patterned background and left a blank disc behind
+              the cake. Transparent, the cake sits on the same pattern as the
+              rest of the panel. Still round and clipped, so the placeholder
+              photo keeps its circle.
+            */}
+            <div className="relative w-[min(240px,30svh)] h-[min(240px,30svh)] sm:w-[min(320px,36svh)] sm:h-[min(320px,36svh)] lg:w-auto lg:h-[50vh] aspect-square rounded-full bg-transparent flex items-center justify-center overflow-hidden shrink-0">
               <div className="absolute inset-0 z-20 flex items-center justify-center">
                 {/*
                   The live preview still draws nothing until a shape is picked
@@ -3044,7 +3072,7 @@ export default function CustomCakeBuilder({
             </div>
 
             {/* View Switcher below the circle (outside the preview area) */}
-            <div className="h-12 flex items-center justify-center shrink-0">
+            <div className="h-11 lg:h-12 flex items-center justify-center shrink-0">
               {Object.values(supportedViews).filter(Boolean).length > 1 && (
                 <div className="bg-white/95 backdrop-blur-md px-3 py-2 rounded-full shadow-md border border-gray-100 flex items-center gap-1.5 z-30">
                   <button
@@ -3105,7 +3133,7 @@ export default function CustomCakeBuilder({
           </div>
 
           {/* Features Badges */}
-          <div className="mt-2 lg:mt-4 z-10 w-[95%] lg:w-[90%] max-w-[450px] scale-90 lg:scale-100 origin-bottom">
+          <div className="hidden lg:block mt-2 lg:mt-4 z-10 w-[95%] lg:w-[90%] max-w-[450px] scale-90 lg:scale-100 origin-bottom">
             <div className="bg-[#F6FAF8] px-2 py-3 rounded-2xl flex items-center justify-between text-[#20584A] shadow-sm">
 
               <div className="flex items-center justify-center gap-2 flex-1">

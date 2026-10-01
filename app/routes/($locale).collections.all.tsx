@@ -21,6 +21,8 @@ import {SaudiRiyalSymbol} from '~/components/Price';
 import type {Route} from './+types/($locale).collections.all';
 
 import {pageTitle} from '~/lib/seo';
+import {InfiniteScrollLoader} from '~/components/InfiniteScrollLoader';
+import {DIETARY_OPTIONS} from '~/lib/catalog-filters';
 export const meta: Route.MetaFunction = ({matches}) => {
   return [{title: pageTitle(matches, 'All Products', 'كل المنتجات')}];
 };
@@ -188,6 +190,102 @@ export async function loader({context, request}: LoaderFunctionArgs) {
   const exactCount = await countProductsExact(context.env, {
     skip: !isUnfiltered || filters.length > 0,
   });
+
+  /** For the sidebar: dietary options that match nothing are not offered. */
+  const dietaryCountsPromise = import('~/lib/catalog-filters.server')
+    .then((m) => m.loadDietaryCounts(storefront))
+    .catch(() => ({}));
+
+  /**
+   * Ticked tags (dietary), occasions or categories: matched by our own rules
+   * (~/lib/catalog-filters) instead of one OR'd Shopify search. See
+   * loadFilteredCatalog below.
+   */
+  if (activeTags.length > 0 || selectedCategories.length > 0) {
+    try {
+      const filteredProducts = await loadFilteredCatalog({
+        storefront,
+        env: context.env,
+        tags: activeTags,
+        categories: selectedCategories,
+        filters,
+        q,
+        sortKey,
+        reverse,
+        cursor: searchParams.get('cursor'),
+      });
+      const meta: any = await storefront.query(CATALOG_QUERY, {
+        variables: {
+          first: 1,
+          query: '*',
+          filters: filters.length > 0 ? filters : undefined,
+          sortKey: 'RELEVANCE' as any,
+          reverse: false,
+          country: storefront.i18n.country,
+          language: storefront.i18n.language,
+        },
+        cache: storefront.CacheShort(),
+      });
+      return data({
+        products: {
+          ...filteredProducts,
+          productFilters: meta?.search?.productFilters || [],
+        },
+        collections: meta?.collections?.nodes || [],
+        error: null,
+        dietaryCounts: await dietaryCountsPromise,
+      });
+    } catch (e) {
+      console.error('[Collections] Filtered catalogue failed; using Shopify search:', e);
+    }
+  }
+
+  /**
+   * The plain page — no search, filter, tag, category or sort — is grouped:
+   * a title, then that collection's products in its own Shopify order, then
+   * the next title. See loadGroupedCatalog below. Anything the shopper narrows
+   * or re-sorts goes back to the single flat grid.
+   */
+  const grouped =
+    isUnfiltered &&
+    filters.length === 0 &&
+    sortKey === 'RELEVANCE' &&
+    !reverse;
+
+  if (grouped) {
+    try {
+      const groupedProducts = await loadGroupedCatalog(
+        storefront,
+        searchParams.get('cursor'),
+      );
+      if (groupedProducts) {
+        // The filter sidebar still needs the collection list.
+        const meta: any = await storefront.query(CATALOG_QUERY, {
+          variables: {
+            first: 1,
+            query: searchQueryString,
+            sortKey: 'RELEVANCE' as any,
+            reverse: false,
+            country: storefront.i18n.country,
+            language: storefront.i18n.language,
+          },
+          cache: storefront.CacheShort(),
+        });
+        return data({
+          products: {
+            ...groupedProducts,
+            productFilters: meta?.search?.productFilters || [],
+          },
+          collections: meta?.collections?.nodes || [],
+          error: null,
+          grouped: true,
+          dietaryCounts: await dietaryCountsPromise,
+        });
+      }
+    } catch (e) {
+      console.error('[Collections] Grouped catalogue failed; showing the flat grid:', e);
+    }
+  }
 
   try {
     const response = await storefront.query(CATALOG_QUERY, {
@@ -478,6 +576,7 @@ export async function loader({context, request}: LoaderFunctionArgs) {
       products,
       collections: response.collections?.nodes || [],
       error: null,
+      dietaryCounts: await dietaryCountsPromise,
     });
   } catch (e: any) {
     return data({
@@ -486,6 +585,421 @@ export async function loader({context, request}: LoaderFunctionArgs) {
       error: e.message || String(e),
     });
   }
+}
+
+/**
+ * /collections/all, grouped by section.
+ *
+ * Which sections, and in what order, is the Navigation menu
+ * `catalog-sections` in Shopify admin (Online Store → Navigation): each item
+ * is a collection, shown under the collection's own (translated) name, and
+ * the menu's order is the page's order. Inside a section, products keep the
+ * collection's own sort (Manual / Best selling…). A product in several
+ * sections appears once, under the first. Without the menu, DEFAULT_SECTIONS.
+ * Collections not on the menu follow, so every product has a title.
+ *
+ * Paged like the flat grid — 12 products at a time, offset cursor — so
+ * <Pagination> and the scroll loader work unchanged. Each product carries
+ * `_section` and the page starts a new heading where it changes.
+ *
+ * Cheap where it can be: the order is worked out from product ids only
+ * (cached), and full product data is fetched for the 12 on the page.
+ */
+/**
+ * The listing when tags (dietary), occasions or categories are ticked.
+ *
+ * The allowed products come from ~/lib/catalog-filters.server (exact tags and
+ * collection membership, dietary ANDed, occasions/categories ORed). Search
+ * text and Shopify's own facets (price, availability, product type, option)
+ * then narrow that, and the result is paged 12 at a time like everywhere else
+ * on this page. Products stay in their collections' order unless sorted by
+ * price.
+ */
+const FILTERED_PAGE = 12;
+
+const SEARCH_IDS_QUERY = `#graphql
+  query CatalogSearchIds(
+    $query: String!
+    $country: CountryCode
+    $language: LanguageCode
+  ) @inContext(country: $country, language: $language) {
+    search(query: $query, types: [PRODUCT], first: 250) {
+      nodes {
+        ... on Product {
+          id
+        }
+      }
+    }
+  }
+`;
+
+async function loadFilteredCatalog({
+  storefront,
+  env,
+  tags,
+  categories,
+  filters,
+  q,
+  sortKey,
+  reverse,
+  cursor,
+}: {
+  storefront: any;
+  env: any;
+  tags: string[];
+  categories: string[];
+  filters: any[];
+  q: string;
+  sortKey: string;
+  reverse: boolean;
+  cursor: string | null;
+}) {
+  const ctx = {
+    country: storefront.i18n.country,
+    language: storefront.i18n.language,
+  };
+  const {loadCollectionMembership, allowedProductIds} = await import(
+    '~/lib/catalog-filters.server'
+  );
+  const membership = await loadCollectionMembership(storefront);
+  let allowed =
+    (await allowedProductIds(storefront, {tags, categories, membership})) ||
+    new Set<string>();
+
+  // Search text inside the selection.
+  if (q && q !== '*' && allowed.size) {
+    let hits: Set<string> | null = null;
+    if (/[\u0600-\u06FF]/.test(q)) {
+      try {
+        const {searchProductIndex} = await import('~/lib/product-search-index.server');
+        const r = await searchProductIndex(env, q, 250, 20000);
+        if (r.ready) hits = new Set(r.hits.map((h: any) => h.id));
+      } catch {}
+    }
+    if (!hits) {
+      const r: any = await storefront.query(SEARCH_IDS_QUERY, {
+        variables: {query: buildTermQuery(q), ...ctx},
+        cache: storefront.CacheShort(),
+      });
+      hits = new Set((r?.search?.nodes || []).map((n: any) => n?.id).filter(Boolean));
+    }
+    allowed = new Set([...allowed].filter((id) => hits!.has(id)));
+  }
+
+  // Order: the ticked categories' own order first, then every collection's.
+  const ordered: string[] = [];
+  const placed = new Set<string>();
+  const place = (id: string) => {
+    if (allowed.has(id) && !placed.has(id)) {
+      placed.add(id);
+      ordered.push(id);
+    }
+  };
+  for (const h of categories) for (const id of membership.get(h) || []) place(id);
+  for (const ids of membership.values()) for (const id of ids) place(id);
+  for (const id of allowed) place(id);
+
+  // Full data for the candidates, then Shopify's facets applied here.
+  const nodes: any[] = [];
+  for (let i = 0; i < ordered.length; i += 250) {
+    const r: any = await storefront.query(PRODUCTS_BY_IDS_QUERY, {
+      variables: {ids: ordered.slice(i, i + 250), ...ctx},
+      cache: storefront.CacheShort(),
+    });
+    for (const n of r?.nodes || []) if (n?.id) nodes.push(n);
+  }
+
+  const price = filters.find((f) => f.price)?.price;
+  const available = filters.find((f) => typeof f.available === 'boolean')?.available;
+  const productTypes = filters.filter((f) => f.productType).map((f) => f.productType);
+  const options = filters.filter((f) => f.variantOption).map((f) => f.variantOption);
+
+  let matched = nodes.filter((n) => {
+    const amount = parseFloat(n.priceRange?.minVariantPrice?.amount || '0');
+    if (price?.min != null && Number.isFinite(price.min) && amount < price.min) return false;
+    if (price?.max != null && Number.isFinite(price.max) && amount > price.max) return false;
+    if (available === true && !n.availableForSale) return false;
+    if (available === false && n.availableForSale) return false;
+    if (productTypes.length && !productTypes.includes(n.productType)) return false;
+    for (const o of options) {
+      const ok = (n.variants?.nodes || []).some((v: any) =>
+        (v.selectedOptions || []).some(
+          (so: any) => so.name === o.name && so.value === o.value,
+        ),
+      );
+      if (!ok) return false;
+    }
+    return true;
+  });
+
+  if (sortKey === 'PRICE') {
+    matched = [...matched].sort((a: any, b: any) => {
+      const pa = parseFloat(a.priceRange?.minVariantPrice?.amount || '0');
+      const pb = parseFloat(b.priceRange?.minVariantPrice?.amount || '0');
+      return reverse ? pb - pa : pa - pb;
+    });
+  }
+
+  let offset = 0;
+  if (cursor) {
+    try {
+      offset = Math.max(0, Number((JSON.parse(atob(cursor)) as any)?.offset) || 0);
+    } catch {
+      offset = 0;
+    }
+  }
+  const hasNextPage = offset + FILTERED_PAGE < matched.length;
+  const hasPreviousPage = offset > 0;
+  return {
+    nodes: matched.slice(offset, offset + FILTERED_PAGE),
+    totalCount: matched.length,
+    pageInfo: {
+      hasNextPage,
+      hasPreviousPage,
+      startCursor: hasPreviousPage
+        ? btoa(JSON.stringify({offset: Math.max(0, offset - FILTERED_PAGE)}))
+        : null,
+      endCursor: hasNextPage
+        ? btoa(JSON.stringify({offset: offset + FILTERED_PAGE}))
+        : null,
+    },
+  } as any;
+}
+
+const CATALOG_SECTIONS_MENU = 'catalog-sections';
+const DEFAULT_SECTIONS = [
+  'cake',
+  'kunafa',
+  'arabic',
+  'chocolate',
+  'baked-for-you',
+  'cream-and-more',
+  'ice-cream',
+  'coffee-sweet-and-dates',
+  'coffee-tea-and-nuts',
+  'hot-drinks',
+  'cold-drinks',
+  'health-products',
+  'diet-sweets',
+  'frozen',
+  'chocolate-decorations',
+];
+const GROUPED_PAGE = 12;
+
+
+const CATALOG_SECTIONS_MENU_QUERY = `#graphql
+  query CatalogSectionsMenu(
+    $handle: String!
+    $country: CountryCode
+    $language: LanguageCode
+  ) @inContext(country: $country, language: $language) {
+    menu(handle: $handle) {
+      items {
+        title
+        resource {
+          ... on Collection {
+            handle
+          }
+        }
+      }
+    }
+  }
+`;
+
+/** Store-internal or catch-all collections — never a section title. */
+const NON_SECTION_COLLECTIONS = new Set([
+  'all',
+  'frontpage',
+  'discountable',
+  'best-sellers',
+  'export-products',
+]);
+
+const CATALOG_SECTION_IDS_QUERY = `#graphql
+  query CatalogSectionIds($country: CountryCode, $language: LanguageCode)
+  @inContext(country: $country, language: $language) {
+    collections(first: 60) {
+      nodes {
+        handle
+        title
+        products(first: 250) {
+          nodes {
+            id
+          }
+        }
+      }
+    }
+  }
+`;
+
+const CATALOG_ALL_IDS_QUERY = `#graphql
+  query CatalogAllIds(
+    $after: String
+    $country: CountryCode
+    $language: LanguageCode
+  ) @inContext(country: $country, language: $language) {
+    products(first: 250, after: $after) {
+      nodes {
+        id
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`;
+
+type CatalogSection = {handle: string; title: string};
+
+async function loadGroupedCatalog(storefront: any, cursorParam: string | null) {
+  const ctx = {
+    country: storefront.i18n.country,
+    language: storefront.i18n.language,
+  };
+
+  // 1. Which sections, in what order, with what heading.
+  let wanted: {handle: string; title: string | null}[] = [];
+  try {
+    const m: any = await storefront.query(CATALOG_SECTIONS_MENU_QUERY, {
+      variables: {handle: CATALOG_SECTIONS_MENU, ...ctx},
+      cache: storefront.CacheShort(),
+    });
+    wanted = (m?.menu?.items || [])
+      .map((i: any) => ({
+        handle: String(i?.resource?.handle || ''),
+        title: i?.title ? String(i.title) : null,
+      }))
+      .filter((i: any) => i.handle);
+  } catch {
+    // No menu, or it could not be read: the defaults below.
+  }
+  if (!wanted.length) wanted = DEFAULT_SECTIONS.map((handle) => ({handle, title: null}));
+  wanted = wanted
+    .filter((w) => /^[a-z0-9][a-z0-9-]*$/i.test(w.handle))
+    .slice(0, 30);
+  if (!wanted.length) return null;
+
+  // 2. Every collection's product ids, in each collection's own order.
+  const idsRes: any = await storefront.query(CATALOG_SECTION_IDS_QUERY, {
+    variables: ctx,
+    cache: storefront.CacheShort(),
+  });
+  const allCollections: any[] = idsRes?.collections?.nodes || [];
+  const byHandle = new Map<string, any>(allCollections.map((c) => [c.handle, c]));
+
+  /**
+   * Every product sits under a collection title — the client's words: «each
+   * listed under the collection». The menu's collections come first, in the
+   * menu's order; then every other real collection (in Shopify's order), so a
+   * product missing from the menu still appears under its own collection
+   * instead of vanishing from the page (326 of 424 showed before). Store-
+   * internal collections are never titles. A product in no collection at all
+   * ends up in «منتجات أخرى».
+   */
+  const orderedHandles = [
+    ...wanted.map((w) => w.handle).filter((h) => byHandle.has(h)),
+    ...allCollections
+      .map((c) => c.handle)
+      .filter(
+        (h: string) =>
+          !wanted.some((w) => w.handle === h) && !NON_SECTION_COLLECTIONS.has(h),
+      ),
+  ];
+
+  const sections: CatalogSection[] = [];
+  const entries: {id: string; s: number}[] = [];
+  const seen = new Set<string>();
+  for (const handle of orderedHandles) {
+    const col = byHandle.get(handle);
+    if (!col) continue;
+    const index = sections.length;
+    let added = 0;
+    for (const n of col.products?.nodes || []) {
+      if (!n?.id || seen.has(n.id)) continue;
+      seen.add(n.id);
+      entries.push({id: n.id, s: index});
+      added++;
+    }
+    /*
+     * The collection's own name, in the page's language (its Arabic comes
+     * from Translate & Adapt, e.g. Cake → «كيك»). Not the menu item's title:
+     * menu items are typed in one language and would show it on both sites.
+     */
+    if (added) sections.push({handle: col.handle, title: col.title});
+  }
+
+  // Products in no collection at all.
+  try {
+    const leftovers: string[] = [];
+    let after: string | null = null;
+    for (let page = 0; page < 8; page++) {
+      const r: any = await storefront.query(CATALOG_ALL_IDS_QUERY, {
+        variables: {...ctx, after},
+        cache: storefront.CacheShort(),
+      });
+      for (const n of r?.products?.nodes || []) {
+        if (n?.id && !seen.has(n.id)) leftovers.push(n.id);
+      }
+      if (!r?.products?.pageInfo?.hasNextPage) break;
+      after = r.products.pageInfo.endCursor;
+    }
+    if (leftovers.length) {
+      const index = sections.length;
+      sections.push({
+        handle: 'other-products',
+        title: storefront.i18n.language === 'EN' ? 'Other products' : 'منتجات أخرى',
+      });
+      for (const id of leftovers) {
+        seen.add(id);
+        entries.push({id, s: index});
+      }
+    }
+  } catch (e) {
+    console.warn('[Collections] Could not list uncategorised products:', e);
+  }
+  if (!entries.length) return null;
+
+  // 3. This page's slice, with full product data.
+  let offset = 0;
+  if (cursorParam) {
+    try {
+      offset = Math.max(0, Number((JSON.parse(atob(cursorParam)) as any)?.offset) || 0);
+    } catch {
+      offset = 0;
+    }
+  }
+  const slice = entries.slice(offset, offset + GROUPED_PAGE);
+  const res: any = await storefront.query(PRODUCTS_BY_IDS_QUERY, {
+    variables: {ids: slice.map((e) => e.id), ...ctx},
+    cache: storefront.CacheShort(),
+  });
+  const byId = new Map<string, any>();
+  for (const n of res?.nodes || []) if (n?.id) byId.set(n.id, n);
+
+  const nodes = slice
+    .map((e) => {
+      const n = byId.get(e.id);
+      return n ? {...n, _section: sections[e.s]} : null;
+    })
+    .filter(Boolean);
+
+  const hasNextPage = offset + GROUPED_PAGE < entries.length;
+  const hasPreviousPage = offset > 0;
+  return {
+    nodes,
+    totalCount: entries.length,
+    pageInfo: {
+      hasNextPage,
+      hasPreviousPage,
+      startCursor: hasPreviousPage
+        ? btoa(JSON.stringify({offset: Math.max(0, offset - GROUPED_PAGE)}))
+        : null,
+      endCursor: hasNextPage
+        ? btoa(JSON.stringify({offset: offset + GROUPED_PAGE}))
+        : null,
+    },
+  } as any;
 }
 
 const COLLECTION_FILTER_QUERY = `#graphql
@@ -569,7 +1083,10 @@ const COLLECTION_FILTER_QUERY = `#graphql
 ` as const;
 
 export default function CollectionAll() {
-  const {products, collections, error} = useLoaderData<typeof loader>();
+  const loaderData = useLoaderData<typeof loader>();
+  const {products, collections, error} = loaderData;
+  /** Titled sections (see loadGroupedCatalog) — only on the plain page. */
+  const grouped = Boolean((loaderData as any)?.grouped);
   const navigation = useNavigation();
   const currentLocation = useLocation();
   const [view, setView] = useState<'grid' | 'list'>('grid');
@@ -651,6 +1168,7 @@ export default function CollectionAll() {
                 onClose={() => {}}
                 isDesktop={true}
                 isEn={isEn}
+                dietaryCounts={(loaderData as any)?.dietaryCounts}
               />
             </div>
 
@@ -832,7 +1350,7 @@ export default function CollectionAll() {
               </div>
 
               <Pagination connection={products}>
-                {({nodes, isLoading, PreviousLink, NextLink}) => {
+                {({nodes, isLoading, PreviousLink, NextLink, hasNextPage, nextPageUrl, state}) => {
                   const filteredNodes = nodes.filter((n: any) => {
                     // Arabic queries were matched word by word on the server
                     // (see the index search in the loader); a raw substring
@@ -868,22 +1386,20 @@ export default function CollectionAll() {
                             : 'لا توجد منتجات تطابق بحثك.'}
                         </div>
                       )}
-                      <ProductsGrid products={filteredNodes} view={view} />
-                      <div className="flex justify-center mt-16">
-                        <NextLink className="px-12 py-4 rounded-full border-2 border-[#234745] !text-[#234745] [font-family:'GE_Dinar_One',sans-serif] font-bold text-[15px] lg:text-[18px] transition-all hover:bg-[#1a3533] hover:!text-white hover:border-[#1a3533] active:scale-95">
-                          {isLoading ? (
-                            isEn ? (
-                              'Loading...'
-                            ) : (
-                              'جاري التحميل...'
-                            )
-                          ) : (
-                            <span>
-                              {isEn ? 'Browse More ↓' : 'تصفح المزيد'}
-                            </span>
-                          )}
-                        </NextLink>
-                      </div>
+                      {grouped ? (
+                        <GroupedProductsGrid products={filteredNodes} view={view} />
+                      ) : (
+                        <ProductsGrid products={filteredNodes} view={view} />
+                      )}
+                      <InfiniteScrollLoader
+                        hasNextPage={hasNextPage}
+                        nextPageUrl={nextPageUrl}
+                        state={state}
+                        isLoading={isLoading}
+                        NextLink={NextLink as any}
+                        isEn={isEn}
+                        shownCount={filteredNodes.length}
+                      />
                     </>
                   );
                 }}
@@ -911,6 +1427,7 @@ export default function CollectionAll() {
                 collections={collections || []}
                 onClose={() => setIsFilterOpen(false)}
                 isEn={isEn}
+                dietaryCounts={(loaderData as any)?.dietaryCounts}
               />
             </div>
           </div>,
@@ -1270,6 +1787,12 @@ export function ActiveFilterChips({
     </>
   );
 }
+/** Every ticked tag in a query string (both spellings the page uses). */
+function currentTagParams(search: string): string[] {
+  const p = new URLSearchParams(search);
+  return [...p.getAll('filter.p.tag'), ...p.getAll('tag')];
+}
+
 export function FilterSidebar({
   filters,
   collections,
@@ -1278,6 +1801,7 @@ export function FilterSidebar({
   isEn,
   hideSearchInput = false,
   hideCategories = false,
+  dietaryCounts,
 }: {
   filters: any[];
   collections: any[];
@@ -1286,6 +1810,12 @@ export function FilterSidebar({
   isEn?: boolean;
   hideSearchInput?: boolean;
   hideCategories?: boolean;
+  /**
+   * Products per dietary option (~/lib/catalog-filters). An option that
+   * matches nothing is not offered — every one of them did, and ticking it
+   * still showed a grid of chocolate cakes. Absent: all options shown.
+   */
+  dietaryCounts?: Record<string, number>;
 }) {
   const rawSubmit = useSubmit();
   /*
@@ -1309,6 +1839,17 @@ export function FilterSidebar({
     price: true,
     occasions: true,
   });
+
+  /** Dietary options worth offering: they match products, or are ticked now. */
+  const tickedTags = new Set(
+    [...currentTagParams(location.search)].map((t) => t.toLowerCase()),
+  );
+  const visibleDietary = DIETARY_OPTIONS.filter(
+    (o) =>
+      !dietaryCounts ||
+      (dietaryCounts[o.key] || 0) > 0 ||
+      o.tags.some((t) => tickedTags.has(t.toLowerCase())),
+  );
 
   /**
    * Handles that must not become category chips.
@@ -2271,7 +2812,8 @@ export function FilterSidebar({
           );
         })}
 
-        {/* Dietary Type Filter Section (Placed AT THE VERY END) */}
+        {/* Dietary Type Filter Section (Placed AT THE VERY END) — only options that match products */}
+        {visibleDietary.length > 0 && (<>
         <div className="w-[302px] border-t border-[#BBCFCD]/50 my-0" />
         <div className="w-[270px] flex flex-col gap-4">
           <button
@@ -2301,48 +2843,7 @@ export function FilterSidebar({
           <div
             className={`flex flex-col gap-4 transition-all duration-300 overflow-hidden ${openSections['dietary'] !== false ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}
           >
-            {[
-              {
-                labelAr: 'خالي من الجلوتين',
-                labelEn: 'Gluten-Free',
-                tags: [
-                  'gluten-free',
-                  'gluten_free',
-                  'خالي من الجلوتين',
-                  'dietary:gluten-free',
-                ],
-              },
-              {
-                labelAr: 'مناسب للنباتيين',
-                labelEn: 'Vegan / Vegetarian',
-                tags: [
-                  'vegan',
-                  'vegetarian',
-                  'مناسب للنباتيين',
-                  'dietary:vegan',
-                ],
-              },
-              {
-                labelAr: 'منتجات صحية',
-                labelEn: 'Healthy Products',
-                tags: ['healthy', 'منتجات صحية', 'dietary:healthy'],
-              },
-              {
-                labelAr: 'خالي من السكر',
-                labelEn: 'Sugar-Free',
-                tags: [
-                  'sugar-free',
-                  'sugar_free',
-                  'خالي من السكر',
-                  'dietary:sugar-free',
-                ],
-              },
-              {
-                labelAr: 'قليل الدهون',
-                labelEn: 'Low-Fat',
-                tags: ['low-fat', 'low_fat', 'قليل الدهون', 'dietary:low-fat'],
-              },
-            ].map((item, i) => {
+            {visibleDietary.map((item, i) => {
               const activeTag = item.tags.find(
                 (t) =>
                   currentParams.getAll('filter.p.tag').includes(t) ||
@@ -2398,6 +2899,7 @@ export function FilterSidebar({
             })}
           </div>
         </div>
+        </>)}
       </div>
 
       {/* Bottom side-by-side action buttons matching the mockup drawer layout */}
@@ -2468,6 +2970,45 @@ function getFilterLink(input: string) {
   } catch (e) {
     return '#';
   }
+}
+
+/**
+ * The products under their section titles, in page order: a new title each
+ * time the section changes. As more pages load on scroll, a section that
+ * continues simply grows — its title is not repeated.
+ */
+function GroupedProductsGrid({
+  products,
+  view,
+}: {
+  products: any[];
+  view: 'grid' | 'list';
+}) {
+  const groups: {key: string; title: string; items: any[]}[] = [];
+  for (const product of products) {
+    const key = product?._section?.handle || '';
+    const last = groups[groups.length - 1];
+    if (last && last.key === key) last.items.push(product);
+    else groups.push({key, title: product?._section?.title || '', items: [product]});
+  }
+
+  return (
+    <div className="flex flex-col gap-10 md:gap-14">
+      {groups.map((group, i) => (
+        <section key={`${group.key}-${i}`} aria-labelledby={`section-${group.key}-${i}`}>
+          {group.title && (
+            <h2
+              id={`section-${group.key}-${i}`}
+              className="!m-0 !mb-4 md:!mb-6 text-[20px] md:text-[26px] font-bold text-[#234745] leading-tight [text-wrap:balance]"
+            >
+              {group.title}
+            </h2>
+          )}
+          <ProductsGrid products={group.items} view={view} />
+        </section>
+      ))}
+    </div>
+  );
 }
 
 function ProductsGrid({

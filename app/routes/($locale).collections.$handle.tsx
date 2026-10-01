@@ -34,6 +34,8 @@ import {Price} from '~/components/Price';
 import {StockNotificationModal} from '~/components/StockNotificationModal';
 import {FilterSidebar} from './($locale).collections.all';
 import patternBg from '/images/second-bg-pattern.svg';
+import {InfiniteScrollLoader} from '~/components/InfiniteScrollLoader';
+import {dietaryOptionForTag} from '~/lib/catalog-filters';
 
 export const meta: MetaFunction<typeof loader> = ({data}) => {
   if (!data?.collection) {
@@ -296,11 +298,16 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
       params.locale ? `/${params.locale}/collections` : '/collections',
     );
   }
-  return data({collection: targetCollection, filters});
+  // Dietary options that match nothing are not offered (~/lib/catalog-filters).
+  const dietaryCounts = await import('~/lib/catalog-filters.server')
+    .then((m) => m.loadDietaryCounts(storefront))
+    .catch(() => ({}));
+
+  return data({collection: targetCollection, filters, dietaryCounts});
 }
 
 export default function Collection() {
-  const {collection} = useLoaderData<typeof loader>();
+  const {collection, dietaryCounts} = useLoaderData<typeof loader>() as any;
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const navigation = useNavigation();
   const currentLocation = useLocation();
@@ -398,6 +405,7 @@ export default function Collection() {
                 onClose={() => {}}
                 isDesktop={true}
                 isEn={isEn}
+                dietaryCounts={dietaryCounts}
               />
             </div>
 
@@ -569,7 +577,7 @@ export default function Collection() {
               </div>
 
               <Pagination connection={collection.products}>
-                {({nodes, isLoading, PreviousLink, NextLink}) => {
+                {({nodes, isLoading, PreviousLink, NextLink, hasNextPage, nextPageUrl, state}) => {
                   const effectiveNodes =
                     (nodes && nodes.length > 0)
                       ? nodes
@@ -603,13 +611,28 @@ export default function Collection() {
                         return false;
                     }
                     if (activeTagFilters.length > 0) {
+                      /*
+                       * Each ticked dietary option must hold (gluten-free
+                       * AND vegan), matched by any of its tag spellings;
+                       * other tags are one either-or choice. See
+                       * ~/lib/catalog-filters.
+                       */
                       const pTags = (n.tags || []).map((t: string) =>
                         t.toLowerCase(),
                       );
-                      const matchesTag = activeTagFilters.some((t) =>
-                        pTags.includes(t.toLowerCase()),
-                      );
-                      if (!matchesTag) return false;
+                      const dietary = new Map<string, string[]>();
+                      const others: string[] = [];
+                      for (const t of activeTagFilters) {
+                        const o = dietaryOptionForTag(t);
+                        if (o) dietary.set(o.key, o.tags.map((x) => x.toLowerCase()));
+                        else others.push(t.toLowerCase());
+                      }
+                      for (const aliases of dietary.values()) {
+                        if (!aliases.some((a) => pTags.includes(a))) return false;
+                      }
+                      if (others.length && !others.some((t) => pTags.includes(t))) {
+                        return false;
+                      }
                     }
                     return true;
                   });
@@ -633,27 +656,15 @@ export default function Collection() {
                         </div>
                       )}
                       <ProductsGrid products={filteredNodes} view={view} />
-                      <div className="flex justify-center mt-16">
-                        <NextLink
-                          className="bg-[#234745] !text-white px-16 py-4 rounded-full font-black shadow-[0_10px_30px_rgba(27,61,46,0.3)] hover:shadow-[0_15px_40px_rgba(27,61,46,0.4)] hover:-translate-y-1 transition-all duration-300"
-                          style={{color: '#ffffff'}}
-                        >
-                          {isLoading ? (
-                            isEn ? (
-                              'Loading...'
-                            ) : (
-                              'جاري التحميل...'
-                            )
-                          ) : (
-                            <span
-                              className="!text-white"
-                              style={{color: '#ffffff'}}
-                            >
-                              {isEn ? 'Browse More ↓' : 'تصفح المزيد ↓'}
-                            </span>
-                          )}
-                        </NextLink>
-                      </div>
+                      <InfiniteScrollLoader
+                        hasNextPage={hasNextPage}
+                        nextPageUrl={nextPageUrl}
+                        state={state}
+                        isLoading={isLoading}
+                        NextLink={NextLink as any}
+                        isEn={isEn}
+                        shownCount={filteredNodes.length}
+                      />
                     </>
                   );
                 }}
@@ -683,6 +694,7 @@ export default function Collection() {
                 onClose={() => setIsFilterOpen(false)}
                 isEn={isEn}
                 hideCategories={true}
+                dietaryCounts={dietaryCounts}
               />
             </div>
           </div>,

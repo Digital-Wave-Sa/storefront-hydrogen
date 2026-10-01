@@ -29,6 +29,14 @@ import {PhoneField} from '~/components/PhoneField';
 import {parsePhoneCountry} from '~/lib/country-codes';
 import {validatePhoneNumber} from '~/lib/phone-validation';
 import type {ActionResponse} from '~/routes/($locale).account.addresses';
+import {
+  ADDRESS_TYPES,
+  addressTypeFor,
+  addressTypeLabel,
+  type AddressType,
+} from '~/lib/address-types';
+import {rememberAddressType, useAddressTypes} from '~/lib/use-address-types';
+import {AddressTypeIcon} from '~/components/AddressTypeIcon';
 
 export function AddressForm({
   type,
@@ -39,6 +47,7 @@ export function AddressForm({
   showHeading = true,
   mode = 'standalone',
   location = null,
+  recipient = null,
   onSuccess,
   onClose,
 }: {
@@ -67,6 +76,12 @@ export function AddressForm({
     countryCode?: string;
     zip?: string;
   } | null;
+  /**
+   * The signed-in customer, to fill a NEW address's name and mobile so they
+   * are not typed again for every address. Almost every address is the
+   * customer's own; ordering for someone else is one tap on «تعديل».
+   */
+  recipient?: {firstName?: string | null; lastName?: string | null; phone?: string | null} | null;
   onSuccess?: (addr: AddressFragment, isDefault?: boolean) => void;
   onClose: () => void;
 }) {
@@ -97,6 +112,7 @@ export function AddressForm({
          * rather than retyped: ActionResponse is shared with the delete and
          * update paths.
          */
+        rememberAddressType(addr.id, (addr as any).addressType ?? addrType);
         onSuccess?.(addr, Boolean(fetcher.data.defaultAddress));
         onClose();
       }
@@ -115,8 +131,42 @@ export function AddressForm({
    * before the form can be sent (see PhoneField). A saved +9665XXXXXXXX
    * opens as +966 / 5XXXXXXXX.
    */
+  /**
+   * شقة / منزل / مكتب — see ~/lib/address-types. Always one of the three:
+   * «منزل» is pre-selected (decided 1 Oct 2026), so every saved address has a
+   * type without an extra tap. An existing address opens on the type it was
+   * saved with; the saved types arrive a moment after the form opens, so they
+   * replace the default then, unless the shopper already chose.
+   */
+  const savedTypes = useAddressTypes();
+  const [addrType, setAddrType] = useState<AddressType>(
+    () => (address?.id ? addressTypeFor(savedTypes, address.id) : null) || 'house',
+  );
+  const typeTouched = useRef(false);
+  useEffect(() => {
+    if (typeTouched.current || !address?.id) return;
+    const saved = addressTypeFor(savedTypes, address.id);
+    if (saved) setAddrType(saved);
+  }, [savedTypes, address?.id]);
+
+  /**
+   * The recipient's name. A new address starts with the customer's own name
+   * and shows it as one line — «المستلم: معتصم عودة» — instead of two empty
+   * boxes to fill every time. «تعديل» opens the boxes for an order going to
+   * someone else. An empty name always shows the boxes.
+   */
+  const [firstName, setFirstName] = useState(
+    address?.firstName ?? recipient?.firstName ?? '',
+  );
+  const [lastName, setLastName] = useState(
+    address?.lastName ?? recipient?.lastName ?? '',
+  );
+  const [editingName, setEditingName] = useState(
+    () => !(String(firstName).trim() && String(lastName).trim()),
+  );
+
   const [phone, setPhone] = useState(() => {
-    const parsed = parsePhoneCountry(address?.phone ?? '');
+    const parsed = parsePhoneCountry(address?.phone ?? recipient?.phone ?? '');
     return {countryCode: parsed.countryCode, local: parsed.localNumber.replace(/\D/g, '')};
   });
   const [phoneError, setPhoneError] = useState<string | null>(null);
@@ -273,6 +323,43 @@ export function AddressForm({
             value={stripCoordsMarker(address?.address2)}
           />
 
+          {/* Address type: شقة / منزل / مكتب */}
+          <input type="hidden" name="addressType" value={addrType} />
+          <div style={{marginBottom: '20px'}}>
+            <span className="account-field-label" id="address-type-label">
+              {isEn ? 'Address type' : 'نوع العنوان'}
+            </span>
+            <div
+              role="radiogroup"
+              aria-labelledby="address-type-label"
+              className="flex flex-wrap gap-2"
+            >
+              {ADDRESS_TYPES.map((t) => {
+                const active = addrType === t;
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => {
+                      typeTouched.current = true;
+                      setAddrType(t);
+                    }}
+                    className={`inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full border text-[13px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#234745] ${
+                      active
+                        ? 'bg-[#234745] border-[#234745] text-white'
+                        : 'bg-white border-[#E3E0DA] text-[#234745] hover:border-[#9FB7AE]'
+                    }`}
+                  >
+                    <AddressTypeIcon type={t} size={16} />
+                    {addressTypeLabel(t, isEn)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/*
             The form carries its own map only when nothing else on screen does.
             Embedded in the delivery modal, the host's map is the picker and
@@ -398,30 +485,58 @@ export function AddressForm({
             </div>
           )}
 
-          <div className="account-form-grid">
-            <div>
-              <label className="account-field-label">الاسم الأول</label>
-              <input
-                name="firstName"
-                defaultValue={address?.firstName ?? ''}
-                className="account-input"
-                required
-              />
+          {editingName ? (
+            <div className="account-form-grid">
+              <div>
+                <label className="account-field-label" htmlFor="address-first-name">
+                  {isEn ? 'First name' : 'الاسم الأول'}
+                </label>
+                <input
+                  id="address-first-name"
+                  name="firstName"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className="account-input"
+                  autoComplete="given-name"
+                  required
+                />
+              </div>
+              <div>
+                <label className="account-field-label" htmlFor="address-last-name">
+                  {isEn ? 'Last name' : 'الاسم الأخير'}
+                </label>
+                <input
+                  id="address-last-name"
+                  name="lastName"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className="account-input"
+                  autoComplete="family-name"
+                  required
+                />
+              </div>
             </div>
-            <div>
-              <label className="account-field-label">الاسم الأخير</label>
-              <input
-                name="lastName"
-                defaultValue={address?.lastName ?? ''}
-                className="account-input"
-                required
-              />
+          ) : (
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-[#E3E0DA] bg-white px-4 py-3">
+              <input type="hidden" name="firstName" value={firstName} />
+              <input type="hidden" name="lastName" value={lastName} />
+              <span className="text-[14px] text-[#234745] min-w-0 truncate">
+                <span className="text-[#8BA19C]">{isEn ? 'Recipient: ' : 'المستلم: '}</span>
+                <strong>{`${firstName} ${lastName}`.trim()}</strong>
+              </span>
+              <button
+                type="button"
+                onClick={() => setEditingName(true)}
+                className="shrink-0 text-[13px] font-bold text-[#906B51] underline underline-offset-2"
+              >
+                {isEn ? 'Edit' : 'تعديل'}
+              </button>
             </div>
-          </div>
+          )}
 
           <div style={{marginTop: '20px'}}>
             <label className="account-field-label">
-              العنوان (الشارع، الحي)
+              {isEn ? 'Address (street, district)' : 'العنوان (الشارع، الحي)'}
             </label>
             <input
               name="address1"
@@ -433,7 +548,7 @@ export function AddressForm({
           </div>
 
           <div style={{marginTop: '20px'}}>
-            <label className="account-field-label">المدينة</label>
+            <label className="account-field-label">{isEn ? 'City' : 'المدينة'}</label>
             <input
               name="city"
               value={city}
@@ -479,7 +594,7 @@ export function AddressForm({
               htmlFor="defaultAddress"
               style={{fontSize: '14px', fontWeight: '600', color: '#666'}}
             >
-              تعيين كعنوان افتراضي
+              {isEn ? 'Set as default address' : 'تعيين كعنوان افتراضي'}
             </label>
           </div>
 
@@ -988,7 +1103,18 @@ export function LocationPicker({
     >
       <div ref={mapRef} className="absolute inset-0 z-0" />
 
-      <div className={`absolute inset-x-3 z-[5] flex gap-2 ${stacked ? 'top-3' : 'top-4 inset-x-4'}`}>
+      {/*
+        Full-height map (the delivery modal's map pane): the modal's close
+        button (.dpm-close — 40px, 24px from the top and the inline end) sits
+        over this corner. The row used to run under it, so the ✕ covered the
+        end of the search box and hid the «my location» button entirely. It
+        now stops short of the button: 24 + 40 + 12px of air.
+      */}
+      <div
+        className={`absolute z-[5] flex gap-2 ${
+          stacked ? 'top-3 inset-x-3' : 'top-4 start-4 end-[76px]'
+        }`}
+      >
         <div className="flex-1 relative bg-white rounded-2xl shadow-lg border-2 border-[#234745]/5 overflow-hidden">
           <input
             ref={searchRef}

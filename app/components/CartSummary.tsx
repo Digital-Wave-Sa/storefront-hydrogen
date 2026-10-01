@@ -1239,16 +1239,31 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
 
                     <div className="flex flex-col gap-1 pr-10 rtl:pr-10 ltr:pl-10">
                       <div className="flex items-center gap-2 text-[13px] font-medium text-[#7D7D7D]">
-                        <span className="px-2.5 py-0.5 rounded-md bg-[#234745]/10 text-[#234745] text-[11px] font-bold">
-                          {isPickup ? (isEn ? 'Pickup' : 'استلام من الفرع') : (isEn ? 'Delivery' : 'توصيل للمنزل')}
+                        {/*
+                          «توصيل», not «توصيل للمنزل»: the address can be an
+                          office or a flat (address types), and «توصيل للمنزل
+                          (مكتب)» contradicted itself. Where it goes is said
+                          next to it, without brackets: «توصيل إلى مكتب».
+                        */}
+                        <span className="px-2.5 py-0.5 rounded-md bg-[#234745]/10 text-[#234745] text-[11px] font-bold shrink-0">
+                          {isPickup ? (isEn ? 'Pickup' : 'استلام من الفرع') : (isEn ? 'Delivery' : 'توصيل')}
                         </span>
                         {rootData?.selectedAddressName && !isPickup && (
-                          <span className="truncate max-w-[200px] text-[#4A4A4A]">({rootData.selectedAddressName})</span>
+                          <span className="truncate max-w-[200px] text-[#4A4A4A]">
+                            {isEn ? 'to ' : 'إلى '}
+                            <span className="font-bold text-[#234745]">{rootData.selectedAddressName}</span>
+                          </span>
                         )}
                       </div>
 
                       {isBranchSelected ? (
                         <div className="text-[15px] font-bold text-[#234745] leading-snug">
+                          {/* For delivery this is the branch that prepares and sends the order, not the destination. */}
+                          {!isPickup && (
+                            <span className="font-medium text-[13px] text-[#7D7D7D]">
+                              {isEn ? 'From ' : 'من فرع '}
+                            </span>
+                          )}
                           {branchDisplayName}
                         </div>
                       ) : (

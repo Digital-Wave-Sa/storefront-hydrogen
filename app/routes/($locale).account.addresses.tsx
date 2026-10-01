@@ -20,6 +20,9 @@ import {stripCoordsMarker} from '~/lib/address-coords';
 import {parsePhoneCountry} from '~/lib/country-codes';
 import {validatePhoneNumber} from '~/lib/phone-validation';
 import {AddressForm} from '~/components/AddressForm';
+import {AddressTypeIcon} from '~/components/AddressTypeIcon';
+import {addressTypeFor, addressTypeLabel} from '~/lib/address-types';
+import {useAddressTypes} from '~/lib/use-address-types';
 import {PendingOverlay} from '~/components/BrandLoader';
 
 import {pageTitle} from '~/lib/seo';
@@ -473,11 +476,30 @@ export async function action({request, context}: ActionFunctionArgs) {
      * delivery modal matches the nearest branch from it at once — Shopify's
      * own geocoding of a new address takes minutes to appear.
      */
+    /**
+     * The address type (شقة / منزل / مكتب) is kept the same way, in the
+     * customer's `custom.address_types`; see ~/lib/address-types. Only when
+     * the form sent the field, so a save from somewhere that does not show
+     * the chips never wipes a type chosen earlier.
+     */
+    const typeSent = form.has('addressType');
+    const {normalizeAddressType} = await import('~/lib/address-types');
+    const addressType = normalizeAddressType(form.get('addressType'));
+
     const withPin = async <T extends {id?: string}>(saved: T): Promise<T> => {
-      if (!pin || !saved?.id) return saved;
-      const {savePin} = await import('~/lib/address-pins.server');
-      if (customerNumericId) await savePin(env, customerNumericId, saved.id, pin);
-      return {...saved, latitude: pin.lat, longitude: pin.lng};
+      if (!saved?.id) return saved;
+      let out: any = saved;
+      if (pin) {
+        const {savePin} = await import('~/lib/address-pins.server');
+        if (customerNumericId) await savePin(env, customerNumericId, saved.id, pin);
+        out = {...out, latitude: pin.lat, longitude: pin.lng};
+      }
+      if (typeSent && customerNumericId) {
+        const {saveAddressType} = await import('~/lib/address-types.server');
+        await saveAddressType(env, customerNumericId, saved.id, addressType);
+        out = {...out, addressType};
+      }
+      return out;
     };
 
     if (!address.country) {
@@ -823,6 +845,7 @@ export default function Addresses() {
     address?: AddressFragment;
   } | null>(null);
   const locale = useOutletContext<{locale: string}>().locale;
+  const addressTypes = useAddressTypes();
   const isEn = locale === 'en';
   const [addressToDelete, setAddressToDelete] = useState<string | null>(null);
 
@@ -933,7 +956,14 @@ export default function Addresses() {
         <div className="flex flex-col gap-3 mt-2">
           {localAddresses.map((address) => {
             const isDefault = isSameAddressId(activeDefaultId, address.id);
-            const label = address.firstName || (isEn ? 'Address' : 'عنوان');
+            /**
+             * The place, when the customer said what it is (شقة / منزل /
+             * مكتب); otherwise the recipient's name, as before.
+             */
+            const addressType = addressTypeFor(addressTypes, address.id);
+            const label = addressType
+              ? addressTypeLabel(addressType, isEn)
+              : address.firstName || (isEn ? 'Address' : 'عنوان');
             const addressText = [address.address1, address.city]
               .filter(Boolean)
               .join('، ');
@@ -980,7 +1010,8 @@ export default function Addresses() {
                         <div className="w-2.5 h-2.5 rounded-full bg-white" />
                       )}
                     </div>
-                    <span className="font-bold text-base md:text-lg text-[#234745]">
+                    <span className="inline-flex items-center gap-1.5 font-bold text-base md:text-lg text-[#234745]">
+                      {addressType && <AddressTypeIcon type={addressType} size={18} />}
                       {label}
                     </span>
                     {isDefault && (
@@ -1224,9 +1255,10 @@ function AddressModal({
   onSuccess?: (addr: AddressFragment, isDefault?: boolean) => void;
   onClose: () => void;
 }) {
-  const {googleMapsKey, locale} = useOutletContext<{
+  const {googleMapsKey, locale, customer} = useOutletContext<{
     googleMapsKey: string;
     locale: string;
+    customer?: any;
   }>();
 
   return (
@@ -1244,6 +1276,7 @@ function AddressModal({
           isDefault={isDefault}
           googleMapsKey={googleMapsKey}
           isEn={locale === 'en'}
+          recipient={customer ?? null}
           onSuccess={onSuccess}
           onClose={onClose}
         />

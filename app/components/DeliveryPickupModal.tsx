@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import {AddressTypeIcon} from '~/components/AddressTypeIcon';
+import {addressTypeFor, addressTypeLabel} from '~/lib/address-types';
+import {useAddressTypes} from '~/lib/use-address-types';
 import {BrandLoaderBlock} from '~/components/BrandLoader';
 import { createPortal } from 'react-dom';
 import { Await, useFetcher, useRouteLoaderData, Link, useLocation } from 'react-router';
@@ -931,6 +934,8 @@ function ModalContent({
      * form, and return here afterwards (the redirectTo contract).
      */
     const isSignedIn = !!(customerObj?.id || customerObj?.data?.customer?.id);
+    /** شقة / منزل / مكتب per saved address; see ~/lib/address-types. */
+    const addressTypes = useAddressTypes(isSignedIn);
     const here = useLocation();
     const signInHref = `${isEn ? '/en' : ''}/account/login?redirectTo=${encodeURIComponent(here.pathname + here.search)}`;
     const loadedAddresses = customerObj?.addresses?.nodes || customerObj?.data?.customer?.addresses?.nodes || [];
@@ -1234,7 +1239,14 @@ function ModalContent({
                         </div>
                         <div className="flex-1 min-w-0">
                             <h4 className="text-lg font-bold text-[#234745] mb-1 truncate">
-                                {isUserAddressSelected ? (currentAddress.firstName + ' ' + currentAddress.lastName) : currentBranch.name}
+                                {isUserAddressSelected
+                                    ? (() => {
+                                        const t = addressTypeFor(addressTypes, currentAddress.id);
+                                        return t
+                                            ? addressTypeLabel(t, isEn)
+                                            : currentAddress.firstName + ' ' + currentAddress.lastName;
+                                    })()
+                                    : currentBranch.name}
                             </h4>
                             <p className="text-sm text-gray-500 leading-tight line-clamp-2">
                                 {isUserAddressSelected ? currentAddress.address1 : currentBranch.address}
@@ -1369,6 +1381,7 @@ function ModalContent({
                                         showHeading={false}
                                         mode="embedded"
                                         location={addrDraft}
+                                        recipient={customerObj?.data?.customer || customerObj}
                                         onSuccess={handleAddressCreated}
                                         onClose={closeAddressForm}
                                     />
@@ -1401,7 +1414,18 @@ function ModalContent({
                                         onClick={() => setSelectedBranch(addr.id)}
                                     >
                                         <div className="flex justify-between items-center mb-1">
-                                            <p className="font-bold text-[#234745]">{addr.firstName} {addr.lastName}</p>
+                                            {(() => {
+                                                const t = addressTypeFor(addressTypes, addr.id);
+                                                return t ? (
+                                                    <p className="font-bold text-[#234745] inline-flex items-center gap-1.5">
+                                                        <AddressTypeIcon type={t} size={17} />
+                                                        {addressTypeLabel(t, isEn)}
+                                                        <span className="font-normal text-[13px] text-gray-400">· {addr.firstName} {addr.lastName}</span>
+                                                    </p>
+                                                ) : (
+                                                    <p className="font-bold text-[#234745]">{addr.firstName} {addr.lastName}</p>
+                                                );
+                                            })()}
                                             {sameAddressId(effectiveSelectedBranch, addr.id) && <div className="w-2 h-2 rounded-full bg-[#234745]" />}
                                         </div>
                                         <p className="text-sm text-gray-500 truncate">{addr.address1}</p>
@@ -1669,7 +1693,13 @@ function ModalContent({
                                     let addrName = isEn ? 'Home' : 'المنزل';
                                     if (currentAddress) {
                                         const fullName = `${currentAddress.firstName || ''} ${currentAddress.lastName || ''}`.trim();
+                                        /*
+                                         * The type the customer gave it comes first —
+                                         * «توصيل: شقة» — then the district or city.
+                                         */
+                                        const savedType = addressTypeFor(addressTypes, currentAddress.id);
                                         addrName =
+                                            (savedType && addressTypeLabel(savedType, isEn)) ||
                                             (currentAddress.city && String(currentAddress.city).trim()) ||
                                             (currentAddress.address1 && String(currentAddress.address1).trim()) ||
                                             fullName ||

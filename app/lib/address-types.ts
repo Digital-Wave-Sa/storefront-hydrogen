@@ -1,3 +1,4 @@
+import {stripCoordsMarker} from '~/lib/address-coords';
 /**
  * What kind of place a saved address is — شقة / منزل / مكتب.
  *
@@ -69,4 +70,35 @@ export function addressTypeFor(
 ): AddressType | null {
   if (!types) return null;
   return types[addressNumericId(addressId)] || null;
+}
+
+/**
+ * The cart attributes that tell the branch where an order goes.
+ *
+ * «Delivery Address» used to carry the header pill's text — the city, and
+ * since address types the type itself — so orders, the order note and the
+ * CRM read «Delivery Address: شقة». It now carries the address as one line
+ * («7832 الصلاح، حي النظيم، الرياض»), and the type has its own attribute,
+ * always in Arabic for the branch staff.
+ *
+ * `Address Type` is always sent on a delivery, empty when unknown, because
+ * cart attributes are merged: an omitted key would keep the previous
+ * address's type.
+ */
+export function deliveryAddressAttributes(
+  addressName: string | undefined,
+  fullAddress: any,
+): {key: string; value: string}[] {
+  const line = fullAddress
+    ? [fullAddress.address1, stripCoordsMarker(fullAddress.address2), fullAddress.city]
+        .map((p) => String(p || '').trim())
+        .filter(Boolean)
+        .join('، ')
+    : '';
+  const value = line || String(addressName || '').trim();
+  const type = normalizeAddressType(fullAddress?.addressType);
+  return [
+    ...(value ? [{key: 'Delivery Address', value}] : []),
+    {key: 'Address Type', value: type ? addressTypeLabel(type, false) : ''},
+  ];
 }

@@ -1691,13 +1691,14 @@ function ModalContent({
                                      * street line is the fallback, the name only after that.
                                      */
                                     let addrName = isEn ? 'Home' : 'المنزل';
+                                    let savedType: ReturnType<typeof addressTypeFor> = null;
                                     if (currentAddress) {
                                         const fullName = `${currentAddress.firstName || ''} ${currentAddress.lastName || ''}`.trim();
                                         /*
                                          * The type the customer gave it comes first —
                                          * «توصيل: شقة» — then the district or city.
                                          */
-                                        const savedType = addressTypeFor(addressTypes, currentAddress.id);
+                                        savedType = addressTypeFor(addressTypes, currentAddress.id);
                                         addrName =
                                             (savedType && addressTypeLabel(savedType, isEn)) ||
                                             (currentAddress.city && String(currentAddress.city).trim()) ||
@@ -1706,7 +1707,14 @@ function ModalContent({
                                             addrName;
                                     }
                                     // Set Branch to the fulfilling store, but pass addrName as the delivery destination
-                                    onSelectBranch(nearestBranch, 'delivery', addrName, isOutOfRange, currentAddress);
+                                    // The type rides along for the order's «Address Type» attribute.
+                                    onSelectBranch(
+                                        nearestBranch,
+                                        'delivery',
+                                        addrName,
+                                        isOutOfRange,
+                                        currentAddress && savedType ? { ...currentAddress, addressType: savedType } : currentAddress,
+                                    );
                                 } else if (currentBranch) {
                                     onSelectBranch(currentBranch, activeTab);
                                 }

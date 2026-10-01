@@ -9,6 +9,7 @@ import { GlobalSearchBar } from './GlobalSearchBar';
 import { useWishlist } from '~/context/WishlistContext';
 import { fetchAdminLocations } from '~/lib/locations-meta';
 import { stripCoordsMarker } from '~/lib/address-coords';
+import { deliveryAddressAttributes } from '~/lib/address-types';
 import { trackSelectBranch } from '~/lib/analytics-events';
 
 /**
@@ -158,8 +159,8 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
       attributes.push({ key: 'branch_id', value: customBranchId });
     }
 
-    if (addressName) {
-      attributes.push({ key: 'Delivery Address', value: addressName });
+    if (type === 'delivery' && (addressName || fullAddress?.address1)) {
+      attributes.push(...deliveryAddressAttributes(addressName, fullAddress));
     }
 
     if (isOutOfRange) {

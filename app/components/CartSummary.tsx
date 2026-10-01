@@ -7,6 +7,7 @@ import { CartForm, Money, type OptimisticCart } from '@shopify/hydrogen';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useFetcher, useRouteLoaderData, Link, useLocation, Form, useRevalidator } from 'react-router';
 import { useAside } from '~/components/Aside';
+import { deliveryAddressAttributes } from '~/lib/address-types';
 import { Price, SaudiRiyalSymbol } from './Price';
 import { DeliveryPickupModal, checkBranchFreeDeliveryInterval } from './DeliveryPickupModal';
 import { mergeCartAttributes } from '~/lib/cart-attributes';
@@ -919,8 +920,8 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
       newAttributes.push({ key: 'branch_id', value: customBranchId });
     }
 
-    if (addressName) {
-      newAttributes.push({ key: 'Delivery Address', value: addressName });
+    if (type === 'delivery' && (addressName || fullAddress?.address1)) {
+      newAttributes.push(...deliveryAddressAttributes(addressName, fullAddress));
     }
 
     if (isOutOfRangeLoc) {

@@ -193,6 +193,7 @@ export async function action({request, context}: ActionFunctionArgs) {
          */
         if (fulfillmentType === 'pickup') {
           attributes.push({key: 'Delivery Address', value: ''});
+          attributes.push({key: 'Address Type', value: ''});
           attributes.push({key: 'Delivery Fee', value: ''});
         }
 

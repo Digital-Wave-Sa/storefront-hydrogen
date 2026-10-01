@@ -12,6 +12,8 @@ import {ProductItem} from '~/components/ProductItem';
 import {PageHeader} from '~/components/layout/PageHeader';
 
 import {pageTitle} from '~/lib/seo';
+import { ComingSoonBadge } from '~/components/ComingSoonBadge';
+import { useCakeBuilderEnabled, isCustomCakeUrl } from '~/lib/cake-builder';
 export const meta: MetaFunction = ({matches}) => {
   return [{title: pageTitle(matches, 'Occasions', 'المناسبات')}];
 };
@@ -183,6 +185,7 @@ export default function OccasionsPage() {
   const rootData = useRouteLoaderData('root') as any;
   const locale = rootData?.locale || 'ar';
   const isEn = locale === 'en';
+  const cakeBuilderOpen = useCakeBuilderEnabled();
 
   const categories = [
     {id: 'all', en: 'All', ar: 'الكل'},
@@ -441,6 +444,9 @@ export default function OccasionsPage() {
             <div
               className={`w-full md:w-[60%] flex flex-col relative z-10 px-8 pt-8 pb-4 md:pt-8 md:pb-8 lg:px-16 py-10 md:items-start text-start`}
             >
+              {!cakeBuilderOpen && (
+                <ComingSoonBadge isEn={isEn} className="mb-3 !text-[13px] !px-3 !py-1" />
+              )}
               <h2
                 className={`text-[26px] font-bold text-[#234745] mb-2`}
                 style={{

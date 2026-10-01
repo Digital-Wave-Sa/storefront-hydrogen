@@ -31,6 +31,7 @@ import {ProductSkeleton} from './components/ProductSkeleton';
 import {CollectionPageSkeleton} from './components/CollectionSkeleton';
 import {PageLoader, useSlowNavigation} from './components/NavigationProgress';
 import {useLocale} from '~/lib/i18n';
+import {isCakeBuilderEnabled} from '~/lib/cake-builder.server';
 
 export const meta: MetaFunction = () => {
   return [
@@ -104,6 +105,8 @@ export function links() {
 }
 
 export async function loader(args: Route.LoaderArgs) {
+  // The custom cake builder's on/off switch — read alongside, not after.
+  const cakeBuilderEnabledPromise = isCakeBuilderEnabled(args.context.storefront);
   // Await the critical data required to render initial state of the page
   const criticalData = await loadCriticalData(args);
   const {storefront, env, session} = args.context;
@@ -237,6 +240,7 @@ export async function loader(args: Route.LoaderArgs) {
       deliveryIsTaxed: standardDeliveryRate.taxShipping,
       ...deferredData,
       ...criticalData,
+      cakeBuilderEnabled: await cakeBuilderEnabledPromise,
       publicStoreDomain: env.PUBLIC_STORE_DOMAIN,
       shop: getShopAnalytics({
         storefront,

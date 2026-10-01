@@ -1,9 +1,12 @@
 import { Link, useOutletContext } from 'react-router';
 import { useI18n } from '~/lib/i18n';
+import { ComingSoonBadge } from '~/components/ComingSoonBadge';
+import { useCakeBuilderEnabled, isCustomCakeUrl } from '~/lib/cake-builder';
 
 export function DesignYourCake() {
     const { locale = 'ar' } = useOutletContext<{ locale?: string }>() ?? {};
     const isEn = locale === 'en';
+    const cakeBuilderOpen = useCakeBuilderEnabled();
 
     return (
         <section
@@ -149,6 +152,7 @@ export function DesignYourCake() {
                             style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '16px', color: '#ffffff', lineHeight: '100%' }}
                         >
                             {isEn ? 'Start Designing Now' : 'إبدأ تصميمك الان'}
+                            {!cakeBuilderOpen && <ComingSoonBadge isEn={isEn} className="ms-2" />}
                         </Link>
 
                         {/* Trust Badges */}

@@ -45,7 +45,12 @@ export function PageLayout({
   const isEn = location.pathname.startsWith('/en');
   const locale = isEn ? 'en' : 'ar';
 
-  const isCustomCakePage = location.pathname.includes('/custom-cake');
+  /*
+   * The builder's own minimal header and no footer — only while it is open.
+   * Its «قريباً» page is an ordinary page with the site's header and footer.
+   */
+  const isCustomCakePage =
+    location.pathname.includes('/custom-cake') && Boolean(rootData?.cakeBuilderEnabled);
 
   // Purge stale cart cookie ONLY after successfully completing an order
   useEffect(() => {

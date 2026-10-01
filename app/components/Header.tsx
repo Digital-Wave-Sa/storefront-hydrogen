@@ -11,6 +11,8 @@ import { fetchAdminLocations } from '~/lib/locations-meta';
 import { stripCoordsMarker } from '~/lib/address-coords';
 import { deliveryAddressAttributes } from '~/lib/address-types';
 import { trackSelectBranch } from '~/lib/analytics-events';
+import { ComingSoonBadge } from '~/components/ComingSoonBadge';
+import { useCakeBuilderEnabled, isCustomCakeUrl } from '~/lib/cake-builder';
 
 /**
  * Header count badges.
@@ -1185,6 +1187,7 @@ function CategoryNav({
 
   /** The client's menu when there is one, the built-in list when there is not. */
   const fromMenu = navItemsFromMenu(navMenuData?.menu, isEn);
+  const cakeBuilderOpen = useCakeBuilderEnabled();
   const NAV_ITEMS = fromMenu.length
     ? fromMenu
     : (isEn ? STATIC_NAV_EN : STATIC_NAV_AR);
@@ -1219,7 +1222,7 @@ function CategoryNav({
                 className={({ isActive }) => {
                   const active = isActive || (item.hasMega && activeMega);
                   return `
-                    font-['GE_Dinar_One'] font-normal !px-2 xl:px-3 !py-2 text-[13px] xl:text-[14px] transition-all whitespace-nowrap rounded-full
+                    relative font-['GE_Dinar_One'] font-normal !px-2 xl:px-3 !py-2 text-[13px] xl:text-[14px] transition-all whitespace-nowrap rounded-full
                     ${isOffers
                       ? 'bg-[#E64950] !text-white hover:bg-[#E64950] px-4 xl:px-5 shadow-sm'
                       : active
@@ -1230,6 +1233,9 @@ function CategoryNav({
                 style={isOffers ? { color: 'white' } : {}}
               >
                 {item.title}
+                {!cakeBuilderOpen && isCustomCakeUrl(item.url) && (
+                  <ComingSoonBadge isEn={isEn} floating />
+                )}
               </NavLink>
             )}
           </div>
@@ -1442,6 +1448,7 @@ export function HeaderMenu({
    * present — removing it would hide the drawer entirely.
    */
   const fromMenu = navItemsFromMenu(navMenuData?.menu, isEn);
+  const cakeBuilderOpen = useCakeBuilderEnabled();
   const NAV_ITEMS = fromMenu.length
     ? fromMenu
     : (isEn ? STATIC_NAV_EN : STATIC_NAV_AR);
@@ -1527,6 +1534,9 @@ export function HeaderMenu({
                   <>
                     <span className={isActive || isOffers ? '!text-white' : 'text-[#234745]'} style={{ color: isActive || isOffers ? '#FFFFFF' : '#234745' }}>
                       {item.title}
+                      {!cakeBuilderOpen && isCustomCakeUrl(item.url) && (
+                        <ComingSoonBadge isEn={isEn} className="ms-2" />
+                      )}
                     </span>
                     <svg
                       width="18"

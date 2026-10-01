@@ -1,6 +1,8 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router';
 import { fixMojibake } from '~/lib/mojibake';
+import { ComingSoonBadge } from '~/components/ComingSoonBadge';
+import { useCakeBuilderEnabled, isCustomCakeUrl } from '~/lib/cake-builder';
 
 const DEFAULT_SLIDES = [
   {
@@ -51,6 +53,7 @@ export function HeroSlider({ config }: { config?: any }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const isEn = location.pathname.startsWith('/en');
+  const cakeBuilderOpen = useCakeBuilderEnabled();
 
   // Dynamic slides from Shopify Metaobject with fallback to DEFAULT_SLIDES
   const dynamicSlides = React.useMemo(() => {
@@ -286,6 +289,9 @@ export function HeroSlider({ config }: { config?: any }) {
                             }}
                           >
                             <span>{isEn ? btn.text.en : btn.text.ar}</span>
+                            {!cakeBuilderOpen && isCustomCakeUrl(targetUrl) && (
+                              <ComingSoonBadge isEn={isEn} className="ms-2" />
+                            )}
                           </NavLink>
                         );
                       })}

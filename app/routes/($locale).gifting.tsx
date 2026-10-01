@@ -12,6 +12,8 @@ import {ProductItem} from '~/components/ProductItem';
 import {PageHeader} from '~/components/layout/PageHeader';
 
 import {pageTitle} from '~/lib/seo';
+import { ComingSoonBadge } from '~/components/ComingSoonBadge';
+import { useCakeBuilderEnabled, isCustomCakeUrl } from '~/lib/cake-builder';
 /**
  * The recipient's products as a grid, like a collection page: every gift
  * visible at once, two across on phones.
@@ -323,6 +325,7 @@ export default function GiftingPage() {
   const rootData = useRouteLoaderData('root') as any;
   const locale = rootData?.locale || 'ar';
   const isEn = locale === 'en';
+  const cakeBuilderOpen = useCakeBuilderEnabled();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const urlCategory = searchParams.get('category');
@@ -741,6 +744,9 @@ export default function GiftingPage() {
             <div
               className={`w-full md:w-[60%] flex flex-col relative z-10 px-8 lg:px-16 py-10 items-center md:items-start text-center md:text-start`}
             >
+              {!cakeBuilderOpen && (
+                <ComingSoonBadge isEn={isEn} className="mb-3 !text-[13px] !px-3 !py-1" />
+              )}
               <h2
                 className={`text-[26px] font-bold text-[#234745] mb-2`}
                 style={{

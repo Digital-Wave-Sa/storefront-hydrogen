@@ -4,6 +4,7 @@ import {getAdminToken, getAdminDomain} from '~/lib/shopify-admin.server';
 import {toGiftCardPhone} from '~/lib/phone-validation';
 import {needsRealEmail} from '~/lib/needs-email';
 import {branchDeliveryFee, quoteCake} from '~/lib/cake-quote.server';
+import {isCakeBuilderEnabled} from '~/lib/cake-builder.server';
 
 /**
  * GET /api/custom-cake-order — Returns 405
@@ -300,6 +301,22 @@ function getClosestPriceAndSku(targetPrice: number): PriceSkuMapping {
  */
 export async function action({request, context}: ActionFunctionArgs) {
   try {
+    /**
+     * Closed while the builder shows «قريباً» (see ~/lib/cake-builder), so
+     * an old tab or a saved link cannot order a cake whose prices are not in.
+     */
+    if (!(await isCakeBuilderEnabled(context.storefront))) {
+      return Response.json(
+        {
+          error:
+            context.storefront.i18n.language === 'EN'
+              ? 'Custom cakes are coming soon. Please check back shortly.'
+              : 'الكيك المخصص قريباً. يرجى العودة لاحقاً.',
+        },
+        {status: 503},
+      );
+    }
+
     const env = context.env as any;
     const shopDomain = getAdminDomain(env);
     const token = await getAdminToken(env);

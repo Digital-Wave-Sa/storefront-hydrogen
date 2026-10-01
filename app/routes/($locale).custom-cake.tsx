@@ -1,15 +1,21 @@
 import {
   type LoaderFunctionArgs,
   type LinksFunction,
+  Link,
   useLoaderData,
 } from 'react-router';
 import CustomCakeBuilder from '~/components/CakeBuilder/CustomCakeBuilder';
+import {isCakeBuilderEnabled} from '~/lib/cake-builder.server';
 import {getShopTitle} from '~/lib/seo';
 import type {Route} from './+types/($locale).custom-cake';
 
 import {pageTitle} from '~/lib/seo';
-export const meta: Route.MetaFunction = ({matches}) => {
-  return [{title: pageTitle(matches, 'Design Your Cake', 'صمّم كيكتك')}];
+export const meta: Route.MetaFunction = ({matches, data}) => {
+  return [
+    {title: pageTitle(matches, 'Design Your Cake', 'صمّم كيكتك')},
+    // Not indexed while it only says «قريباً».
+    ...((data as any)?.comingSoon ? [{name: 'robots', content: 'noindex'}] : []),
+  ];
 };
 
 /**
@@ -142,6 +148,22 @@ const MAX_TOPPING_DESIGN_PAGES = 10;
 
 export async function loader({context}: LoaderFunctionArgs) {
   const {storefront} = context;
+
+  /**
+   * «قريباً» until the builder is switched on (see ~/lib/cake-builder) —
+   * none of the builder's data is fetched for it.
+   */
+  if (!(await isCakeBuilderEnabled(storefront))) {
+    return {
+      comingSoon: true as const,
+      locale: storefront.i18n.language.toLowerCase(),
+      cakeAttributes: [],
+      toppingDesigns: [],
+      flavorSlices: [],
+      preparationHours: 24,
+    };
+  }
+
   try {
     const data = (await storefront
       .query(CAKE_ATTRIBUTES_QUERY, {
@@ -208,9 +230,10 @@ export async function loader({context}: LoaderFunctionArgs) {
 }
 
 export default function CustomCakeBuilderRoute() {
-  const {cakeAttributes, toppingDesigns, flavorSlices, locale, preparationHours} =
-    useLoaderData<typeof loader>();
+  const data = useLoaderData<typeof loader>();
+  const {cakeAttributes, toppingDesigns, flavorSlices, locale, preparationHours} = data;
   const isEn = locale === 'en';
+  if ((data as any).comingSoon) return <CakeBuilderComingSoon isEn={isEn} />;
   return (
     <CustomCakeBuilder
       cakeAttributes={cakeAttributes}
@@ -219,5 +242,69 @@ export default function CustomCakeBuilderRoute() {
       isEn={isEn}
       preparationHours={preparationHours}
     />
+  );
+}
+
+/**
+ * /custom-cake while the builder is switched off — waiting on the client's
+ * prices (Oct 2026). Dressed as the builder's own opening screen — the pink
+ * patterned stage, the green pill, the round cake photo — so it reads as the
+ * builder about to open. Just the message, and a way on to the ready cakes.
+ */
+function CakeBuilderComingSoon({isEn}: {isEn: boolean}) {
+  return (
+    <section
+      className="w-full bg-[#EED5D7]"
+      dir={isEn ? 'ltr' : 'rtl'}
+      style={{
+        backgroundImage: "url('/images/pattern.svg')",
+        backgroundRepeat: 'repeat',
+        backgroundSize: '600px',
+      }}
+    >
+      <div className="max-w-[720px] mx-auto px-4 py-10 md:py-16 flex flex-col items-center text-center gap-5 md:gap-6">
+        <span
+          className="bg-[#20584A] text-white px-5 py-2 text-sm rounded-full font-bold shadow-sm"
+          style={{fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif"}}
+        >
+          {isEn ? 'Coming soon' : 'قريباً'}
+        </span>
+
+        {/* The same photograph the builder shows before a shape is chosen. */}
+        <div className="w-[min(420px,78vw)] aspect-square rounded-full overflow-hidden shrink-0">
+          <img
+            src="/cake/cake-builder-placeholder.jpeg"
+            alt={isEn ? 'A custom-designed cake' : 'كيكة بتصميم خاص'}
+            className="w-full h-full object-cover select-none"
+            draggable={false}
+            loading="eager"
+          />
+        </div>
+
+        <h1
+          className="text-[#234745] text-[30px] md:text-[40px] font-bold leading-[1.2] [text-wrap:balance]"
+          style={{fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif"}}
+        >
+          {isEn ? 'Design your own cake' : 'صمّم كيكتك بنفسك'}
+        </h1>
+        <p
+          className="text-[#4F625E] text-[16px] md:text-[18px] leading-[1.7] max-w-[46ch]"
+          style={{fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif"}}
+        >
+          {isEn
+            ? "We're putting the finishing touches on our cake designer — pick the shape, flavour, colours and decoration, and see your cake before you order. It opens very soon."
+            : 'نضع اللمسات الأخيرة على أداة تصميم الكيك: اختر الشكل والنكهة والألوان والزينة، وشاهد كيكتك قبل أن تطلبها. تفتح قريباً جداً.'}
+        </p>
+        <Link
+          to={isEn ? '/en/collections/cake' : '/collections/cake'}
+          prefetch="intent"
+          className="inline-flex items-center justify-center h-[48px] px-8 rounded-[25px] bg-[#234745] hover:bg-[#1a3533] text-white font-bold text-[16px] transition-colors"
+          // Inline: the site's link colour otherwise wins over text-white.
+          style={{color: '#FFFFFF', fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif"}}
+        >
+          {isEn ? 'Browse our cakes' : 'تصفّح الكيك'}
+        </Link>
+      </div>
+    </section>
   );
 }

@@ -1,11 +1,14 @@
 import { NavLink, useOutletContext } from 'react-router';
 import { useState, useRef, useEffect } from 'react';
 import { useI18n } from '~/lib/i18n';
+import { ComingSoonBadge } from '~/components/ComingSoonBadge';
+import { useCakeBuilderEnabled, isCustomCakeUrl } from '~/lib/cake-builder';
 
 export function Hero() {
     const { locale } = useOutletContext<{ locale: string }>();
     const t = useI18n(locale);
     const isEn = locale === 'en';
+    const cakeBuilderOpen = useCakeBuilderEnabled();
 
     return (
         <section
@@ -50,6 +53,7 @@ export function Hero() {
 
                     <NavLink to={isEn ? "/en/custom-cake" : "/custom-cake"} className="bg-transparent border-[2px] border-[#234745] text-[#234745] hover:bg-[#234745] hover:text-white transition-all px-8 py-3.5 rounded-full font-bold text-base flex items-center gap-2 min-w-[160px] justify-center">
                         {t.common.designYourCake} 🎂
+                        {!cakeBuilderOpen && <ComingSoonBadge isEn={isEn} />}
                     </NavLink>
                 </div>
 

@@ -97,7 +97,7 @@ export function BestSellers({
                 {/* Section Header */}
                 <div className="text-center mb-8">
                     <h2 className="text-[36px] lg:text-[48px] font-bold !mb-2 leading-tight" style={{ color: '#ffffff' }}>
-                        {isEn ? 'Best Sellers' : 'أفضل المبيعات'}
+                        {isEn ? 'Best Sellers' : 'الأكثر مبيعاً'}
                     </h2>
                     <p className="text-sm md:text-base" style={{ color: 'rgba(255,255,255,0.6)' }}>{isEn ? 'Most wanted this week' : 'الأكثر طلباً هذا الأسبوع'}</p>
                 </div>

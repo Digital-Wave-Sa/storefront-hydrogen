@@ -1375,6 +1375,7 @@ export default function Product() {
   const photoActive = Boolean(photoOffer && photoEnabled && photoUrl);
   const photoBlocksAdd = Boolean(photoOffer && photoEnabled && (!photoUrl || photoBusy));
   const photoAttrs = photoActive ? [{key: PHOTO_ATTR_KEY, value: photoUrl}] : [];
+  /** Put it BEFORE the cake in an add — see the note in handleBuyNow. */
   const photoLineFor = (groupId: string) =>
     photoActive && photoOffer
       ? [
@@ -1642,7 +1643,7 @@ export default function Product() {
         };
       });
 
-      let linesToAdd = [mainLine, ...addonLines, ...photoLineFor(groupId)];
+      let linesToAdd = [mainLine, ...addonLines];
 
       if (isBogoTag) {
         const freeVariantId = bogoFreeVariantId || selectedVariant.id;
@@ -1657,9 +1658,16 @@ export default function Product() {
               {key: '_is_free', value: 'true'},
             ],
           },
-          ...addonLines, ...photoLineFor(groupId),
+          ...addonLines,
         ];
       }
+
+      /*
+       * The photo print goes in BEFORE its cake: Shopify lists a batch of
+       * added lines newest-first, so this is what puts it right AFTER the
+       * cake on the order and in the CRM (SDN-1563 had it first).
+       */
+      linesToAdd = [...photoLineFor(groupId), ...linesToAdd];
 
       const formData = new FormData();
       const cartInput = {
@@ -4058,6 +4066,7 @@ export default function Product() {
                                   const freeVariantId =
                                     bogoFreeVariantId || selectedVariant.id;
                                   return [
+                                    ...photoLineFor(groupId),
                                     mainLine,
                                     {
                                       merchandiseId: freeVariantId,
@@ -4069,11 +4078,11 @@ export default function Product() {
                                         {key: '_is_free', value: 'true'},
                                       ],
                                     },
-                                    ...addonLines, ...photoLineFor(groupId),
+                                    ...addonLines,
                                   ];
                                 }
 
-                                return [mainLine, ...addonLines, ...photoLineFor(groupId)];
+                                return [...photoLineFor(groupId), mainLine, ...addonLines];
                               })()
                             : []
                         }
@@ -4673,6 +4682,7 @@ export default function Product() {
                                     const freeVariantId =
                                       bogoFreeVariantId || selectedVariant.id;
                                     return [
+                                      ...photoLineFor(groupId),
                                       mainLine,
                                       {
                                         merchandiseId: freeVariantId,
@@ -4684,11 +4694,11 @@ export default function Product() {
                                           {key: '_is_free', value: 'true'},
                                         ],
                                       },
-                                      ...addonLines, ...photoLineFor(groupId),
+                                      ...addonLines,
                                     ];
                                   }
 
-                                  return [mainLine, ...addonLines, ...photoLineFor(groupId)];
+                                  return [...photoLineFor(groupId), mainLine, ...addonLines];
                                 })()
                               : []
                           }

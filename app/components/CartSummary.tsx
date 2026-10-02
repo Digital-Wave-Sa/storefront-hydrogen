@@ -7,6 +7,7 @@ import { CartForm, Money, type OptimisticCart } from '@shopify/hydrogen';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useFetcher, useRouteLoaderData, Link, useLocation, Form, useRevalidator } from 'react-router';
 import { useAside } from '~/components/Aside';
+import { BrandLoaderTile } from '~/components/BrandLoader';
 import { deliveryAddressAttributes } from '~/lib/address-types';
 import { Price, SaudiRiyalSymbol } from './Price';
 import { DeliveryPickupModal, checkBranchFreeDeliveryInterval } from './DeliveryPickupModal';
@@ -2087,6 +2088,34 @@ function CartCheckoutActions({
   isPickup?: boolean;
   cart?: any;
 }) {
+  /**
+   * «إتمام الطلب» is a real form POST to /checkout/initiate, which takes a
+   * few seconds (address, customer, delivery quote) before redirecting to
+   * Shopify checkout. The site's logo loader only covers in-app navigation,
+   * so the shopper saw nothing but the browser's tab spinner and tapped
+   * again — each tap re-running the whole handover on the same cart.
+   *
+   * Now the first tap locks the button and puts the Saadeddin loader over
+   * the page until the browser leaves it. Every outcome of that route is a
+   * full page load (checkout, back to the cart, or sign-in), which clears
+   * it. Coming back with the Back button restores the page from cache with
+   * the loader still up, so `pageshow` takes it down; a request that never
+   * answers releases the button after 45 seconds.
+   */
+  const [submitting, setSubmitting] = useState(false);
+  useEffect(() => {
+    const reset = (e: PageTransitionEvent) => {
+      if (e.persisted) setSubmitting(false);
+    };
+    window.addEventListener('pageshow', reset);
+    return () => window.removeEventListener('pageshow', reset);
+  }, []);
+  useEffect(() => {
+    if (!submitting) return;
+    const t = setTimeout(() => setSubmitting(false), 45000);
+    return () => clearTimeout(t);
+  }, [submitting]);
+
   const fireBeginCheckout = () => {
     try {
       if (typeof window === 'undefined') return;
@@ -2124,17 +2153,46 @@ function CartCheckoutActions({
   return (
     <>
       <div className="flex flex-col gap-2 w-full">
-        <form action={isEn ? "/en/checkout/initiate" : "/checkout/initiate"} method="post" className="w-full">
+        <form
+          action={isEn ? "/en/checkout/initiate" : "/checkout/initiate"}
+          method="post"
+          className="w-full"
+          onSubmit={(e) => {
+            // One handover per tap: a second tap while the first is on its way is ignored.
+            if (submitting || disabled) {
+              e.preventDefault();
+              return;
+            }
+            fireBeginCheckout();
+            setSubmitting(true);
+          }}
+        >
           <button
             type="submit"
             disabled={disabled}
-            onClick={fireBeginCheckout}
+            aria-disabled={submitting || undefined}
             className={`w-full h-[52px] ${disabled ? 'bg-[#e8e4e1] cursor-not-allowed text-[#888]' : 'bg-[#234745] hover:bg-[#1A3533] active:scale-[0.98] text-white'} font-bold text-[16px] rounded-[50px] flex items-center justify-center transition-all`}
             style={{ color: disabled ? '#888' : '#FFFFFF', fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
           >
             {isEn ? 'Complete Order' : 'إتمام الطلب'}
           </button>
         </form>
+
+        {submitting && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="fixed inset-0 z-[70] flex flex-col items-center justify-center gap-4 bg-[#FEF8EB]/60 backdrop-blur-[4px]"
+          >
+            <BrandLoaderTile size={96} />
+            <span
+              className="text-[#234745] text-[15px] font-bold"
+              style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+            >
+              {isEn ? 'Preparing your order…' : 'جارٍ تجهيز طلبك…'}
+            </span>
+          </div>
+        )}
 
         {disabled && (
           <>

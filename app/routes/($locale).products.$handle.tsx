@@ -2336,29 +2336,41 @@ export default function Product() {
         {/* White Breadcrumb Section */}
         <div className="w-full bg-[#FFFFFF] border-b border-[#9FB7AE] h-[56px] flex items-center">
           <div className="max-w-[1400px] w-full mx-auto px-4 md:px-8">
+            {/*
+              One line, always. A long name («علبة بيتفور مغطس شوكولا - ميني»)
+              wrapped to three bold lines on a phone and spilled out of the
+              56px bar. The links keep their size; the product name takes
+              what is left and ends in «…». The full name is the page's own
+              heading just below.
+            */}
             <div
-              className="flex items-center gap-[8px]"
+              className="flex items-center gap-[6px] md:gap-[8px] min-w-0 whitespace-nowrap text-[14px] md:text-[16px]"
               style={{
                 fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                fontSize: '16px',
                 lineHeight: '20px',
               }}
             >
               <Link
                 to={isEn ? '/en' : '/'}
-                className="!text-[#7D7D7D] font-medium hover:!text-[#234745] transition-colors"
+                className="shrink-0 !text-[#7D7D7D] font-medium hover:!text-[#234745] transition-colors"
               >
                 {isEn ? 'Home' : 'الرئيسية'}
               </Link>
-              <span className="!text-[#7D7D7D] font-medium">/</span>
+              <span className="shrink-0 !text-[#7D7D7D] font-medium">/</span>
               <Link
                 to={isEn ? '/en/collections/all' : '/collections/all'}
-                className="!text-[#7D7D7D] font-medium hover:!text-[#234745] transition-colors"
+                className="shrink-0 !text-[#7D7D7D] font-medium hover:!text-[#234745] transition-colors"
               >
                 {isEn ? 'Products' : 'المنتجات'}
               </Link>
-              <span className="!text-[#7D7D7D] font-medium">/</span>
-              <span className="!text-[#171717] font-bold">{product.title}</span>
+              <span className="shrink-0 !text-[#7D7D7D] font-medium">/</span>
+              <span
+                className="min-w-0 truncate !text-[#171717] font-bold"
+                title={product.title}
+                aria-current="page"
+              >
+                {product.title}
+              </span>
             </div>
           </div>
         </div>

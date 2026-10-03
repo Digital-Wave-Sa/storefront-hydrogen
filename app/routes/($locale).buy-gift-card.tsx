@@ -16,6 +16,7 @@ import { SaudiRiyalSymbol } from '~/components/Price';
 import { useAside } from '~/components/Aside';
 
 import {pageTitle} from '~/lib/seo';
+import {confirmCartAdd} from '~/lib/cart-toast';
 export const meta: MetaFunction = ({matches}) => [
   {title: pageTitle(matches, 'Gift a Voucher', 'أهدِ قسيمة')},
 ];
@@ -193,7 +194,7 @@ export default function BuyGiftCard() {
       } else {
         setCartError('');
         setCurrentStep(4);
-        open('cart');
+        confirmCartAdd(open);
       }
     }
   }, [cartFetcher.state, cartFetcher.data, isEn, open]);

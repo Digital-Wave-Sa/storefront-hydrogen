@@ -3,6 +3,7 @@ import { useFetcher } from 'react-router';
 import { CartForm } from '@shopify/hydrogen';
 import { useAside } from '~/components/Aside';
 import { SaudiRiyalSymbol } from '~/components/Price';
+import {confirmCartAdd} from '~/lib/cart-toast';
 
 export interface GiftVoucherWizardProps {
   initialMode?: 'gift' | 'self';
@@ -162,7 +163,7 @@ export function GiftVoucherWizard({
       } else {
         setCartError('');
         setCurrentStep(4);
-        open('cart');
+        confirmCartAdd(open);
       }
     }
   }, [cartFetcher.state, cartFetcher.data, isEn, open]);

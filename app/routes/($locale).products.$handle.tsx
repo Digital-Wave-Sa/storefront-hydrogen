@@ -13,6 +13,7 @@ import {ProductUpsellModal} from '~/components/ProductUpsellModal';
 import {NoImage} from '~/components/NoImage';
 import {Price, SaudiRiyalSymbol} from '~/components/Price';
 import {AddToCartButton} from '~/components/AddToCartButton';
+import {prefersCartToast} from '~/lib/cart-toast';
 import {CakePhotoUpload} from '~/components/CakePhotoUpload';
 import {
   PHOTO_ATTR_KEY,
@@ -3913,15 +3914,17 @@ export default function Product() {
                           ],
                         }}
                         disabled={!selectedVariant || photoBlocksAdd}
-                        onClick={() =>
-                          window.scrollTo({top: 0, behavior: 'smooth'})
-                        }
+                        onClick={() => {
+                          // Phones keep their place; the toast confirms the add.
+                          if (!prefersCartToast()) window.scrollTo({top: 0, behavior: 'smooth'});
+                        }}
                         onAddToCartSuccess={() => {
                           if (upsellProducts && upsellProducts.length > 0) {
                             setIsUpsellModalOpen(true);
-                          } else {
-                            open('cart');
+                            return true;
                           }
+                          // Phones: AddToCartButton shows the toast once the cart answers.
+                          if (!prefersCartToast()) open('cart');
                         }}
                         lines={
                           selectedVariant
@@ -4521,15 +4524,17 @@ export default function Product() {
                             ],
                           }}
                           disabled={!selectedVariant || effectiveOutOfStock || availabilityUnresolved || photoBlocksAdd}
-                          onClick={() =>
-                            window.scrollTo({top: 0, behavior: 'smooth'})
-                          }
+                          onClick={() => {
+                            // Phones keep their place; the toast confirms the add.
+                            if (!prefersCartToast()) window.scrollTo({top: 0, behavior: 'smooth'});
+                          }}
                           onAddToCartSuccess={() => {
                             if (upsellProducts && upsellProducts.length > 0) {
                               setIsUpsellModalOpen(true);
-                            } else {
-                              open('cart');
+                              return true;
                             }
+                            // Phones: AddToCartButton shows the toast once the cart answers.
+                            if (!prefersCartToast()) open('cart');
                           }}
                           lines={
                             selectedVariant

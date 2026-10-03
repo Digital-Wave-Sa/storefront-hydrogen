@@ -1,6 +1,8 @@
+import { useEffect, useRef } from 'react';
 import { useFetcher, useNavigate, useLocation } from 'react-router';
 import { CartForm, type OptimisticCartLineInput } from '@shopify/hydrogen';
 import { useAside } from './Aside';
+import { prefersCartToast, showCartToast } from '~/lib/cart-toast';
 
 export function AddToCartButton({
   analytics,
@@ -19,7 +21,12 @@ export function AddToCartButton({
   disabled?: boolean;
   lines: Array<OptimisticCartLineInput>;
   onClick?: () => void;
-  onAddToCartSuccess?: () => void;
+  /**
+   * Replaces the default confirmation (drawer on desktop, toast on phones).
+   * Return `true` when the callback shows its own confirmation (e.g. the
+   * upsell modal) so the phone toast is not stacked on top of it.
+   */
+  onAddToCartSuccess?: () => void | boolean;
   selectedVariant?: any;
   className?: string;
   style?: React.CSSProperties;
@@ -34,6 +41,21 @@ export function AddToCartButton({
   const isEn = location.pathname.startsWith('/en');
   const cartRoute = isEn ? '/en/cart' : '/cart';
   const isSubmitting = fetcher.state !== 'idle';
+
+  /*
+   * Phones: the toast waits for the cart's answer, so it never says
+   * «تمت الإضافة» for an add that failed (sold out, cart error).
+   */
+  const pendingToast = useRef<{ title?: string; image?: string; quantity?: number } | null>(null);
+  useEffect(() => {
+    if (fetcher.state !== 'idle' || !pendingToast.current) return;
+    const item = pendingToast.current;
+    pendingToast.current = null;
+    const res = fetcher.data as any;
+    const error = res?.error || res?.errors?.[0]?.message;
+    if (error) showCartToast({ kind: 'error', message: String(error) });
+    else showCartToast({ kind: 'added', ...item });
+  }, [fetcher.state, fetcher.data]);
 
   const fireAddToCartEvent = () => {
     try {
@@ -133,15 +155,25 @@ export function AddToCartButton({
     if (isExport) {
       navigate('/export-cart');
     } else {
+      const toastMode = prefersCartToast();
+      let handled = false;
       if (onAddToCartSuccess) {
         try {
-          onAddToCartSuccess();
+          handled = onAddToCartSuccess() === true;
         } catch (e) {
           console.error('[AddToCartButton] onAddToCartSuccess error:', e);
-          open('cart');
+          if (!toastMode) open('cart');
         }
-      } else {
+      } else if (!toastMode) {
         open('cart');
+      }
+      if (toastMode && !handled) {
+        const variant = (lines[0] as any)?.selectedVariant || selectedVariant;
+        pendingToast.current = {
+          title: variant?.product?.title || (analytics as any)?.productTitle,
+          image: variant?.image?.url,
+          quantity: Number(lines[0]?.quantity) || undefined,
+        };
       }
     }
   };

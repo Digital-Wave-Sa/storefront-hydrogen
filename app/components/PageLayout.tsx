@@ -16,6 +16,7 @@ import {
 import {SearchResultsPredictive} from '~/components/SearchResultsPredictive';
 import {MobileSearchModal} from '~/components/MobileSearchModal';
 import {LocationDiscountModal} from '~/components/LocationDiscountModal';
+import {CartAddedToast} from '~/components/CartAddedToast';
 
 interface PageLayoutProps {
   cart: Promise<CartApiQueryFragment | null>;
@@ -130,6 +131,7 @@ export function PageLayout({
         locationDiscounts={rootData?.locationDiscounts || []}
         isEn={locale === 'en'}
       />
+      <CartAddedToast />
     </Aside.Provider>
   );
 }

@@ -30,7 +30,9 @@ import {
 import {resolveOrderStatus} from '~/lib/order-status';
 import {
   getStoreInvoices,
+  toStoreInvoiceRange,
   type StoreInvoice,
+  type StoreInvoiceRange,
   type StoreInvoicesResult,
 } from '~/lib/store-invoices.server';
 
@@ -652,13 +654,16 @@ export async function loader({request, context}: LoaderFunctionArgs) {
    * Shopify order queries, and the online view never calls the ERP. So a slow
    * or failing POS lookup can only ever affect its own view.
    */
-  const source =
-    new URL(request.url).searchParams.get('source') === 'store' ? 'store' : 'online';
+  const params = new URL(request.url).searchParams;
+  const source = params.get('source') === 'store' ? 'store' : 'online';
 
   if (source === 'store') {
+    // آخر شهر / 3 / 6 أشهر / آخر سنة — three months unless chosen.
+    const range = toStoreInvoiceRange(params.get('range'));
     return data({
       source,
-      storeInvoicesPromise: getStoreInvoices(context),
+      range,
+      storeInvoicesPromise: getStoreInvoices(context, range),
       ordersPromise: null,
       countsPromise: null,
     });
@@ -829,7 +834,7 @@ const CurrencyIcon = ({className}: {className?: string}) => (
 );
 
 export default function Orders() {
-  const {ordersPromise, countsPromise, storeInvoicesPromise, source} =
+  const {ordersPromise, countsPromise, storeInvoicesPromise, source, range} =
     useLoaderData<typeof loader>() as any;
   const {locale} = useOutletContext<{locale: string}>();
   const [searchParams] = useSearchParams();
@@ -854,8 +859,10 @@ export default function Orders() {
         <OrdersSourceToggle isStore={isStore} isEn={isEn} />
 
         {isStore ? (
+          <>
+          <StoreRangeFilter range={range} isEn={isEn} />
           <Suspense
-            key="store"
+            key={`store-${range}`}
             fallback={
               <BrandLoaderBlock
                 label={isEn ? 'Loading your in-store purchases' : 'جاري تحميل مشتريات الفروع'}
@@ -867,10 +874,11 @@ export default function Orders() {
               errorElement={<StoreInvoicesUnavailable isEn={isEn} />}
             >
               {(result: StoreInvoicesResult) => (
-                <StoreInvoicesList result={result} isEn={isEn} />
+                <StoreInvoicesList result={result} isEn={isEn} range={range} />
               )}
             </Await>
           </Suspense>
+          </>
         ) : (
         <Suspense
           key="online"
@@ -1026,16 +1034,60 @@ function OrdersSourceToggle({isStore, isEn}: {isStore: boolean; isEn: boolean}) 
 
 /* ── In-store purchases ───────────────────────────────────────────────────── */
 
+const RANGE_LABELS: Record<StoreInvoiceRange, {ar: string; en: string; inAr: string; inEn: string}> = {
+  '1m': {ar: 'آخر شهر', en: 'Last month', inAr: 'خلال آخر شهر', inEn: 'in the last month'},
+  '3m': {ar: 'آخر 3 أشهر', en: 'Last 3 months', inAr: 'خلال آخر 3 أشهر', inEn: 'in the last 3 months'},
+  '6m': {ar: 'آخر 6 أشهر', en: 'Last 6 months', inAr: 'خلال آخر 6 أشهر', inEn: 'in the last 6 months'},
+  '12m': {ar: 'آخر سنة', en: 'Last year', inAr: 'خلال آخر سنة', inEn: 'in the last year'},
+};
+
+/** آخر شهر / آخر 3 أشهر / آخر سنة — same chips as the online status filter. */
+function StoreRangeFilter({range, isEn}: {range: StoreInvoiceRange; isEn: boolean}) {
+  const base = isEn ? '/en/account/orders' : '/account/orders';
+  return (
+    <div className="-mx-4 px-4 md:mx-0 md:px-0" dir={isEn ? 'ltr' : 'rtl'}>
+      <div
+        role="group"
+        aria-label={isEn ? 'Period' : 'الفترة'}
+        className="flex flex-row overflow-x-auto hide-scrollbar items-center justify-start gap-3 pb-2 w-full snap-x"
+      >
+        {(Object.keys(RANGE_LABELS) as StoreInvoiceRange[]).map((key) => {
+          const active = key === range;
+          return (
+            <Link
+              key={key}
+              to={`${base}?source=store&range=${key}`}
+              prefetch="intent"
+              preventScrollReset
+              aria-current={active ? 'true' : undefined}
+              className={`shrink-0 snap-start px-5 py-2 rounded-full text-[13px] md:text-[14px] font-bold transition-all border whitespace-nowrap ${
+                active
+                  ? 'bg-[#b9cdca] !text-[#234745] border-transparent'
+                  : 'bg-white !text-[#9FB7AE] border-[#BBCFCD] hover:border-[#234745]'
+              }`}
+            >
+              {isEn ? RANGE_LABELS[key].en : RANGE_LABELS[key].ar}
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 const sar = (n: number) =>
   n.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
 function StoreInvoicesList({
   result,
   isEn,
+  range,
 }: {
   result: StoreInvoicesResult | null;
   isEn: boolean;
+  range: StoreInvoiceRange;
 }) {
+  const period = RANGE_LABELS[range] || RANGE_LABELS['3m'];
   if (!result || result.status === 'unavailable') {
     return <StoreInvoicesUnavailable isEn={isEn} />;
   }
@@ -1068,8 +1120,8 @@ function StoreInvoicesList({
       <div className="py-16 px-6 text-center bg-white rounded-2xl border border-dashed border-gray-200">
         <p className="text-[#234745] font-bold mb-2">
           {isEn
-            ? 'No branch purchases in the last 12 months'
-            : 'لا توجد مشتريات من الفروع خلال آخر 12 شهراً'}
+            ? `No branch purchases ${period.inEn}`
+            : `لا توجد مشتريات من الفروع ${period.inAr}`}
         </p>
         <p className="text-gray-500 text-[14px] max-w-md mx-auto">
           {isEn
@@ -1086,12 +1138,12 @@ function StoreInvoicesList({
         {isEn ? (
           <>
             <span className="font-en">{invoices.length}</span>{' '}
-            {invoices.length === 1 ? 'purchase' : 'purchases'} in the last 12 months
+            {invoices.length === 1 ? 'purchase' : 'purchases'} {period.inEn}
           </>
         ) : (
           <>
             <span className="font-en">{invoices.length}</span>{' '}
-            {invoices.length === 1 ? 'عملية شراء' : 'عمليات شراء'} خلال آخر 12 شهراً
+            {invoices.length === 1 ? 'عملية شراء' : 'عمليات شراء'} {period.inAr}
           </>
         )}
       </p>

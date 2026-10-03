@@ -4,8 +4,10 @@ import {resolveSelfPhone} from '~/lib/session-identity.server';
 /**
  * In-store (POS) purchases for the signed-in customer.
  *
- * Source: the middleware's `POST /orders/offline-invoices`, the same endpoint
- * the mobile app uses, authenticated with `MOBILE_APP_SECRET_TOKEN`. It
+ * Source: the middleware's `GET /orders/purchase-history` (online + offline
+ * under `data.orders`; see normalisePurchaseHistory), authenticated with
+ * `MOBILE_APP_SECRET_TOKEN`. The older `POST /orders/offline-invoices`
+ * response (`data.transactions`) is still parsed if it ever comes back. It
  * returns the customer's whole ERP purchase history for a phone number and a
  * date range.
  *
@@ -33,8 +35,21 @@ import {resolveSelfPhone} from '~/lib/session-identity.server';
 
 const INCLUDE_CRM_INVOICES = false;
 
-/** How far back to look. The endpoint takes an explicit range. */
-const HISTORY_MONTHS = 12;
+/**
+ * How far back to look: the shopper picks one of these on the page
+ * (آخر شهر / 3 أشهر / 6 أشهر / آخر سنة); three months unless they choose.
+ * The endpoint takes an explicit range, so a shorter window is also a lighter
+ * ERP query.
+ */
+export const STORE_INVOICE_RANGES = {'1m': 1, '3m': 3, '6m': 6, '12m': 12} as const;
+export type StoreInvoiceRange = keyof typeof STORE_INVOICE_RANGES;
+export const DEFAULT_STORE_INVOICE_RANGE: StoreInvoiceRange = '3m';
+
+export function toStoreInvoiceRange(v: unknown): StoreInvoiceRange {
+  return typeof v === 'string' && v in STORE_INVOICE_RANGES
+    ? (v as StoreInvoiceRange)
+    : DEFAULT_STORE_INVOICE_RANGE;
+}
 
 /** A slow ERP must not hold the account page hostage. */
 const TIMEOUT_MS = 10_000;
@@ -265,6 +280,101 @@ export function normaliseTransactions(
     );
 }
 
+/* ── GET /orders/purchase-history ─────────────────────────────────────────── */
+
+/**
+ * The newer endpoint (the backend's choice) answers with every order for the
+ * phone, online and in-store, under `data.orders`:
+ *
+ *   {source: 'offline', id: 'RS-2401-RG-24011-10468', number: '-240111261-0007502',
+ *    date: '2026-09-24T11:02:38.000Z', status, channel: 'RS-2401 (RS-2401)',
+ *    total_amount, items: [{sku, name, qty, unit_price, total_price}]}
+ *
+ * Only `offline` rows from a branch till belong here. `online` rows are the
+ * Shopify orders the other tab already lists, and offline rows on channel
+ * «saad» are CRM invoices for those same online/app orders (they carry the
+ * delivery line «خدمة التوصيل لبرامج التطبيقات», sku 900119) -- the same
+ * double-listing INCLUDE_CRM_INVOICES guards against below.
+ *
+ * Dates are real UTC: CRM invoices dated on a Riyadh midnight arrive as
+ * 21:00Z the day before. Shown in Riyadh time (UTC+3, no DST).
+ *
+ * This shape has no VAT or discount per line; the card hides both when zero.
+ */
+const DELIVERY_SKU = '900119';
+
+function isTillOrder(o: any): boolean {
+  if (str(o?.source).toLowerCase() !== 'offline') return false;
+  if (INCLUDE_CRM_INVOICES) return true;
+  const channel = str(o?.channel).toLowerCase();
+  if (channel.startsWith('saad')) return false;
+  const items = Array.isArray(o?.items) ? o.items : [];
+  return !items.some((i: any) => str(i?.sku) === DELIVERY_SKU);
+}
+
+function riyadhDateTime(iso: unknown): {date: string | null; time: string | null} {
+  const t = Date.parse(str(iso));
+  if (!Number.isFinite(t)) return {date: null, time: null};
+  const local = new Date(t + 3 * 60 * 60 * 1000).toISOString();
+  const time = local.slice(11, 16);
+  // A bare date (midnight) has no real time to show.
+  return {date: local.slice(0, 10), time: time === '00:00' ? null : time};
+}
+
+export function normalisePurchaseHistory(
+  orders: any[],
+  branches: Map<string, {ar: string; en: string}>,
+): StoreInvoice[] {
+  const seen = new Set<string>();
+  return (Array.isArray(orders) ? orders : [])
+    .filter(isTillOrder)
+    .map((o: any): StoreInvoice => {
+      const lines: StoreInvoiceLine[] = (Array.isArray(o?.items) ? o.items : []).map(
+        (i: any) => {
+          const qty = num(i?.qty);
+          const unitPrice = num(i?.unit_price);
+          const amount = num(i?.total_price) || qty * unitPrice;
+          return {
+            name: str(i?.name) || str(i?.sku),
+            qty,
+            unitPrice,
+            grossAmount: amount,
+            discount: 0,
+            amount,
+            vat: 0,
+          };
+        },
+      );
+      const lineTotal = lines.reduce((sum, l) => sum + l.amount, 0);
+      // Seen: a till receipt with total_amount 0 and a 2 SAR line. The lines
+      // are what the customer recognises, so they win over a zero total.
+      const total = num(o?.total_amount) || lineTotal;
+      // "RS-2401 (RS-2401)" -> "RS-2401", the code custom.ax_store_id holds.
+      const storeCode = str(o?.channel).split(/[\s(]/)[0].toUpperCase();
+      const branch = branches.get(storeCode);
+      const {date, time} = riyadhDateTime(o?.date);
+      const status = str(o?.status).toLowerCase();
+      const number = str(o?.number).replace(/^-/, '') || str(o?.id);
+      return {
+        id: str(o?.id) || number,
+        number,
+        isReturn: status.includes('return') || total < 0,
+        storeCode,
+        branchAr: branch?.ar ?? null,
+        branchEn: branch?.en ?? null,
+        date,
+        time,
+        total,
+        vat: 0,
+        lines,
+      };
+    })
+    .filter((inv) => (seen.has(inv.id) ? false : (seen.add(inv.id), true)))
+    .sort((a, b) =>
+      `${b.date ?? ''} ${b.time ?? ''}`.localeCompare(`${a.date ?? ''} ${a.time ?? ''}`),
+    );
+}
+
 /* ── Entry point ──────────────────────────────────────────────────────────── */
 
 /** The session's phone only — see `resolveSelfPhone`. */
@@ -272,6 +382,7 @@ const sessionPhone = resolveSelfPhone;
 
 export async function getStoreInvoices(
   context: any,
+  range: StoreInvoiceRange = DEFAULT_STORE_INVOICE_RANGE,
 ): Promise<StoreInvoicesResult> {
   const env = context.env || {};
   const token = str(env.MOBILE_APP_SECRET_TOKEN);
@@ -283,24 +394,39 @@ export async function getStoreInvoices(
   const phone = toInvoicePhone(await sessionPhone(context));
   if (!phone) return {status: 'no-phone'};
 
-  const to = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  /*
+   * Today in Riyadh (UTC+3) as the end, never a future day -- the backend
+   * asked us to mind the dates, and the old range ended tomorrow. The start
+   * is the same day N months earlier.
+   */
+  const riyadhToday = new Date(Date.now() + 3 * 60 * 60 * 1000);
+  const to = new Date(
+    Date.UTC(riyadhToday.getUTCFullYear(), riyadhToday.getUTCMonth(), riyadhToday.getUTCDate()),
+  );
   const from = new Date(to);
-  from.setUTCMonth(from.getUTCMonth() - HISTORY_MONTHS);
+  from.setUTCMonth(from.getUTCMonth() - STORE_INVOICE_RANGES[range]);
 
   const base = str(env.CUSTOM_API_URL) || 'https://api.saadeddin.top';
 
   try {
     const [res, branches] = await Promise.all([
-      fetch(`${base}/orders/offline-invoices`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
+      /*
+       * `GET /orders/purchase-history`, the backend's endpoint. The phone goes
+       * through URLSearchParams so its + is sent as %2B -- a bare + in a query
+       * string is read as a space and finds nobody.
+       */
+      fetch(
+        `${base}/orders/purchase-history?${new URLSearchParams({
+          phone,
+          from_date: ymd(from),
+          to_date: ymd(to),
+        })}`,
+        {
+          method: 'GET',
+          headers: {Authorization: `Bearer ${token}`, Accept: 'application/json'},
+          signal: AbortSignal.timeout(TIMEOUT_MS),
         },
-        body: JSON.stringify({phone, from_date: ymd(from), to_date: ymd(to)}),
-        signal: AbortSignal.timeout(TIMEOUT_MS),
-      }),
+      ),
       getBranchNames(env),
     ]);
 
@@ -325,6 +451,25 @@ export async function getStoreInvoices(
       return {status: 'unavailable'};
     }
 
+    // purchase-history: online + offline under data.orders.
+    if (Array.isArray(json?.data?.orders)) {
+      const invoices = normalisePurchaseHistory(json.data.orders, branches);
+      /*
+       * The ERP half can fail while the online half still answers ("offline
+       * history unavailable: ERP returned unsuccessful response"). With no
+       * in-store rows that is "couldn't load", not "you bought nothing".
+       */
+      const erpDown = (Array.isArray(json?.data?.warnings) ? json.data.warnings : []).some(
+        (w: unknown) => /offline/i.test(str(w)),
+      );
+      if (erpDown && invoices.length === 0) {
+        console.error('[store-invoices] ERP side unavailable:', JSON.stringify(json.data.warnings).slice(0, 200));
+        return {status: 'unavailable'};
+      }
+      return {status: 'ok', invoices};
+    }
+
+    // offline-invoices (older endpoint): data.transactions.
     return {
       status: 'ok',
       invoices: normaliseTransactions(json?.data?.transactions, branches),

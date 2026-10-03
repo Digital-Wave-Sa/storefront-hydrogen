@@ -230,7 +230,7 @@ export function ProductUpsellModal({
                         ...prev,
                         [prod.id]: true,
                       }));
-                      // The button itself turns into «تمت الإضافة ✓»; no phone toast over the modal.
+                      // The button itself turns into «تمت الإضافة ✓»; no toast over the modal.
                       return true;
                     }}
                     className={`w-full py-2.5 font-bold text-[14px] rounded-[14px] flex items-center justify-center transition-all shadow-sm active:scale-98 cursor-pointer ${

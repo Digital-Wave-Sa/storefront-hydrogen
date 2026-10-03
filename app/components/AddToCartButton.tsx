@@ -22,9 +22,9 @@ export function AddToCartButton({
   lines: Array<OptimisticCartLineInput>;
   onClick?: () => void;
   /**
-   * Replaces the default confirmation (drawer on desktop, toast on phones).
+   * Replaces the default confirmation (the «أُضيفت إلى السلة» toast).
    * Return `true` when the callback shows its own confirmation (e.g. the
-   * upsell modal) so the phone toast is not stacked on top of it.
+   * upsell modal) so the toast is not stacked on top of it.
    */
   onAddToCartSuccess?: () => void | boolean;
   selectedVariant?: any;
@@ -43,7 +43,7 @@ export function AddToCartButton({
   const isSubmitting = fetcher.state !== 'idle';
 
   /*
-   * Phones: the toast waits for the cart's answer, so it never says
+   * The toast waits for the cart's answer, so it never says
    * «تمت الإضافة» for an add that failed (sold out, cart error).
    */
   const pendingToast = useRef<{ title?: string; image?: string; quantity?: number } | null>(null);

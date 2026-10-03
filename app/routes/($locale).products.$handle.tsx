@@ -3915,7 +3915,7 @@ export default function Product() {
                         }}
                         disabled={!selectedVariant || photoBlocksAdd}
                         onClick={() => {
-                          // Phones keep their place; the toast confirms the add.
+                          // The shopper keeps their place; the toast confirms the add.
                           if (!prefersCartToast()) window.scrollTo({top: 0, behavior: 'smooth'});
                         }}
                         onAddToCartSuccess={() => {
@@ -3923,7 +3923,7 @@ export default function Product() {
                             setIsUpsellModalOpen(true);
                             return true;
                           }
-                          // Phones: AddToCartButton shows the toast once the cart answers.
+                          // Otherwise AddToCartButton shows the toast once the cart answers.
                           if (!prefersCartToast()) open('cart');
                         }}
                         lines={
@@ -4525,7 +4525,7 @@ export default function Product() {
                           }}
                           disabled={!selectedVariant || effectiveOutOfStock || availabilityUnresolved || photoBlocksAdd}
                           onClick={() => {
-                            // Phones keep their place; the toast confirms the add.
+                            // The shopper keeps their place; the toast confirms the add.
                             if (!prefersCartToast()) window.scrollTo({top: 0, behavior: 'smooth'});
                           }}
                           onAddToCartSuccess={() => {
@@ -4533,7 +4533,7 @@ export default function Product() {
                               setIsUpsellModalOpen(true);
                               return true;
                             }
-                            // Phones: AddToCartButton shows the toast once the cart answers.
+                            // Otherwise AddToCartButton shows the toast once the cart answers.
                             if (!prefersCartToast()) open('cart');
                           }}
                           lines={

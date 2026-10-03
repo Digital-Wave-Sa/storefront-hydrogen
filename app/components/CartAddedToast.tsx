@@ -5,9 +5,9 @@ import {CART_TOAST_EVENT, type CartToastDetail} from '~/lib/cart-toast';
 const VISIBLE_MS = 4000;
 
 /**
- * Phone replacement for the cart drawer after «أضف إلى السلة».
+ * Replacement for the cart drawer after «أضف إلى السلة», on every screen size.
  * Raised through `showCartToast` (app/lib/cart-toast.ts); mounted once in
- * PageLayout. Desktop never raises it.
+ * PageLayout.
  */
 export function CartAddedToast() {
   const location = useLocation();
@@ -56,10 +56,16 @@ export function CartAddedToast() {
       aria-live="polite"
       aria-hidden={!shown}
       dir={isEn ? 'ltr' : 'rtl'}
-      className={`lg:hidden fixed inset-x-3 z-[70] transition-all duration-300 ease-out ${
+      /*
+       * Phones: full width above the bottom edge. Desktop: a 380px card in the
+       * bottom corner on the reading side (right in Arabic, left in English).
+       */
+      className={`fixed z-[70] inset-x-3 bottom-[calc(12px+env(safe-area-inset-bottom,0px))] lg:inset-x-auto lg:w-[380px] lg:bottom-6 ${
+        isEn ? 'lg:left-6' : 'lg:right-6'
+      } transition-all duration-300 ease-out ${
         shown ? 'translate-y-0 opacity-100' : 'translate-y-[140%] opacity-0 pointer-events-none'
       }`}
-      style={{bottom: 'calc(12px + env(safe-area-inset-bottom, 0px))', fontFamily: font}}
+      style={{fontFamily: font}}
     >
       {toast.kind === 'added' ? (
         /*

@@ -11,6 +11,7 @@ import { Button } from './layout/Button';
 import { useI18n } from '~/lib/i18n';
 import { StarRating } from './StarRating';
 import { addressCoords, sameAddressId } from '~/lib/address-coords';
+import { geocodeAddressText } from '~/lib/geocode-address';
 import { AddressForm, LocationPicker } from './AddressForm';
 import { effectiveRadiusKm } from '~/lib/delivery-coverage';
 import { PointMap } from './PointMap';
@@ -1137,6 +1138,33 @@ function ModalContent({
 
     const [hasAutoSelected, setHasAutoSelected] = useState(false);
 
+    /**
+     * Coordinates for saved addresses that have none (typed at Shopify
+     * checkout, not pinned on our map, and not yet geocoded by Shopify), keyed
+     * by address id. Without them the branch fell back to the city -- «الرياض»
+     * -> العليا -- which sent SDN-1574 (منفوحة) 10.8 km away instead of to
+     * Al Aziziyah at 4.5 km. Looked up as soon as such an address is selected,
+     * so the coverage note and the map are right before the shopper confirms.
+     */
+    const [lookedUp, setLookedUp] = useState<Record<string, { lat: number; lng: number } | null>>({});
+    const [confirming, setConfirming] = useState(false);
+    const [confirmError, setConfirmError] = useState<string | null>(null);
+    const lookupKey = currentAddress ? String(currentAddress.id) : '';
+    const needsLookup = isUserAddressSelected && !!currentAddress && !addressCoords(currentAddress);
+
+    useEffect(() => {
+        setConfirmError(null);
+        if (!needsLookup || !googleMapsKey || lookupKey in lookedUp) return;
+        let cancelled = false;
+        geocodeAddressText(currentAddress, googleMapsKey, isEn).then((coords) => {
+            if (!cancelled) setLookedUp((prev) => ({ ...prev, [lookupKey]: coords }));
+        });
+        return () => {
+            cancelled = true;
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [lookupKey, needsLookup, googleMapsKey]);
+
     // Auto-select nearest branch when coords are detected
     useEffect(() => {
         if (userCoords && !hasAutoSelected && activeTab === 'pickup' && branches.length > 0) {
@@ -1193,7 +1221,10 @@ function ModalContent({
      * Coordinates when Shopify resolved them; otherwise the address text for
      * Google to find. `PointMap` pans between them instead of reloading.
      */
-    const addressPin = isUserAddressSelected && currentAddress ? addressCoords(currentAddress) : null;
+    const addressPin =
+        isUserAddressSelected && currentAddress
+            ? addressCoords(currentAddress) || lookedUp[lookupKey] || null
+            : null;
     const mapPoint =
         isUserAddressSelected && currentAddress
             ? addressPin
@@ -1597,16 +1628,50 @@ function ModalContent({
 
                 {!isAddingAddress && (
                 <div className="dpm-footer-action">
+                    {confirmError && (
+                        <div
+                            role="alert"
+                            className="mb-3 flex items-start gap-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-start"
+                        >
+                            <span className="!text-[13px] !leading-5 !text-red-700 flex-1">{confirmError}</span>
+                            <button
+                                type="button"
+                                onClick={() => { setConfirmError(null); setIsAddingAddress(true); }}
+                                className="shrink-0 whitespace-nowrap rounded-lg bg-white px-3 py-1.5 !text-[12px] font-bold !text-[#234745] border border-[#234745]/15"
+                            >
+                                {isEn ? 'Add address' : 'إضافة عنوان'}
+                            </button>
+                        </div>
+                    )}
                     <button 
                         className="dpm-confirm-btn"
-                        disabled={!effectiveSelectedBranch}
-                        onClick={() => {
+                        disabled={!effectiveSelectedBranch || confirming}
+                        onClick={async () => {
                                 if (isUserAddressSelected) {
                                     const currentAddress = addresses.find((a: any) => sameAddressId(a.id, effectiveSelectedBranch));
                                     
-                                    // Shopify's own geocoding of the address,
-                                    // with the legacy address2 marker as a fallback.
-                                    const coords = addressCoords(currentAddress);
+                                    // Shopify's own geocoding of the address (or our
+                                    // saved pin), then our own lookup of its text.
+                                    let coords = addressCoords(currentAddress) || lookedUp[String(currentAddress?.id)] || null;
+                                    if (!coords && googleMapsKey && currentAddress) {
+                                        setConfirming(true);
+                                        coords = await geocodeAddressText(currentAddress, googleMapsKey, isEn);
+                                        setConfirming(false);
+                                        setLookedUp((prev) => ({ ...prev, [String(currentAddress.id)]: coords }));
+                                    }
+                                    /*
+                                     * Still nothing: stop here rather than guess a
+                                     * branch from the city name. The shopper adds the
+                                     * address again with the map, or picks another.
+                                     */
+                                    if (!coords && googleMapsKey) {
+                                        setConfirmError(
+                                            isEn
+                                                ? "We couldn't find this address on the map. Add it again and set its location on the map, or choose another address."
+                                                : 'لم نتمكن من تحديد موقع هذا العنوان على الخريطة. أضفه من جديد مع تحديد موقعه على الخريطة، أو اختر عنواناً آخر.',
+                                        );
+                                        return;
+                                    }
 
                                     // Map address to nearest branch for stock and fees (ignoring disabled/hidden stores)
                                     let nearestBranch = branches.find((b: any) => !b.hideFromStorefront) || branches[0];
@@ -1721,7 +1786,9 @@ function ModalContent({
                                 onClose();
                         }}
                     >
-                        {isEn ? 'Confirm Selection' : 'تأكيد الاختيار'}
+                        {confirming
+                            ? (isEn ? 'Locating address…' : 'جارٍ تحديد موقع العنوان…')
+                            : (isEn ? 'Confirm Selection' : 'تأكيد الاختيار')}
                     </button>
                 </div>
                 )}

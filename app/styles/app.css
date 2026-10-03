@@ -3554,3 +3554,36 @@ button.reset:hover:not(:has(> *)) {
     opacity: 0.85;
   }
 }
+
+/*
+ * Google Places search suggestions (the «ابحث عن موقع» box on both map pickers).
+ *
+ * Google appends the list (.pac-container) to <body> with z-index 1000. The
+ * delivery modal sits at 2147483647 and the account address dialog at 1001,
+ * so the suggestions were drawn BEHIND the modal: typing found results that
+ * nobody could see or tap. Same z-index as the modal; the list is appended to
+ * <body> after the modal, so it wins the tie.
+ */
+.pac-container {
+  z-index: 2147483647 !important;
+  border-radius: 14px;
+  border: 1px solid rgba(35, 71, 69, 0.08);
+  box-shadow: 0 12px 30px rgba(35, 71, 69, 0.15);
+  margin-top: 6px;
+  font-family: 'EnglishDigits', 'GE Dinar One', sans-serif;
+}
+.pac-item {
+  padding: 8px 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  cursor: pointer;
+}
+.pac-item-query {
+  font-size: 13px;
+  color: #234745;
+}
+html[dir='rtl'] .pac-container,
+html[dir='rtl'] .pac-item {
+  direction: rtl;
+  text-align: right;
+}

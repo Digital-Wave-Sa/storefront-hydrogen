@@ -222,7 +222,7 @@ export function MobileSearchModal({ locale }: { locale: string }) {
                               dangerouslySetInnerHTML={{ __html: item.styledTitle || item.title }}
                             />
                             {item.price && (
-                              <p className="text-[14px] font-black text-[#d4a06a] mt-0.5">
+                              <p className="text-[14px] font-black text-[#234745] mt-0.5">
                                 <Money data={item.price} />
                               </p>
                             )}

@@ -986,13 +986,13 @@ function OrdersSourceToggle({isStore, isEn}: {isStore: boolean; isEn: boolean}) 
       key: 'online',
       to: base,
       active: !isStore,
-      label: isEn ? 'Online orders' : 'طلبات أونلاين',
+      label: isEn ? 'Online orders' : 'طلباتي الإلكترونية',
     },
     {
       key: 'store',
       to: `${base}?source=store`,
       active: isStore,
-      label: isEn ? 'In-store purchases' : 'مشتريات الفروع',
+      label: isEn ? 'In-store purchases' : 'مشترياتي من الفروع',
     },
   ];
 

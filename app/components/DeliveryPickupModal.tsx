@@ -986,6 +986,19 @@ function ModalContent({
     );
 
     /** Save done: show it, select it, and go back to the list. */
+    /**
+     * Opening or closing the form starts it at the top.
+     *
+     * The list and the form share one scrolling panel, and «إضافة عنوان» sits
+     * at the bottom of the list -- so on a phone the form opened at the
+     * scroll position of that button: fields and Save in view, the map and
+     * the heading above it scrolled out of sight, as if the form had no map.
+     */
+    const panelBodyRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (panelBodyRef.current) panelBodyRef.current.scrollTop = 0;
+    }, [isAddingAddress]);
+
     /** Closing the form drops the pin with it. */
     const closeAddressForm = React.useCallback(() => {
         setIsAddingAddress(false);
@@ -1384,24 +1397,28 @@ function ModalContent({
                     </div>
                 )}
 
-                <div className="dpm-panel-body">
+                <div className="dpm-panel-body" ref={panelBodyRef}>
                     {isAddingAddress ? (
-                        <div className="p-4 animate-fade-in">
+                        /*
+                         * The panel already pads 16px each side on phones; a second
+                         * 16px here left the map and fields in a narrow column.
+                         */
+                        <div className="px-0 py-3 md:p-4 animate-fade-in">
                             <button
                                 type="button"
                                 onClick={closeAddressForm}
-                                className="flex items-center gap-2 text-[13px] font-bold text-[#234745] mb-4 hover:underline"
+                                className="flex items-center gap-2 text-[13px] font-bold text-[#234745] mb-3 md:mb-4 hover:underline"
                             >
                                 <span aria-hidden="true">{isEn ? '\u2190' : '\u2192'}</span>
                                 {isEn ? 'Back to addresses' : 'العودة إلى العناوين'}
                             </button>
-                            <h3 className="text-[16px] font-bold text-[#234745] mb-4">
+                            <h3 className="text-[16px] font-bold text-[#234745] mb-3 md:mb-4">
                                 {isEn ? 'Add New Address' : 'إضافة عنوان جديد'}
                             </h3>
                             {googleMapsKey ? (
                                 <>
                                     {!hasMapPane && (
-                                        <div className="w-full mb-5">
+                                        <div className="w-full mb-4">
                                             {locationPicker}
                                         </div>
                                     )}

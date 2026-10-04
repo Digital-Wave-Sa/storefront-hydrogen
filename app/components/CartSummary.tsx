@@ -26,6 +26,7 @@ import {
   STANDARD_DELIVERY_FEE,
   STANDARD_FREE_DELIVERY_THRESHOLD,
   quotedDeliveryFee,
+  merchandiseTotal,
 } from '~/lib/delivery-defaults';
 import {branchDisplayNameFor} from '~/lib/branch-name';
 import {
@@ -389,7 +390,13 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
    * is the one shown. See quotedDeliveryFee() for how a group's options are
    * chosen between.
    */
-  const shopifyDeliveryFee = quotedDeliveryFee(cart, {isPickup});
+  const shopifyDeliveryFee = quotedDeliveryFee(cart, {
+    isPickup,
+    freeThreshold:
+      typeof rootData?.standardFreeDeliveryThreshold === 'number'
+        ? rootData.standardFreeDeliveryThreshold
+        : STANDARD_FREE_DELIVERY_THRESHOLD,
+  });
 
   /**
    * Free delivery is free when SHOPIFY says so — a quote of exactly 0.
@@ -457,7 +464,8 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
       : STANDARD_FREE_DELIVERY_THRESHOLD;
 
   const standardFallbackFee =
-    liveFreeThreshold != null && subtotalBeforeDiscounts >= liveFreeThreshold
+    // Gift cards never count toward free delivery (merchandiseTotal).
+    liveFreeThreshold != null && merchandiseTotal(cart) >= liveFreeThreshold
       ? 0
       : liveStandardFee;
 

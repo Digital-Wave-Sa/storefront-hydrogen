@@ -12,7 +12,7 @@ import { checkBranchFreeDeliveryInterval } from './DeliveryPickupModal';
 import patternBg from '/images/second-bg-pattern.svg';
 import { useAdminLocations } from '~/lib/locations-meta';
 import { isDigitalOnlyCart as cartIsDigitalOnly } from '~/lib/digital-lines';
-import { quotedDeliveryFee } from '~/lib/delivery-defaults';
+import { quotedDeliveryFee, STANDARD_FREE_DELIVERY_THRESHOLD } from '~/lib/delivery-defaults';
 import { branchDisplayNameFor } from '~/lib/branch-name';
 
 export type CartLayout = 'page' | 'aside';
@@ -264,7 +264,14 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
         (d.code?.toLowerCase() === 'freeshipping' ||
           d.code?.toLowerCase() === 'free_shipping'),
     ) || false;
-  const shopifyQuotedFree = quotedDeliveryFee(cart, {isPickup}) === 0;
+  const shopifyQuotedFree =
+    quotedDeliveryFee(cart, {
+      isPickup,
+      freeThreshold:
+        typeof rootData?.standardFreeDeliveryThreshold === 'number'
+          ? rootData.standardFreeDeliveryThreshold
+          : STANDARD_FREE_DELIVERY_THRESHOLD,
+    }) === 0;
   const freeDeliveryUnlocked =
     !isPickup &&
     !isDigitalOnlyCart &&

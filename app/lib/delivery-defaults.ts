@@ -1,3 +1,4 @@
+import {isNonShippableLine} from '~/lib/digital-lines';
 /**
  * The shop-wide standard delivery rate, in SAR.
  *
@@ -80,6 +81,19 @@ export const STANDARD_FREE_DELIVERY_THRESHOLD: number | null = null;
 export const DELIVERY_IS_TAXED = true;
 
 /**
+ * What the cart's merchandise costs, gift cards excluded -- the amount the
+ * free-delivery threshold is measured against (see quotedDeliveryFee). Line
+ * totals are after each line's own discounts, like Shopify's rate condition.
+ */
+export function merchandiseTotal(cart: any): number {
+  return (cart?.lines?.nodes ?? []).reduce((sum: number, line: any) => {
+    if (isNonShippableLine(line)) return sum;
+    const amount = parseFloat(line?.cost?.totalAmount?.amount ?? '0');
+    return sum + (Number.isFinite(amount) ? amount : 0);
+  }, 0);
+}
+
+/**
  * What Shopify has quoted for delivering this cart, in SAR — or null when it
  * has not quoted yet (no delivery address on the cart).
  *
@@ -109,10 +123,16 @@ export const DELIVERY_IS_TAXED = true;
  */
 export function quotedDeliveryFee(
   cart: any,
-  opts: {isPickup?: boolean} = {},
+  opts: {isPickup?: boolean; freeThreshold?: number | null} = {},
 ): number | null {
   const groups: any[] = cart?.deliveryGroups?.nodes ?? [];
   if (groups.length === 0) return null;
+
+  const merchandise = merchandiseTotal(cart);
+  const freeThreshold =
+    typeof opts.freeThreshold === 'number' && opts.freeThreshold > 0
+      ? opts.freeThreshold
+      : null;
 
   let total = 0;
   let quoted = false;
@@ -129,6 +149,34 @@ export function quotedDeliveryFee(
       // Two local options in one group means overlapping delivery areas;
       // the cheaper is the safer promise.
       total += Math.min(...localCosts);
+      quoted = true;
+      continue;
+    }
+
+    /*
+     * Standard (paid) and Free offered side by side.
+     *
+     * Since 4 Oct 2026 Shopify offers BOTH home-delivery rates at any order
+     * value, and the «Free delivery without gift cards» function in the
+     * Saadeddin Checkout Rules app hides one at checkout: free only when the
+     * merchandise -- gift card excluded -- reaches the threshold. That
+     * function runs in checkout, not in this Storefront cart, so here both
+     * options arrive and the cheapest (0.00) would read as free delivery for
+     * 159 SAR of cake plus a 200 SAR gift card. The same rule is applied here
+     * so the cart says what checkout will charge.
+     */
+    const shipping = options
+      .filter((o: any) => String(o?.deliveryMethodType).toUpperCase() === 'SHIPPING')
+      .map((o: any) => parseFloat(o?.estimatedCost?.amount ?? ''))
+      .filter((n: number) => Number.isFinite(n));
+    const paid = shipping.filter((n: number) => n >= 0.005);
+    if (
+      !opts.isPickup &&
+      freeThreshold !== null &&
+      paid.length > 0 &&
+      shipping.some((n: number) => n < 0.005)
+    ) {
+      total += merchandise + 0.005 >= freeThreshold ? 0 : Math.min(...paid);
       quoted = true;
       continue;
     }

@@ -1,110 +1,114 @@
-import { useOutletContext } from 'react-router';
+import { Link, useOutletContext } from 'react-router';
 import { useState, useRef, useEffect } from 'react';
 
+type Review = {
+    id: string;
+    text: string;
+    name: string;
+    subtitle: string;
+    avatar: string | null;
+    cardImage: string;
+};
+
+const AVATAR_COLORS = [
+    { bg: '#BBCFCD', fg: '#234745' },
+    { bg: '#EED5D7', fg: '#906B51' },
+    { bg: '#FEF8EB', fg: '#255441' },
+    { bg: '#E64950', fg: '#FFFFFF' },
+];
+
+const field = (node: any, key: string) =>
+    node?.fields?.find((f: any) => f.key === key);
+
+const text = (node: any, key: string): string =>
+    (field(node, key)?.value ?? '').trim();
+
+function initials(name: string) {
+    const parts = name.split(/\s+/).filter(Boolean);
+    return parts.slice(0, 2).map((p) => p.charAt(0)).join('');
+}
+
+/**
+ * «آراء عملائنا» on the home page. Everything comes from Shopify:
+ *   - homepage_reviews_section (one entry): titles + «Hide Section»
+ *   - homepage_review (one entry per card): name, review, photo, order, «Hide Review»
+ * No visible entries → a «شاركنا رأيك» card linking to the contact page. There is no
+ * built-in fallback list on purpose: only real reviews may appear here.
+ */
 export function CustomerReviews({ config }: { config?: any }) {
     const { locale = 'ar' } = useOutletContext<{ locale?: string }>() ?? {};
     const isEn = locale === 'en';
 
-    // Parse Metaobject config
-    const showField = config?.fields?.find((f: any) => f.key === 'show_reviews_section')?.value;
-    if (showField === 'false') return null;
+    const section = config?.reviewsSection?.nodes?.[0];
+    if (text(section, 'is_hidden') === 'true') return null;
 
-    const getField = (key: string) => config?.fields?.find((f: any) => f.key === key)?.value;
-    const titleEn = getField('reviews_title_en') || 'Customer Reviews';
-    const titleAr = getField('reviews_title_ar') || 'أراء عملائنا';
-    const subtitleEn = getField('reviews_subtitle_en') || "See our customers' reviews";
-    const subtitleAr = getField('reviews_subtitle_ar') || 'شاهد أراء عملائنا';
+    const reviews: Review[] = (config?.homepageReviews?.nodes ?? [])
+        .filter((node: any) => text(node, 'is_hidden') !== 'true')
+        .map((node: any) => {
+            const nameAr = text(node, 'customer_name_ar');
+            const textAr = text(node, 'review_text_ar');
+            const sort = Number(text(node, 'sort_order'));
+            return {
+                id: node.id as string,
+                sort: Number.isFinite(sort) && text(node, 'sort_order') !== '' ? sort : Number.MAX_SAFE_INTEGER,
+                name: (isEn && text(node, 'customer_name_en')) || nameAr,
+                text: (isEn && text(node, 'review_text_en')) || textAr,
+                subtitle: (isEn ? text(node, 'subtitle_en') : text(node, 'subtitle_ar')) || '',
+                avatar: field(node, 'avatar_image')?.reference?.image?.url ?? null,
+                cardImage: field(node, 'card_image')?.reference?.image?.url ?? '/images/review_placeholder.webp',
+            };
+        })
+        .filter((r: Review) => r.name && r.text)
+        .sort((a: any, b: any) => a.sort - b.sort);
 
-    const [activeIndex, setActiveIndex] = useState(isEn ? 0 : 3);
+    const title = (isEn ? text(section, 'title_en') : text(section, 'title_ar')) || (isEn ? 'Customer Reviews' : 'آراء عملائنا');
+    const subtitle = (isEn ? text(section, 'subtitle_en') : text(section, 'subtitle_ar')) || '';
+
+    // No visible reviews yet → keep the section, invite customers to share theirs.
+    if (reviews.length === 0) return <ReviewsInvite title={title} isEn={isEn} />;
+
+    return <ReviewsCarousel reviews={reviews} title={title} subtitle={subtitle} isEn={isEn} />;
+}
+
+function ReviewsInvite({ title, isEn }: { title: string; isEn: boolean }) {
+    return (
+        <section
+            className={`w-full bg-[#FFFFFF] flex justify-center px-4 ${isEn ? 'font-en' : 'font-ar'}`}
+            dir={isEn ? 'ltr' : 'rtl'}
+            style={{ paddingTop: '50px', paddingBottom: '50px' }}
+        >
+            <div className="w-full max-w-[1280px] flex flex-col items-center">
+                <h2 className="text-[48px] lg:text-[50px] font-bold text-[#1a1a1a] !mb-10 leading-none tracking-tighter text-center" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
+                    {title}
+                </h2>
+                <div className="w-full max-w-[560px] border border-[#BBCFCD] rounded-[12px] bg-[#FEF8EB] px-6 py-8 flex flex-col items-center gap-4 text-center">
+                    <p className="font-dinar font-bold text-[22px] leading-[28px] text-[#234745] m-0">
+                        {isEn ? 'Share your experience' : 'شاركنا رأيك'}
+                    </p>
+                    <p className="font-dinar font-medium text-[16px] leading-[24px] text-[#171717] m-0 max-w-[420px]">
+                        {isEn
+                            ? 'Tried something from Saadeddin? Tell us about it — your review could be the first one here.'
+                            : 'جرّبت من حلويات سعد الدين؟ أخبرنا عن تجربتك، وقد يكون رأيك أول ما يظهر هنا.'}
+                    </p>
+                    <Link
+                        to={isEn ? '/en/pages/contact' : '/pages/contact'}
+                        prefetch="intent"
+                        className="inline-flex items-center justify-center h-[44px] px-6 rounded-full bg-[#234745] !text-white hover:!text-white no-underline font-dinar font-bold text-[16px] hover:bg-[#255441] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#234745]"
+                    >
+                        {isEn ? 'Write your review' : 'اكتب رأيك'}
+                    </Link>
+                </div>
+            </div>
+        </section>
+    );
+}
+
+function ReviewsCarousel({ reviews, title, subtitle, isEn }: { reviews: Review[]; title: string; subtitle: string; isEn: boolean }) {
+    const [activeIndex, setActiveIndex] = useState(0);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
     const isClickScrolling = useRef(false);
-    const scrollTimeout = useRef<NodeJS.Timeout>();
-
-    const hardcodedReviews = [
-        {
-            text: isEn
-                ? "Saadeddin offers a unique and distinct experience in the world of sweets. High quality and attention to detail always bring me back."
-                : "سعد الدين بتقدملي تجربة فريدة ومميزة في عالم الحلويات. الجودة العالية والاهتمام بالتفاصيل بيخليني دايماً ارجع ليهم في كل مناسبة.",
-            name: isEn ? "Ahmed Alabdali" : "أحمد العبدلي",
-            title: isEn ? "Head of Sales" : "رئيس قسم المبيعات",
-            avatar: "https://ui-avatars.com/api/?name=Ahmed+Alabdali&background=BBCFCD&color=234745"
-        },
-        {
-            text: isEn
-                ? "I've been a loyal customer for years. I find everything I'm looking for, from authentic oriental sweets to luxury chocolates. Excellent service."
-                : "أنا عميل وفي لسعد الدين من سنين. بلاقي عندهم كل اللي بدور عليه من حلويات شرقية أصيلة وشوكولاتة فاخرة. خدمة العملاء ممتازة والأسعار معقولة.",
-            name: isEn ? "Noura Khaled" : "نورة خالد",
-            title: isEn ? "Product Dev Manager" : "مديرة تطوير المنتجات",
-            avatar: "https://ui-avatars.com/api/?name=Noura+Khaled&background=EED5D7&color=906B51"
-        },
-        {
-            text: isEn
-                ? "Saadeddin is my favorite destination for special occasions. Their cakes are a masterpiece, and the selection suits all tastes."
-                : "سعد الدين هو وجهتي المفضلة للحلويات في المناسبات الخاصة. الكيكات عندهم تحفة فنية، والتشكيلة واسعة بتناسب جميع الأذواق. دايماً بيبهروني بابتكاراتهم الجديدة.",
-            name: isEn ? "Salman Alfraj" : "سلمان الفراج",
-            title: isEn ? "Architect" : "مهندس معماري",
-            avatar: "https://ui-avatars.com/api/?name=Salman+Alfraj&background=FEF8EB&color=255441"
-        },
-        {
-            text: isEn
-                ? "Honestly, Saadeddin outdoes themselves every time. The quality of ingredients and artistic presentation makes me trust them completely."
-                : "بصراحة، سعد الدين بيتفوق على نفسه كل مرة. جودة المكونات واللمسة الفنية في التقديم بتخليني أثق فيهم تماماً. أنصح أي حد يجرب حلوياتهم، مش هيندم.",
-            name: isEn ? "Laila Alotaibi" : "ليلى العتيبي",
-            title: isEn ? "Dentist" : "طبيبة أسنان",
-            avatar: "https://ui-avatars.com/api/?name=Laila+Alotaibi&background=E64950&color=FFFFFF"
-        },
-        {
-            text: isEn
-                ? "Every time I visit Saadeddin, I'm amazed by the variety. Their pistachio baklava is simply out of this world. Highly recommended for family gatherings."
-                : "في كل مرة أزور سعد الدين، أنبهر بالتنوع. البقلاوة بالفستق عندهم خيالية بمعنى الكلمة. أنصح بها بشدة للتجمعات العائلية.",
-            name: isEn ? "Omar Tariq" : "عمر طارق",
-            title: isEn ? "Software Engineer" : "مهندس برمجيات",
-            avatar: "https://ui-avatars.com/api/?name=Omar+Tariq&background=BBCFCD&color=234745"
-        },
-        {
-            text: isEn
-                ? "The customer service is just as sweet as their desserts. They helped me choose the perfect customized cake for my daughter's birthday."
-                : "خدمة العملاء عندهم حلوة زي حلوياتهم. ساعدوني أختار كيكة مخصصة مثالية لعيد ميلاد بنتي، وكانت مفاجأة رائعة.",
-            name: isEn ? "Sara Aldosari" : "سارة الدوسري",
-            title: isEn ? "Teacher" : "معلمة",
-            avatar: "https://ui-avatars.com/api/?name=Sara+Aldosari&background=EED5D7&color=906B51"
-        },
-        {
-            text: isEn
-                ? "I travel a lot, but I always make sure to take a box of Saadeddin sweets with me as a gift. It represents the best of our local taste."
-                : "أسافر كثير، ودائماً أحرص آخذ علبة حلويات من سعد الدين كهدية. تمثل أفضل ما في ذوقنا المحلي وتبيض الوجه.",
-            name: isEn ? "Fahad Almutairi" : "فهد المطيري",
-            title: isEn ? "Business Consultant" : "مستشار أعمال",
-            avatar: "https://ui-avatars.com/api/?name=Fahad+Almutairi&background=FEF8EB&color=255441"
-        },
-        {
-            text: isEn
-                ? "Their new diet-friendly section is a game changer! Now I can enjoy my favorite oriental sweets without ruining my diet."
-                : "قسم الحلويات الدايت الجديد عندهم غير اللعبة! صار فيني أستمتع بحلوياتي الشرقية المفضلة بدون ما أخرب النظام الغذائي.",
-            name: isEn ? "Mona Hassan" : "منى حسن",
-            title: isEn ? "Fitness Coach" : "مدربة لياقة بدنية",
-            avatar: "https://ui-avatars.com/api/?name=Mona+Hassan&background=E64950&color=FFFFFF"
-        }
-    ];
-
-    const metaReviews = config?.fields?.find((f: any) => f.key === 'reviews_list')?.references?.nodes;
-
-    let reviews = hardcodedReviews.map(r => ({ ...r, cardImage: '/images/review_placeholder.webp' }));
-
-    if (metaReviews && metaReviews.length > 0) {
-        reviews = metaReviews.map((node: any) => {
-            const getMetaField = (key: string) => node.fields?.find((f: any) => f.key === key)?.value;
-            const getMetaImage = (key: string) => node.fields?.find((f: any) => f.key === key)?.reference?.image?.url;
-            return {
-                text: isEn ? getMetaField('review_text_en') : getMetaField('review_text_ar'),
-                name: isEn ? getMetaField('customer_name_en') : getMetaField('customer_name_ar'),
-                title: isEn ? getMetaField('job_title_en') : getMetaField('job_title_ar'),
-                avatar: getMetaImage('avatar_image') || "https://ui-avatars.com/api/?name=" + (isEn ? getMetaField('customer_name_en') : getMetaField('customer_name_ar')),
-                cardImage: getMetaImage('card_image') || '/images/review_placeholder.webp'
-            };
-        });
-    }
+    const scrollTimeout = useRef<ReturnType<typeof setTimeout>>();
 
     // Replace IntersectionObserver with a robust center-calculation onScroll
     const handleScroll = () => {
@@ -165,6 +169,8 @@ export function CustomerReviews({ config }: { config?: any }) {
 
     // Auto-slide functionality
     useEffect(() => {
+        if (reviews.length < 2) return;
+        if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
         const interval = setInterval(() => {
             const nextIndex = (activeIndex + 1) % reviews.length;
             scrollTo(nextIndex);
@@ -184,11 +190,13 @@ export function CustomerReviews({ config }: { config?: any }) {
                 {/* Header */}
                 <div className="text-center mb-10 flex flex-col items-center">
                     <h2 className="text-[48px] lg:text-[50px] font-bold text-[#1a1a1a] !mb-2 leading-none tracking-tighter" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
-                        {isEn ? titleEn : titleAr}
+                        {title}
                     </h2>
-                    <p className="text-[#7D7D7D] font-dinar font-medium text-[16px] leading-[20px] text-center" style={{ fontFamily: '"GE Dinar One", sans-serif' }}>
-                        {isEn ? subtitleEn : subtitleAr}
-                    </p>
+                    {subtitle ? (
+                        <p className="text-[#7D7D7D] font-dinar font-medium text-[16px] leading-[20px] text-center" style={{ fontFamily: '"GE Dinar One", sans-serif' }}>
+                            {subtitle}
+                        </p>
+                    ) : null}
                 </div>
 
                 {/* Cards Container */}
@@ -200,7 +208,7 @@ export function CustomerReviews({ config }: { config?: any }) {
                     <div className="flex flex-row md:justify-center items-center gap-[16px] md:gap-[40px] px-4 w-max min-w-full">
                         {reviews.map((review, idx) => (
                             <div
-                                key={idx}
+                                key={review.id}
                                 ref={el => cardRefs.current[idx] = el}
                                 data-index={idx}
                                 className="snap-center w-[280px] h-[396px] border border-[#BBCFCD] rounded-[12px] flex flex-col items-start pb-[8px] gap-[12px] bg-white box-border shrink-0 overflow-hidden"
@@ -209,7 +217,7 @@ export function CustomerReviews({ config }: { config?: any }) {
                                 <div className="w-[280px] h-[212px] shrink-0 bg-[#F9F9F9]">
                                     <img
                                         src={review.cardImage}
-                                        alt="Review graphic"
+                                        alt=""
                                         className="w-full h-full object-cover"
                                         loading="lazy"
                                     />
@@ -224,21 +232,33 @@ export function CustomerReviews({ config }: { config?: any }) {
 
                                 {/* User Info */}
                                 <div className="flex flex-row justify-center items-center p-[8px] gap-[8px] w-[280px] h-[64px] shrink-0">
-                                    <div className="w-[48px] h-[48px] rounded-full overflow-hidden shrink-0 bg-gray-100">
-                                        <img
-                                            src={review.avatar}
-                                            alt=""
-                                            className="w-full h-full object-cover"
-                                            loading="lazy"
-                                        />
-                                    </div>
+                                    {review.avatar ? (
+                                        <div className="w-[48px] h-[48px] rounded-full overflow-hidden shrink-0 bg-gray-100">
+                                            <img
+                                                src={review.avatar}
+                                                alt=""
+                                                className="w-full h-full object-cover"
+                                                loading="lazy"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div
+                                            aria-hidden="true"
+                                            className="w-[48px] h-[48px] rounded-full shrink-0 flex items-center justify-center font-dinar font-bold text-[18px]"
+                                            style={{ background: AVATAR_COLORS[idx % AVATAR_COLORS.length].bg, color: AVATAR_COLORS[idx % AVATAR_COLORS.length].fg }}
+                                        >
+                                            {initials(review.name)}
+                                        </div>
+                                    )}
                                     <div className="flex flex-col items-start gap-[8px] w-[208px] h-[48px] justify-center overflow-hidden">
                                         <p className="text-[#171717] font-dinar font-bold text-[16px] leading-[20px] text-start truncate w-full m-0">
                                             {review.name}
                                         </p>
-                                        <p className="text-[#7D7D7D] font-dinar font-medium text-[14px] leading-none text-start truncate w-full m-0">
-                                            {review.title}
-                                        </p>
+                                        {review.subtitle ? (
+                                            <p className="text-[#7D7D7D] font-dinar font-medium text-[14px] leading-none text-start truncate w-full m-0">
+                                                {review.subtitle}
+                                            </p>
+                                        ) : null}
                                     </div>
                                 </div>
                             </div>

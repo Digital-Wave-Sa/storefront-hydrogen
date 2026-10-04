@@ -609,5 +609,28 @@ export const HOMEPAGE_CONFIG_QUERY = `#graphql
         }
       }
     }
+    reviewsSection: metaobjects(type: "homepage_reviews_section", first: 1) {
+      nodes {
+        id
+        fields {
+          key
+          value
+        }
+      }
+    }
+    homepageReviews: metaobjects(type: "homepage_review", first: 30) {
+      nodes {
+        id
+        fields {
+          key
+          value
+          reference {
+            ... on MediaImage {
+              image { url(transform: {maxWidth: 600}) }
+            }
+          }
+        }
+      }
+    }
   }
 ` as const;

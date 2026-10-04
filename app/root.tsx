@@ -1256,5 +1256,20 @@ const MEGAMENU_QUERY = `#graphql
         }
       }
     }
+    # The sidebar «الأقسام» list (FilterSidebar). Its own menu, so the client
+    # chooses which collections are offered as filters, and in what order,
+    # without touching the mega panel. Missing or empty: the old automatic list.
+    categoryFilterMenu: menu(handle: "catalog-categories") {
+      items {
+        title
+        resource {
+          ... on Collection {
+            id
+            title
+            handle
+          }
+        }
+      }
+    }
   }
 ` as const;

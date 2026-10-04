@@ -1930,9 +1930,38 @@ export function FilterSidebar({
     yes: 'نعم',
     no: 'لا',
   };
-  const dynamicCategoryCollections = (collections || []).filter(
-    (c: any) => !isOccasionOrGift(c.handle),
+  /**
+   * The client's own list: the `catalog-categories` Navigation menu (title
+   * «الأقسام»), read in root.tsx alongside the mega menu. Each collection item
+   * becomes a chip, in the menu's order, labelled with the collection's own
+   * (translated) name; anything else on the menu is skipped. The count comes
+   * from the matching collection in `collections` when it is there.
+   *
+   * No menu, or a menu with no collections in it: every published collection
+   * minus the occasion/internal ones below, as before.
+   */
+  const rootData = useRouteLoaderData('root') as any;
+  const menuCategoryItems: any[] =
+    rootData?.megaMenuData?.categoryFilterMenu?.items || [];
+  const collectionsByHandle = new Map<string, any>(
+    (collections || []).map((c: any) => [c.handle, c]),
   );
+  const seenMenuHandles = new Set<string>();
+  const menuCategoryCollections = menuCategoryItems
+    .map((item: any) => item?.resource)
+    .filter((r: any) => {
+      if (!r?.handle || seenMenuHandles.has(r.handle)) return false;
+      seenMenuHandles.add(r.handle);
+      return true;
+    })
+    .map((r: any) => {
+      const known = collectionsByHandle.get(r.handle);
+      return {...(known || {}), id: r.id, handle: r.handle, title: r.title};
+    });
+
+  const dynamicCategoryCollections = menuCategoryCollections.length
+    ? menuCategoryCollections
+    : (collections || []).filter((c: any) => !isOccasionOrGift(c.handle));
 
   const DEFAULT_CATEGORIES = [
     {

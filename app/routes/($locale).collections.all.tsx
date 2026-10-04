@@ -591,8 +591,9 @@ export async function loader({context, request}: LoaderFunctionArgs) {
 /**
  * /collections/all, grouped by section.
  *
- * Which sections, and in what order, is the Navigation menu
- * `catalog-sections` in Shopify admin (Online Store → Navigation): each item
+ * Which sections, and in what order, is the Navigation menu «الأقسام»
+ * (`catalog-categories`, Online Store → Navigation) -- the same menu as the
+ * sidebar's category list, so the two always agree: each item
  * is a collection, shown under the collection's own (translated) name, and
  * the menu's order is the page's order. Inside a section, products keep the
  * collection's own sort (Manual / Best selling…). A product in several
@@ -767,7 +768,11 @@ async function loadFilteredCatalog({
   } as any;
 }
 
-const CATALOG_SECTIONS_MENU = 'catalog-sections';
+/**
+ * The same menu as the sidebar's «الأقسام» list (root.tsx, FilterSidebar), so
+ * one list in Online Store → Navigation orders both the filter and the grid.
+ */
+const CATALOG_SECTIONS_MENU = 'catalog-categories';
 const DEFAULT_SECTIONS = [
   'cake',
   'kunafa',

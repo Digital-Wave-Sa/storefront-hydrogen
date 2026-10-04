@@ -1810,6 +1810,7 @@ export function FilterSidebar({
   isEn,
   hideSearchInput = false,
   hideCategories = false,
+  currentCollection,
   dietaryCounts,
 }: {
   filters: any[];
@@ -1825,6 +1826,14 @@ export function FilterSidebar({
    * still showed a grid of chocolate cakes. Absent: all options shown.
    */
   dietaryCounts?: Record<string, number>;
+  /**
+   * Set on a collection page (/collections/cake): the «الأقسام» list becomes
+   * navigation -- a chip opens that collection and the current one is shown
+   * ticked. Ticking a category there used to add `?category=` to a page whose
+   * loader never reads it, so the box ticked and the grid stayed the same.
+   * Unset (/collections/all, search): the chips filter, as before.
+   */
+  currentCollection?: string;
 }) {
   const rawSubmit = useSubmit();
   /*
@@ -1842,6 +1851,7 @@ export function FilterSidebar({
     return rawSubmit(target, options);
   };
   const location = useLocation();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [openSections, setOpenSections] = useState<{[key: string]: boolean}>({
     categories: true,
@@ -2474,14 +2484,24 @@ export function FilterSidebar({
                 className={`flex flex-col gap-3 transition-all duration-300 ${openSections['categories'] ? 'max-h-[220px] overflow-y-auto custom-scrollbar opacity-100 pr-1 pl-1' : 'max-h-0 overflow-hidden opacity-0'}`}
               >
                 {categoryCollections.map((collection: any) => {
-                  const isActive = currentParams
-                    .getAll('category')
-                    .includes(collection.handle);
+                  const isActive = currentCollection
+                    ? collection.handle === currentCollection
+                    : currentParams.getAll('category').includes(collection.handle);
                   return (
                     <button
                       type="button"
                       key={collection.id}
-                      onClick={() => toggleParamLink('category', collection.handle)}
+                      aria-current={currentCollection && isActive ? 'page' : undefined}
+                      onClick={() => {
+                        if (!currentCollection) {
+                          toggleParamLink('category', collection.handle);
+                          return;
+                        }
+                        if (isActive) return;
+                        const prefix = location.pathname.startsWith('/en') ? '/en' : '';
+                        if (!isDesktop) onClose();
+                        navigate(`${prefix}/collections/${collection.handle}`);
+                      }}
                       className="flex items-center justify-between w-full outline-none group text-start"
                     >
                       <div className="flex items-center gap-2">

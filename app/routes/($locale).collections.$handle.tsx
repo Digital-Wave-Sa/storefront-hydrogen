@@ -3,6 +3,7 @@ import {Count} from '~/components/Count';
 import {PRODUCTS} from '~/lib/plural';
 import {createPortal} from 'react-dom';
 import {data, redirect, type LoaderFunctionArgs} from 'react-router';
+import {isAddonOnlyProduct} from '~/lib/photo-print';
 import {
   useLoaderData,
   Link,
@@ -299,15 +300,75 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
     );
   }
   // Dietary options that match nothing are not offered (~/lib/catalog-filters).
-  const dietaryCounts = await import('~/lib/catalog-filters.server')
+  const dietaryCountsPromise = import('~/lib/catalog-filters.server')
     .then((m) => m.loadDietaryCounts(storefront))
     .catch(() => ({}));
 
-  return data({collection: targetCollection, filters, dietaryCounts});
+  /**
+   * «N منتجات» in the hero is the collection's size, not the page's.
+   *
+   * It was `products.nodes.length` -- the 8 products of whichever page was
+   * loaded -- so «كيك» with ~50 products said «8 منتجات». The Storefront API
+   * has no count on a collection's products, so this lists their ids (cheap,
+   * cached) and counts what a shopper can actually see: published to this
+   * storefront, minus add-on-only products, which no grid shows. The made-up
+   * collections above (featured, corporate packages) are complete lists
+   * already, so their length stands.
+   */
+  const productsCountPromise: Promise<number> =
+    collection && targetCollection === collection
+      ? storefront
+          .query(COLLECTION_COUNT_QUERY, {
+            variables: {
+              handle,
+              country: storefront.i18n.country,
+              language: storefront.i18n.language,
+            },
+            cache: storefront.CacheShort(),
+          })
+          .then(
+            (r: any) =>
+              (r?.collection?.products?.nodes || []).filter(
+                (p: any) => !isAddonOnlyProduct(p),
+              ).length,
+          )
+          .catch(() => targetCollection.products?.nodes?.length || 0)
+      : Promise.resolve(targetCollection.products?.nodes?.length || 0);
+
+  const [dietaryCounts, productsCount] = await Promise.all([
+    dietaryCountsPromise,
+    productsCountPromise,
+  ]);
+
+  return data({
+    collection: targetCollection,
+    filters,
+    dietaryCounts,
+    productsCount,
+  });
 }
 
+const COLLECTION_COUNT_QUERY = `#graphql
+  query CollectionProductCount(
+    $handle: String!
+    $country: CountryCode
+    $language: LanguageCode
+  ) @inContext(country: $country, language: $language) {
+    collection(handle: $handle) {
+      products(first: 250) {
+        nodes {
+          id
+          handle
+          tags
+        }
+      }
+    }
+  }
+` as const;
+
 export default function Collection() {
-  const {collection, dietaryCounts} = useLoaderData<typeof loader>() as any;
+  const {collection, dietaryCounts, productsCount} =
+    useLoaderData<typeof loader>() as any;
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const navigation = useNavigation();
   const currentLocation = useLocation();
@@ -376,7 +437,7 @@ export default function Collection() {
       {/* 1. Header Hero Section */}
       <CollectionHero
         collection={collection}
-        productsCount={collection.products.nodes?.length || 0}
+        productsCount={productsCount ?? collection.products.nodes?.length ?? 0}
         isEn={isEn}
       />
 
@@ -402,6 +463,7 @@ export default function Collection() {
               <FilterSidebar
                 filters={collection.products.filters}
                 collections={globalCollections}
+                currentCollection={collection.handle}
                 onClose={() => {}}
                 isDesktop={true}
                 isEn={isEn}
@@ -691,6 +753,7 @@ export default function Collection() {
               <FilterSidebar
                 filters={collection.products.filters}
                 collections={globalCollections}
+                currentCollection={collection.handle}
                 onClose={() => setIsFilterOpen(false)}
                 isEn={isEn}
                 hideCategories={true}

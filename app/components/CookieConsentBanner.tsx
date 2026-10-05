@@ -128,6 +128,8 @@ export function CookieConsentBanner({ locale }: CookieConsentBannerProps) {
     updateGa4Consent(true);
     syncShopifyConsent(true);
     setVisible(false);
+    // Lets pixels loaded outside GTM (Snap) start without a reload.
+    window.dispatchEvent(new Event('saadeddin:consent-accepted'));
   };
 
   const handleReject = () => {

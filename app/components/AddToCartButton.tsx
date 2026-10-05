@@ -3,6 +3,7 @@ import { useFetcher, useNavigate, useLocation } from 'react-router';
 import { CartForm, type OptimisticCartLineInput } from '@shopify/hydrogen';
 import { useAside } from './Aside';
 import { prefersCartToast, showCartToast } from '~/lib/cart-toast';
+import { numericId, snapTrack } from '~/lib/snap-pixel';
 
 export function AddToCartButton({
   analytics,
@@ -47,6 +48,18 @@ export function AddToCartButton({
    * «تمت الإضافة» for an add that failed (sold out, cart error).
    */
   const pendingToast = useRef<{ title?: string; image?: string; quantity?: number } | null>(null);
+
+  /** Snap ADD_CART, sent once the cart confirms the add (see ~/lib/snap-pixel). */
+  const pendingSnap = useRef<Record<string, unknown> | null>(null);
+  useEffect(() => {
+    if (fetcher.state !== 'idle' || !pendingSnap.current) return;
+    const params = pendingSnap.current;
+    pendingSnap.current = null;
+    const res = fetcher.data as any;
+    if (res?.error || res?.errors?.[0]?.message) return;
+    snapTrack('ADD_CART', params);
+  }, [fetcher.state, fetcher.data]);
+
   useEffect(() => {
     if (fetcher.state !== 'idle' || !pendingToast.current) return;
     const item = pendingToast.current;
@@ -138,6 +151,22 @@ export function AddToCartButton({
 
     fireAddToCartEvent();
     if (onClick) onClick();
+
+    if (!isExport) {
+      // Paid lines only: free BOGO give-aways and add-ons are not what was bought.
+      const paid = cleanLines.filter(
+        (l: any) => !(l.attributes || []).some((a: any) => a.key === '_is_free' && a.value === 'true'),
+      );
+      const v = (paid[0] as any)?.selectedVariant || selectedVariant;
+      const quantity = paid.reduce((n: number, l: any) => n + (Number(l.quantity) || 0), 0);
+      const unit = parseFloat(v?.price?.amount || '0');
+      pendingSnap.current = {
+        price: Math.round(unit * Math.max(quantity, 1) * 100) / 100,
+        currency: v?.price?.currencyCode || 'SAR',
+        item_ids: paid.map((l: any) => numericId(l.merchandiseId)).filter(Boolean),
+        number_items: quantity || 1,
+      };
+    }
 
     const formData = new FormData();
     const cartInput = {

@@ -335,14 +335,19 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
   query RecommendedProducts ($country: CountryCode, $language: LanguageCode)
     @inContext(country: $country, language: $language) {
     
-    fallbackProducts: products(first: 30, sortKey: UPDATED_AT, reverse: true) {
+    # Real sales order. This list used to be the 30 most recently UPDATED
+    # products — the ERP sync touches products every few minutes, so «الأكثر
+    # مبيعاً» showed different items on every refresh. It is what the "All"
+    # tab falls back to whenever the "best-sellers" collection has nothing
+    # the storefront can show.
+    fallbackProducts: products(first: 30, sortKey: BEST_SELLING) {
       nodes {
         ...RecommendedProduct
       }
     }
 
     bestSellers: collection(handle: "best-sellers") {
-      products(first: 20) {
+      products(first: 20, sortKey: BEST_SELLING) {
         nodes {
           ...RecommendedProduct
         }
@@ -350,7 +355,7 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
     }
 
     kunafa: collection(handle: "kunafa") {
-      products(first: 20) {
+      products(first: 20, sortKey: BEST_SELLING) {
         nodes {
           ...RecommendedProduct
         }
@@ -358,7 +363,7 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
     }
 
     sweets: collection(handle: "sweets") {
-      products(first: 20) {
+      products(first: 20, sortKey: BEST_SELLING) {
         nodes {
           ...RecommendedProduct
         }
@@ -366,7 +371,7 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
     }
 
     arabic: collection(handle: "arabic") {
-      products(first: 20) {
+      products(first: 20, sortKey: BEST_SELLING) {
         nodes {
           ...RecommendedProduct
         }
@@ -374,7 +379,7 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
     }
 
     cake: collection(handle: "cake") {
-      products(first: 20) {
+      products(first: 20, sortKey: BEST_SELLING) {
         nodes {
           ...RecommendedProduct
         }
@@ -382,7 +387,7 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
     }
 
     chocolateCake: collection(handle: "chocolate-cake") {
-      products(first: 20) {
+      products(first: 20, sortKey: BEST_SELLING) {
         nodes {
           ...RecommendedProduct
         }
@@ -390,7 +395,7 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
     }
 
     cakes: collection(handle: "cakes") {
-      products(first: 20) {
+      products(first: 20, sortKey: BEST_SELLING) {
         nodes {
           ...RecommendedProduct
         }
@@ -398,7 +403,7 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
     }
 
     chocolate: collection(handle: "chocolate") {
-      products(first: 20) {
+      products(first: 20, sortKey: BEST_SELLING) {
         nodes {
           ...RecommendedProduct
         }
@@ -406,7 +411,7 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
     }
 
     gifts: collection(handle: "gifts") {
-      products(first: 20) {
+      products(first: 20, sortKey: BEST_SELLING) {
         nodes {
           ...RecommendedProduct
         }
@@ -414,7 +419,7 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
     }
 
     gifting: collection(handle: "gifting") {
-      products(first: 20) {
+      products(first: 20, sortKey: BEST_SELLING) {
         nodes {
           ...RecommendedProduct
         }

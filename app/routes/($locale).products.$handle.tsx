@@ -13,6 +13,7 @@ import {ProductUpsellModal} from '~/components/ProductUpsellModal';
 import {NoImage} from '~/components/NoImage';
 import {Price, SaudiRiyalSymbol} from '~/components/Price';
 import {AddToCartButton} from '~/components/AddToCartButton';
+import {SnapViewContent} from '~/components/SnapPixel';
 import {prefersCartToast} from '~/lib/cart-toast';
 import {CakePhotoUpload} from '~/components/CakePhotoUpload';
 import {
@@ -2247,6 +2248,8 @@ export default function Product() {
           }),
         }}
       />
+
+      <SnapViewContent product={product} variant={selectedVariant} />
 
       <Analytics.ProductView
         data={{

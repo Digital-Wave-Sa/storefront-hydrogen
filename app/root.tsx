@@ -23,7 +23,7 @@ import appStyles from '~/styles/app.css?url';
 import tailwindCss from './styles/tailwind.css?url';
 import {PageLayout} from './components/PageLayout';
 import {GTMAnalytics} from './components/GTMAnalytics';
-import {SnapPixel} from './components/SnapPixel';
+import {AdPixels} from './components/AdPixels';
 import {WishlistProvider} from './context/WishlistContext';
 import {NotFound} from './components/NotFound';
 import {ServerError} from './components/ServerError';
@@ -960,7 +960,7 @@ export default function App() {
     >
       <WishlistProvider customerId={customerId}>
         <GTMAnalytics />
-        <SnapPixel />
+        <AdPixels />
         <CookieConsentBanner locale={pageLocale} />
         <PageLayout {...(data as any)}>
           {isNavigatingToProduct ? (

@@ -46,6 +46,7 @@ export default async function handleRequest(
       // Meta Pixel, TikTok, Snap, Google Ads (loaded by GTM)
       'https://connect.facebook.net',
       'https://analytics.tiktok.com',
+      'https://*.tiktok.com',
       'https://sc-static.net',
       'https://www.googleadservices.com',
       'https://googleads.g.doubleclick.net',
@@ -79,6 +80,7 @@ export default async function handleRequest(
       // reports to the country Google domain, google.com.sa here)
       'https://www.facebook.com',
       'https://analytics.tiktok.com',
+      'https://*.tiktok.com',
       'https://tr.snapchat.com',
       'https://*.doubleclick.net',
       'https://www.googleadservices.com',
@@ -104,6 +106,7 @@ export default async function handleRequest(
       'https://www.facebook.com',
       'https://connect.facebook.net',
       'https://analytics.tiktok.com',
+      'https://*.tiktok.com',
       'https://tr.snapchat.com',
       'https://*.snapchat.com',
       'https://*.doubleclick.net',

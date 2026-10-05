@@ -4,6 +4,7 @@ import { CartForm, type OptimisticCartLineInput } from '@shopify/hydrogen';
 import { useAside } from './Aside';
 import { prefersCartToast, showCartToast } from '~/lib/cart-toast';
 import { numericId, snapTrack } from '~/lib/snap-pixel';
+import { tiktokTrack } from '~/lib/tiktok-pixel';
 
 export function AddToCartButton({
   analytics,
@@ -49,15 +50,22 @@ export function AddToCartButton({
    */
   const pendingToast = useRef<{ title?: string; image?: string; quantity?: number } | null>(null);
 
-  /** Snap ADD_CART, sent once the cart confirms the add (see ~/lib/snap-pixel). */
+  /**
+   * Ad-pixel add to cart (Snap ADD_CART, TikTok AddToCart), sent once the
+   * cart confirms the add. See ~/lib/snap-pixel and ~/lib/tiktok-pixel.
+   */
   const pendingSnap = useRef<Record<string, unknown> | null>(null);
+  const pendingTikTok = useRef<Record<string, unknown> | null>(null);
   useEffect(() => {
     if (fetcher.state !== 'idle' || !pendingSnap.current) return;
-    const params = pendingSnap.current;
+    const snap = pendingSnap.current;
+    const tiktok = pendingTikTok.current;
     pendingSnap.current = null;
+    pendingTikTok.current = null;
     const res = fetcher.data as any;
     if (res?.error || res?.errors?.[0]?.message) return;
-    snapTrack('ADD_CART', params);
+    snapTrack('ADD_CART', snap);
+    if (tiktok) tiktokTrack('AddToCart', tiktok);
   }, [fetcher.state, fetcher.data]);
 
   useEffect(() => {
@@ -165,6 +173,20 @@ export function AddToCartButton({
         currency: v?.price?.currencyCode || 'SAR',
         item_ids: paid.map((l: any) => numericId(l.merchandiseId)).filter(Boolean),
         number_items: quantity || 1,
+      };
+      pendingTikTok.current = {
+        contents: paid.map((l: any) => {
+          const lv = l.selectedVariant || v;
+          return {
+            content_id: numericId(l.merchandiseId),
+            content_type: 'product',
+            content_name: lv?.product?.title,
+            price: parseFloat(lv?.price?.amount || '0'),
+            quantity: Number(l.quantity) || 1,
+          };
+        }),
+        value: Math.round(unit * Math.max(quantity, 1) * 100) / 100,
+        currency: v?.price?.currencyCode || 'SAR',
       };
     }
 

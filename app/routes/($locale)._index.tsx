@@ -1,4 +1,4 @@
-import {Await, useLoaderData} from 'react-router';
+import {Await, useLoaderData, type ShouldRevalidateFunction} from 'react-router';
 import type {Route} from './+types/($locale)._index';
 import {HeroSlider} from '~/components/HeroSlider';
 import {ShopByCategory} from '~/components/ShopByCategory';
@@ -42,6 +42,29 @@ export const meta: Route.MetaFunction = ({matches}) => {
       content: description,
     },
   ];
+};
+
+/**
+ * Nothing on the home page depends on the cart, wishlist or branch session,
+ * so a POST made from it to another route (add to cart, notify me…) must not
+ * re-run this loader. It did: every add from Best Sellers / New Arrivals
+ * fetched the whole page again and handed both carousels new promises, which
+ * re-mounted them — the "page refreshes when I add to cart" effect.
+ * Navigations (including a locale switch) keep the default behaviour.
+ */
+export const shouldRevalidate: ShouldRevalidateFunction = ({
+  formMethod,
+  formAction,
+  currentUrl,
+  defaultShouldRevalidate,
+}) => {
+  if (formMethod && formMethod.toUpperCase() !== 'GET' && formAction) {
+    const clean = (path: string) =>
+      path.replace(/\.data$/i, '').replace(/\/+$/, '') || '/';
+    const target = clean(new URL(formAction, currentUrl).pathname);
+    if (target !== clean(currentUrl.pathname)) return false;
+  }
+  return defaultShouldRevalidate;
 };
 
 export async function loader(args: Route.LoaderArgs) {

@@ -52,6 +52,14 @@ export function BestSellers({
 
     const [activeTab, setActiveTab] = useState(0);
 
+    /**
+     * Once, here — not per card. It used to be called inside the cards' map,
+     * so the number of hook calls followed the number of products shown. When
+     * the list changed length (another tab, or fresh data after an add to
+     * cart) React threw "rendered more/fewer hooks" and the section re-mounted.
+     */
+    const { toggleWishlist, isInWishlist } = useWishlist();
+
     const t = useI18n(locale);
     const isEn = locale === 'en';
 
@@ -293,7 +301,6 @@ export function BestSellers({
                                             ? (idx % 2 === 0 ? 'Requires 2 days preparation' : 'Pay in 2 installments with Tamara')
                                             : (idx % 2 === 0 ? 'يحتاج يومين للتجهيز' : 'قسطها على دفعتين مع تمارا');
 
-                                        const { toggleWishlist, isInWishlist } = useWishlist();
                                         const isWishlisted = isInWishlist(product.id);
 
                                         return (

@@ -34,6 +34,8 @@ export function NewArrivals({
     const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<{ title: string, variantId: string } | null>(null);
     const [customerEmail, setCustomerEmail] = useState<string | undefined>(undefined);
+    // Once per section, not per card — see BestSellers.
+    const { toggleWishlist, isInWishlist } = useWishlist();
 
     useEffect(() => {
         let mounted = true;
@@ -106,7 +108,6 @@ export function NewArrivals({
                                                           naEntry?.tracked
                                                       );
 
-                                            const { toggleWishlist, isInWishlist } = useWishlist();
                                             const isWishlisted = isInWishlist(product.id);
 
                                             // --- Visibility scheduling ---

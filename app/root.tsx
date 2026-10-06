@@ -34,6 +34,9 @@ import {PageLoader, useSlowNavigation} from './components/NavigationProgress';
 import {useLocale} from '~/lib/i18n';
 import {isCakeBuilderEnabled} from '~/lib/cake-builder.server';
 
+/** GA4 web data stream (Google tag), installed directly in <head>. */
+const GA4_MEASUREMENT_ID = 'G-KFRRMTSS0Z';
+
 export const meta: MetaFunction = () => {
   return [
     {title: 'حلويات سعد الدين | Saadeddin Pastry'},
@@ -809,8 +812,32 @@ export function Layout({children}: {children?: React.ReactNode}) {
                 security_storage: 'granted',
                 wait_for_update: 500
               });
+              // Returning visitor who already accepted: grant before the
+              // first GA4 hit instead of waiting for the banner to hydrate.
+              try {
+                if (localStorage.getItem('saadeddin_cookie_consent') === 'accepted') {
+                  gtag('consent', 'update', {
+                    ad_storage: 'granted',
+                    analytics_storage: 'granted',
+                    ad_user_data: 'granted',
+                    ad_personalization: 'granted'
+                  });
+                }
+              } catch (e) {}
+              gtag('js', new Date());
+              gtag('config', '${GA4_MEASUREMENT_ID}');
             `,
           }}
+        />
+        {/* Google tag (gtag.js) — GA4 property G-KFRRMTSS0Z. Loaded directly,
+            not through GTM. Consent defaults above run first; the banner sends
+            the consent update on accept/decline. Client-side navigations are
+            counted by GA4 enhanced measurement (browser-history page views). */}
+        <script
+          async
+          nonce={nonce}
+          suppressHydrationWarning
+          src={`https://www.googletagmanager.com/gtag/js?id=${GA4_MEASUREMENT_ID}`}
         />
       </head>
       <body

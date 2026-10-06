@@ -1,4 +1,5 @@
 import {redirect, type ActionFunctionArgs, type LoaderFunctionArgs} from 'react-router';
+import {cartPreorderEarliestDate, getPreorderInfo, isPreorderLine} from '~/lib/preorder';
 import {SaadeddinApi} from '~/lib/saadeddin-api.server';
 import {extractMinTime} from '~/lib/time-utils';
 import {stripCoordsMarker, sameAddressId, baseAddressId} from '~/lib/address-coords';
@@ -938,15 +939,9 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
    * requirement — matched by the same product tags the cart uses.
    */
   const cartIsDigital = isDigitalOnlyCart(cart);
-  const cartHasPreOrder =
-    !cartIsDigital &&
-    (cart.lines?.nodes || []).some(
-      (line: any) =>
-        line.merchandise?.product?.tags?.some((tag: string) =>
-          ['preorder', 'pre-order', 'طلب مسبق'].includes(String(tag).toLowerCase().trim()),
-        ) ||
-        line.attributes?.some((a: any) => a.key === '_is_preorder' && a.value === 'true'),
-    );
+  const cartLinesForGate = cart.lines?.nodes || [];
+  const cartHasPreOrder = !cartIsDigital && cartLinesForGate.some(isPreorderLine);
+  const preorderEarliest = cartHasPreOrder ? cartPreorderEarliestDate(cartLinesForGate) : null;
 
   const cartRoute = lang === 'en' ? '/en/cart' : '/cart';
   const bounceToCart = (reason: string) => {
@@ -966,7 +961,24 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
     if (!hasBranch) return bounceToCart('no-branch');
   }
 
-  const dateTimeRequired = !cartIsDigital && !cartHasPreOrder;
+  /**
+   * Pre-orders (~/lib/preorder) pick a date like any order, but not before
+   * the product's earliest date; a closed pre-order, or one sharing the cart
+   * with normal products (a cart built before the rule existed), is refused.
+   */
+  if (cartHasPreOrder) {
+    const isCompanion = (l: any) =>
+      (l.attributes || []).some(
+        (a: any) => (a.key === '_is_addon' || a.key === '_is_free') && a.value === 'true',
+      ) || l.merchandise?.product?.handle === 'cake-photo-print';
+    const mains = cartLinesForGate.filter((l: any) => !isCompanion(l));
+    if (mains.some((l: any) => !isPreorderLine(l))) return bounceToCart('preorder-mixed');
+    if (mains.some((l: any) => getPreorderInfo(l.merchandise?.product).closed)) {
+      return bounceToCart('preorder-closed');
+    }
+  }
+
+  const dateTimeRequired = !cartIsDigital;
   if (dateTimeRequired) {
     if (!deliveryDateVal) return bounceToCart('no-date');
     if (!timeSlotVal) return bounceToCart('no-time-slot');
@@ -974,6 +986,17 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
     // A date in the past is never valid, whatever put it on the cart.
     const todayRiyadh = new Intl.DateTimeFormat('en-CA', {timeZone: 'Asia/Riyadh'}).format(new Date());
     if (String(deliveryDateVal) < todayRiyadh) return bounceToCart('date-in-past');
+    if (preorderEarliest && String(deliveryDateVal) < preorderEarliest) {
+      return bounceToCart('date-before-preorder');
+    }
+  }
+
+  // Visible on the order for the branch and the CRM.
+  if (cartHasPreOrder) {
+    const label = preorderEarliest ? `Yes — available from ${preorderEarliest}` : 'Yes';
+    const idx = finalAttributes.findIndex((a: any) => a.key === 'Pre-order');
+    if (idx >= 0) finalAttributes[idx] = {key: 'Pre-order', value: label};
+    else finalAttributes.push({key: 'Pre-order', value: label});
   }
 
   /**

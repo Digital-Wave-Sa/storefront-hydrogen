@@ -1,4 +1,5 @@
 import type { CartLineUpdateInput } from '@shopify/hydrogen/storefront-api-types';
+import { formatPreorderDate, getPreorderInfo, isPreorderLine } from '~/lib/preorder';
 import { PHOTO_ATTR_KEY, isPhotoPrintLine, isShopifyCdnUrl, linePhotoUrl, photoLineOf } from '~/lib/photo-print';
 import type { CartLayout, LineItemChildrenMap } from '~/components/CartMain';
 import {NoImage} from '~/components/NoImage';
@@ -331,6 +332,12 @@ export function CartLineItem({
     isOutOfStock = false;
   }
 
+  // Pre-orders are sold whatever the branch stock says; only a closed
+  // pre-order is unavailable (~/lib/preorder).
+  if (isPreorderLine(line)) {
+    isOutOfStock = getPreorderInfo(merchandise?.product).closed;
+  }
+
   // NORMAL LAYOUT
   return (
     <li key={id} className={`group flex flex-col ${layout === 'aside' ? 'p-4 border-b border-gray-100 bg-white' : 'py-6 border-b border-gray-200 last:border-0'} relative gap-4`}>
@@ -383,7 +390,7 @@ export function CartLineItem({
               {lineEyebrow}
             </span>
             {(() => {
-              const isPreorder = product?.tags?.some((t: string) => t.toLowerCase() === 'pre-order') || line.attributes?.some((a: any) => a.key === '_is_preorder' && a.value === 'true');
+              const isPreorder = isPreorderLine(line);
               if (isPreorder) {
                 return (
                   <span className="px-2 py-0.5 bg-[#FEF8EB] text-[#A67B5B] border border-[#A67B5B]/30 rounded text-[11px] font-bold uppercase tracking-wide">
@@ -401,7 +408,10 @@ export function CartLineItem({
           {giftSublineEl}
 
           {(() => {
-            const preorderDate = line.attributes?.find((a: any) => a.key === 'Pre-order Date' || a.key === 'Availability Date')?.value;
+            const info = getPreorderInfo(product);
+            const preorderDate =
+              (info.earliestDate ? formatPreorderDate(info.earliestDate, isEn) : '') ||
+              line.attributes?.find((a: any) => a.key === 'Pre-order Date' || a.key === 'Availability Date')?.value;
             if (preorderDate) {
               return (
                 <div className="text-[13px] text-amber-600 font-bold mb-2 flex items-center gap-1.5" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>

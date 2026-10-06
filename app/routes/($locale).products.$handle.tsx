@@ -14,7 +14,9 @@ import {NoImage} from '~/components/NoImage';
 import {Price, SaudiRiyalSymbol} from '~/components/Price';
 import {AddToCartButton} from '~/components/AddToCartButton';
 import {AdViewContent} from '~/components/AdPixels';
-import {prefersCartToast} from '~/lib/cart-toast';
+import {prefersCartToast, showCartToast} from '~/lib/cart-toast';
+import {getPreorderInfo, MIXED_CART_MESSAGE} from '~/lib/preorder';
+import {PreorderNotice} from '~/components/PreorderNotice';
 import {CakePhotoUpload} from '~/components/CakePhotoUpload';
 import {
   PHOTO_ATTR_KEY,
@@ -1177,7 +1179,11 @@ export default function Product() {
    */
   const isPickup = isPickupSession(rootData);
 
+  /** Pre-orders are sold whatever the branch stock says (~/lib/preorder). */
+  const preorder = getPreorderInfo(product);
+
   const isOutOfStock = useMemo(() => {
+    if (preorder.isPreorder) return preorder.closed;
     const entry = branchStock[product.selectedVariant?.id as string];
     const verdict = isOutOfStockAtBranch(entry, isPickup);
     if (verdict !== null) return verdict;
@@ -1215,6 +1221,8 @@ export default function Product() {
     selectedLocationName,
     storeAvailabilityNodes,
     product.selectedVariant,
+    preorder.isPreorder,
+    preorder.closed,
   ]);
 
   /**
@@ -1222,6 +1230,7 @@ export default function Product() {
    * out-of-stock claim, but the buy button waits for evidence.
    */
   const availabilityUnresolved =
+    !preorder.isPreorder &&
     branchStockPending &&
     isOutOfStockAtBranch(
       branchStock[product.selectedVariant?.id as string],
@@ -1699,6 +1708,14 @@ export default function Product() {
        */
       if (!res.ok) {
         console.error('Buy Now: cart add failed with status', res.status);
+        // 400 = refused by the cart rules (pre-order mixed with normal items).
+        if (res.status === 400) {
+          showCartToast({
+            kind: 'error',
+            message: isEn ? MIXED_CART_MESSAGE.en : MIXED_CART_MESSAGE.ar,
+          });
+          return;
+        }
         open('cart');
         return;
       }
@@ -3911,6 +3928,7 @@ export default function Product() {
 
                 {/* 3. Actions */}
                 <div className="flex flex-col gap-4">
+                  <PreorderNotice info={preorder} isEn={isEn} />
                   {isVisibilityBlocked ? (
                     <div className="w-full bg-gray-100 text-gray-400 py-3 rounded-full text-[16px] font-bold flex items-center justify-center gap-2 cursor-not-allowed">
                       {isEn ? visibility.label.en : visibility.label.ar}
@@ -4137,7 +4155,13 @@ export default function Product() {
                                 lineHeight: '20px',
                               }}
                             >
-                              {isEn ? 'Add to Cart' : 'أضف إلى السلة'}
+                              {preorder.isPreorder
+                                ? isEn
+                                  ? 'Pre-order'
+                                  : 'اطلب مسبقاً'
+                                : isEn
+                                  ? 'Add to Cart'
+                                  : 'أضف إلى السلة'}
                             </span>
                           </>
                         )}
@@ -4754,7 +4778,13 @@ export default function Product() {
                                   lineHeight: '100%',
                                 }}
                               >
-                                {isEn ? 'Add to Cart' : 'أضف إلى السلة'}
+                                {preorder.isPreorder
+                                ? isEn
+                                  ? 'Pre-order'
+                                  : 'اطلب مسبقاً'
+                                : isEn
+                                  ? 'Add to Cart'
+                                  : 'أضف إلى السلة'}
                               </span>
                             </span>
                           )}
@@ -5922,6 +5952,10 @@ const PRODUCT_FRAGMENT = `#graphql
     productType
     isGiftCard
     tags
+    preorder_enabled: metafield(namespace: "custom", key: "preorder_enabled") { value }
+    preorder_available_from: metafield(namespace: "custom", key: "preorder_available_from") { value }
+    preorder_lead_days: metafield(namespace: "custom", key: "preorder_lead_days") { value }
+    preorder_until: metafield(namespace: "custom", key: "preorder_until") { value }
     collections(first: 10) {
       nodes {
         id

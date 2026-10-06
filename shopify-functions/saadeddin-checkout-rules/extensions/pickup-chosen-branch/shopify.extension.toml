@@ -1,0 +1,20 @@
+api_version = "unstable"
+
+[[extensions]]
+name = "t:name"
+handle = "pickup-chosen-branch"
+type = "function"
+uid = "8b2f7f25-6652-8d6b-ec11-fa6d6b7a8a82352a98fc"
+
+  [[extensions.targeting]]
+  target = "purchase.local-pickup-delivery-option-generator.run"
+  input_query = "src/run.graphql"
+  export = "run"
+
+  [extensions.build]
+  command = ""
+  path = "dist/function.wasm"
+
+  [extensions.ui.paths]
+  create = "/"
+  details = "/"

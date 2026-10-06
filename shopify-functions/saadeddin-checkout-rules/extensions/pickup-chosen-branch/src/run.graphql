@@ -1,0 +1,54 @@
+# Input for «pickup at the chosen branch, at the chosen time».
+#
+# The storefront writes these cart attributes when the shopper picks pickup
+# (app/components/CartSummary.tsx): `Branch ID` (the location's
+# custom.branch_id, or its numeric Shopify id when that metafield is missing --
+# same rule as lib/fulfillment-routing.server.ts), `delivery_date`
+# (YYYY-MM-DD) and `Time Slot` («2:00 م - 3:00 م» / «1:00 PM - 2:00 PM»).
+
+query RunInput {
+  cart {
+    fulfillmentType: attribute(key: "Fulfillment Type") {
+      value
+    }
+    branchId: attribute(key: "Branch ID") {
+      value
+    }
+    date: attribute(key: "delivery_date") {
+      value
+    }
+    slot: attribute(key: "Time Slot") {
+      value
+    }
+  }
+  fulfillmentGroups {
+    inventoryLocationHandles
+    lines {
+      merchandise {
+        __typename
+        ... on ProductVariant {
+          product {
+            id
+            hasAnyTag(tags: ["gift_card"])
+          }
+        }
+      }
+    }
+  }
+  locations {
+    id
+    handle
+    name
+    localPickup {
+      enabled
+    }
+    branchId: metafield(namespace: "custom", key: "branch_id") {
+      value
+    }
+  }
+  localization {
+    language {
+      isoCode
+    }
+  }
+}

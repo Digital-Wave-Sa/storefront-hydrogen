@@ -1,0 +1,50 @@
+# Input for «free delivery without gift cards».
+#
+# Lines: what each line costs after its own discounts, and whether it is the
+# gift card. The gift card is a regular product here (isGiftCard is false), so
+# it is recognised by its product id and its `gift_card` tag -- the same
+# identity app/lib/digital-lines.ts uses on the site. NOT by requiresShipping:
+# ordinary merchandise (serving plates, for one) is also marked "no shipping"
+# in this catalogue.
+#
+# deliveryCustomization.metafield carries the threshold, written once by
+# scripts/activate-checkout-functions.mjs, so changing 299 does not need a
+# redeploy.
+
+query CartDeliveryOptionsTransformRunInput {
+  cart {
+    fulfillmentType: attribute(key: "Fulfillment Type") {
+      value
+    }
+    lines {
+      cost {
+        totalAmount {
+          amount
+        }
+      }
+      merchandise {
+        __typename
+        ... on ProductVariant {
+          product {
+            id
+            hasAnyTag(tags: ["gift_card"])
+          }
+        }
+      }
+    }
+    deliveryGroups {
+      deliveryOptions {
+        handle
+        deliveryMethodType
+        cost {
+          amount
+        }
+      }
+    }
+  }
+  deliveryCustomization {
+    metafield(namespace: "$app:free-delivery", key: "config") {
+      value
+    }
+  }
+}

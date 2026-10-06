@@ -849,6 +849,10 @@ const CATALOG_ALL_IDS_QUERY = `#graphql
         id
         handle
         tags
+        preorder_enabled: metafield(namespace: "custom", key: "preorder_enabled") { value }
+        preorder_available_from: metafield(namespace: "custom", key: "preorder_available_from") { value }
+        preorder_lead_days: metafield(namespace: "custom", key: "preorder_lead_days") { value }
+        preorder_until: metafield(namespace: "custom", key: "preorder_until") { value }
       }
       pageInfo {
         hasNextPage
@@ -1066,6 +1070,10 @@ const COLLECTION_FILTER_QUERY = `#graphql
       }
     }
     tags
+    preorder_enabled: metafield(namespace: "custom", key: "preorder_enabled") { value }
+    preorder_available_from: metafield(namespace: "custom", key: "preorder_available_from") { value }
+    preorder_lead_days: metafield(namespace: "custom", key: "preorder_lead_days") { value }
+    preorder_until: metafield(namespace: "custom", key: "preorder_until") { value }
     bogo_free_item: metafield(namespace: "custom", key: "bogo_free_item") {
       value
       reference {
@@ -3109,6 +3117,10 @@ const PRODUCT_ITEM_FRAGMENT = `#graphql
     productType
     availableForSale
     tags
+    preorder_enabled: metafield(namespace: "custom", key: "preorder_enabled") { value }
+    preorder_available_from: metafield(namespace: "custom", key: "preorder_available_from") { value }
+    preorder_lead_days: metafield(namespace: "custom", key: "preorder_lead_days") { value }
+    preorder_until: metafield(namespace: "custom", key: "preorder_until") { value }
     variants(first: 10) {
       nodes {
         id

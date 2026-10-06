@@ -1,6 +1,8 @@
 import {useLoaderData, data, type HeadersFunction} from 'react-router';
 import {reconcilePhotoPrints} from '~/lib/photo-print.server';
 import {PHOTO_ATTR_KEY} from '~/lib/photo-print';
+import {checkPreorderAdd} from '~/lib/preorder.server';
+import {MIXED_CART_MESSAGE} from '~/lib/preorder';
 import type {Route} from './+types/($locale).cart';
 import type {CartQueryDataReturn} from '@shopify/hydrogen';
 import {CartForm} from '@shopify/hydrogen';
@@ -490,7 +492,7 @@ export async function action({request, context, params}: Route.ActionArgs) {
 
     switch (action) {
       case CartForm.ACTIONS.LinesAdd: {
-        const cleanLines = (inputs.lines || []).map((line: any) => ({
+        const requestedLines = (inputs.lines || []).map((line: any) => ({
           merchandiseId: line.merchandiseId,
           quantity: line.quantity || 1,
           ...(Array.isArray(line.attributes)
@@ -505,6 +507,28 @@ export async function action({request, context, params}: Route.ActionArgs) {
             : {}),
           ...(line.sellingPlanId ? {sellingPlanId: line.sellingPlanId} : {}),
         }));
+
+        /**
+         * Pre-orders are separate orders (~/lib/preorder): refuse to mix
+         * them with normal products in either direction, refuse a closed
+         * pre-order, and stamp pre-order lines with `_is_preorder`.
+         */
+        const preorderCheck = await checkPreorderAdd(context, requestedLines);
+        if (!preorderCheck.ok) {
+          const message =
+            preorderCheck.reason === 'mixed'
+              ? isEn
+                ? MIXED_CART_MESSAGE.en
+                : MIXED_CART_MESSAGE.ar
+              : isEn
+                ? `Pre-orders for ${preorderCheck.productTitle || 'this product'} are closed.`
+                : `انتهى الطلب المسبق لـ ${preorderCheck.productTitle || 'هذا المنتج'}.`;
+          return data(
+            {error: message, code: preorderCheck.reason === 'mixed' ? 'PREORDER_MIXED' : 'PREORDER_CLOSED'},
+            {status: 400},
+          );
+        }
+        const cleanLines = preorderCheck.lines;
 
         try {
           result = await withRetry(() => cart.addLines(cleanLines));

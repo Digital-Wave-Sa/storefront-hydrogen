@@ -115,6 +115,18 @@ const SKIP_LOCATION_NAMES = ['shop location'];
 const SKIP_LOCATION_PATTERNS = [/مغلق/];
 const INCLUDE_ALL_LOCATIONS = has('--include-all-locations');
 
+/**
+ * Only these branches, nothing else: `--only-locations 95659000041,95659032809`
+ * (numeric ids or full gids, comma-separated). For stocking newly added
+ * branches without the script looking at — let alone writing to — any other
+ * one. An id that is not an active location stops the run.
+ */
+const ONLY_LOCATIONS = String(valueOf('--only-locations', ''))
+  .split(',')
+  .map((x) => x.trim())
+  .filter(Boolean)
+  .map((x) => (x.startsWith('gid://') ? x : `gid://shopify/Location/${x.replace(/\D/g, '')}`));
+
 /** Draft and archived products are not for sale, so they are not stocked. */
 const ONLY_ACTIVE = !has('--include-inactive-products');
 /** Shopify caps inventorySetQuantities at 250; 200 leaves headroom. */
@@ -303,11 +315,17 @@ async function main() {
   // Every active location.
   const locations = new Map();
   const skippedLocations = [];
+  let activeLocationCount = 0;
   let cursor = null;
   do {
     const d = await gql(LOCATIONS_QUERY, {cursor});
     for (const l of d.locations.nodes) {
+      activeLocationCount++;
       const name = String(l.name || '');
+      if (ONLY_LOCATIONS.length) {
+        if (ONLY_LOCATIONS.includes(l.id)) locations.set(l.id, name);
+        continue;
+      }
       const skip =
         !INCLUDE_ALL_LOCATIONS &&
         (SKIP_LOCATION_NAMES.includes(name.trim().toLowerCase()) ||
@@ -321,6 +339,18 @@ async function main() {
     cursor = d.locations.pageInfo.hasNextPage ? d.locations.pageInfo.endCursor : null;
   } while (cursor);
   const allLocationIds = [...locations.keys()];
+  if (ONLY_LOCATIONS.length) {
+    const missing = ONLY_LOCATIONS.filter((id) => !locations.has(id));
+    if (missing.length) {
+      console.error(`Not an active location: ${missing.join(', ')} — nothing done.`);
+      process.exit(1);
+    }
+    console.log(
+      `Only these ${locations.size} branch(es) — every other branch is left untouched:\n` +
+        [...locations.values()].map((n) => `  · ${n}`).join('\n') +
+        '\n',
+    );
+  }
   if (skippedLocations.length) {
     console.log(
       `Branches skipped (${skippedLocations.length}): ${skippedLocations.join(', ')}\n` +
@@ -335,7 +365,12 @@ async function main() {
   cursor = null;
   let scanned = 0;
 
-  const levelPage = Math.max(locations.size + 4, 10);
+  /**
+   * Read every level an item has, not just the targeted branches': a level at
+   * a new branch can sit anywhere in the list, and missing it would make the
+   * script think it was never activated.
+   */
+  const levelPage = Math.max(activeLocationCount + 4, 10);
 
   do {
     const d = await gql(SCAN_QUERY, {

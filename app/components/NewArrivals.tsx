@@ -1,4 +1,5 @@
 import { Await, Link, useOutletContext, useRouteLoaderData } from 'react-router';
+import { getPreorderInfo } from '~/lib/preorder';
 import { Suspense, useEffect, useId, useState } from 'react';
 import { Image, Money } from '@shopify/hydrogen';
 import { Price } from './Price';
@@ -91,10 +92,12 @@ export function NewArrivals({
                                             const naEntry = readBranchStock(variant?.id);
                                             const naVerdict = isOutOfStockAtBranch(naEntry, naIsPickup);
                                             // Claim nothing until the branch answers — see ProductItem.
+                                            const preorder = getPreorderInfo(product);
                                             const naUnresolved =
-                                                naVerdict === null && branchStockPending(variant?.id);
-                                            const isOutOfStock =
-                                                naVerdict !== null
+                                                !preorder.isPreorder && naVerdict === null && branchStockPending(variant?.id);
+                                            const isOutOfStock = preorder.isPreorder
+                                                ? preorder.closed
+                                                : naVerdict !== null
                                                     ? naVerdict
                                                     : naUnresolved
                                                     ? false
@@ -116,9 +119,7 @@ export function NewArrivals({
                                                 product.visibility_end?.value,
                                             );
                                             const isVisibilityBlocked = !visibility.isActive;
-                                            const isPreorder = product.tags?.some((tag: string) =>
-                                                ['preorder', 'pre-order', 'طلب مسبق'].includes(tag.toLowerCase())
-                                            );
+                                            const isPreorder = preorder.isPreorder && !preorder.closed;
 
                                             const effectiveOutOfStock = (isOutOfStock || isVisibilityBlocked) && !isPreorder;
                                             // Held back while unresolved, like the button below: `isOutOfStock`
@@ -264,7 +265,7 @@ export function NewArrivals({
                                                                     bogoFreeVariantId={product.bogo_free_item?.reference?.id || product.bogo_free_item?.value || null}
                                                                     isOutOfStock={isOutOfStock && !isPreorder}
                                                                     notifyLabel={isPreorder ? t.common.preOrder : (isEn ? 'Notify Me' : 'أعلمني عند التوفر')}
-                                                                    addLabel={isPreorder ? t.common.preOrder : (isEn ? 'Add to Cart' : 'أضف إلى السلة')}
+                                                                    addLabel={isPreorder ? (isEn ? 'Pre-order' : 'اطلب مسبقاً') : (isEn ? 'Add to Cart' : 'أضف إلى السلة')}
                                                                     isPreorder={isPreorder}
                                                                     onNotifyClick={() => handleNotifyClick(product.title, variant?.id)}
                                                                 />

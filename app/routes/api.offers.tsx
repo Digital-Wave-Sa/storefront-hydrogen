@@ -38,6 +38,10 @@ const OFFER_PRODUCTS_QUERY = `#graphql
         handle
         title
         tags
+        preorder_enabled: metafield(namespace: "custom", key: "preorder_enabled") { value }
+        preorder_available_from: metafield(namespace: "custom", key: "preorder_available_from") { value }
+        preorder_lead_days: metafield(namespace: "custom", key: "preorder_lead_days") { value }
+        preorder_until: metafield(namespace: "custom", key: "preorder_until") { value }
         availableForSale
         featuredImage {
           url

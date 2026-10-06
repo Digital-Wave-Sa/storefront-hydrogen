@@ -711,6 +711,10 @@ const SEARCH_QUERY = `#graphql
     trackingParameters
     vendor
     tags
+    preorder_enabled: metafield(namespace: "custom", key: "preorder_enabled") { value }
+    preorder_available_from: metafield(namespace: "custom", key: "preorder_available_from") { value }
+    preorder_lead_days: metafield(namespace: "custom", key: "preorder_lead_days") { value }
+    preorder_until: metafield(namespace: "custom", key: "preorder_until") { value }
     productType
     isGiftCard
     featuredImage {
@@ -827,6 +831,10 @@ const SEARCH_BY_IDS_QUERY = `#graphql
     trackingParameters
     vendor
     tags
+    preorder_enabled: metafield(namespace: "custom", key: "preorder_enabled") { value }
+    preorder_available_from: metafield(namespace: "custom", key: "preorder_available_from") { value }
+    preorder_lead_days: metafield(namespace: "custom", key: "preorder_lead_days") { value }
+    preorder_until: metafield(namespace: "custom", key: "preorder_until") { value }
     productType
     isGiftCard
     featuredImage {

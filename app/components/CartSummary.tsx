@@ -1,4 +1,5 @@
 import type { CartApiQueryFragment } from 'storefrontapi.generated';
+import { cartPreorderEarliestDate, formatPreorderDate, getPreorderInfo, isPreorderLine } from '~/lib/preorder';
 import {couponWorthOf, promoBeatsCoupon} from '~/lib/exclusive-discounts';
 import { getIsOutOfStockForFulfillment, isOutOfStockAtBranch } from '~/lib/stock';
 import { useBranchAvailability } from '~/lib/useBranchAvailability';
@@ -694,11 +695,11 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
     rootData?.selectedLocationId,
   ]);
 
-  const hasPreOrderItems = !isDigitalOnlyCart && cart?.lines?.nodes?.some((line: any) =>
-    line.merchandise?.product?.tags?.some((tag: string) =>
-      ['preorder', 'pre-order', 'طلب مسبق'].includes(tag.toLowerCase().trim())
-    ) || line.attributes?.some((a: any) => a.key === '_is_preorder' && a.value === 'true')
-  );
+  const hasPreOrderItems = !isDigitalOnlyCart && (cart?.lines?.nodes || []).some(isPreorderLine);
+  /** Earliest date the pre-order lines allow (~/lib/preorder), or null. */
+  const preorderEarliestDate = hasPreOrderItems
+    ? cartPreorderEarliestDate(cart?.lines?.nodes || [])
+    : null;
 
   const hasCashOnly = cart?.lines?.nodes?.some((line: any) =>
     line.merchandise?.product?.tags?.some((tag: string) => tag.toLowerCase().trim() === 'cash-only')
@@ -712,7 +713,7 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
   );
 
   const prepaidOnlyItems = cart?.lines?.nodes?.filter((line: any) =>
-    line.merchandise?.product?.tags?.some((tag: string) => {
+    isPreorderLine(line) || line.merchandise?.product?.tags?.some((tag: string) => {
       const t = tag.toLowerCase().trim();
       return t === 'prepaid-only' || t === 'nocod' || t === 'preorder' || t === 'pre-order' || t === 'طلب مسبق';
     })
@@ -781,6 +782,8 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
     // Vouchers are not held at a branch, so branch inventory says nothing
     // about them — and blocking checkout over one would be nonsense.
     if (isNonShippableLine(line)) return false;
+    // Pre-orders ignore branch stock; only a closed one blocks (~/lib/preorder).
+    if (isPreorderLine(line)) return getPreorderInfo(line.merchandise?.product).closed;
 
     const variantId = line.merchandise?.id;
     const entry = branchStock[variantId];
@@ -836,8 +839,10 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
     return !isDiscountValidForLocation(matched, branchId, rootData?.selectedCity);
   });
 
-  const isDateTimeRequired = !hasPreOrderItems && !isDigitalOnlyCart;
-  const isDateTimeValid = !isDateTimeRequired || (!isTimeSlotInvalid && !isDateInPast && !!selectedDate && !!timeSlot && selectedDate.trim() !== '' && timeSlot.trim() !== '');
+  const isDateTimeRequired = !isDigitalOnlyCart;
+  const isBeforePreorderDate =
+    !!preorderEarliestDate && !!selectedDate && selectedDate < preorderEarliestDate;
+  const isDateTimeValid = !isDateTimeRequired || (!isTimeSlotInvalid && !isDateInPast && !isBeforePreorderDate && !!selectedDate && !!timeSlot && selectedDate.trim() !== '' && timeSlot.trim() !== '');
 
   const canCheckout = hasOutOfStockItems
     ? false
@@ -1285,16 +1290,8 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
                     </div>
                   </div>
 
-                  {/* Date & Time Slot Picker required for normal orders, hidden for pre-orders */}
-                  {!hasPreOrderItems ? (
-                    <CartCalendarPicker
-                      isEn={isEn}
-                      cart={cart}
-                      currentBranch={currentBranch}
-                      isPickup={isPickup}
-                      fulfillmentType={fulfillmentType}
-                    />
-                  ) : (
+                  {/* Pre-orders: notice, then the same picker starting at their earliest date */}
+                  {hasPreOrderItems ? (
                     <div className="w-full rounded-2xl p-4 bg-[#f0f7f5] border border-[#9fb7ae]/30 text-[#234745] flex items-center gap-3 shadow-sm my-2">
                       <div className="w-8 h-8 rounded-full bg-[#234745]/10 flex items-center justify-center shrink-0">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1307,13 +1304,24 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
                           {isEn ? 'Pre-Order Fulfillment Notice' : 'ملاحظة طلب مسبق'}
                         </span>
                         <span>
-                          {isEn
-                            ? 'This cart contains pre-order items. Delivery date and time will be scheduled based on item availability.'
-                            : 'يحتوي هذا الطلب على منتجات طلب مسبق. سيتم جدولة موعد التوصيل بناءً على توفر المنتج.'}
+                          {preorderEarliestDate
+                            ? isEn
+                              ? `This order contains pre-order items, ready from ${formatPreorderDate(preorderEarliestDate, true)}. Choose a date from then on. Online payment only.`
+                              : `يحتوي هذا الطلب على منتجات طلب مسبق جاهزة ابتداءً من ${formatPreorderDate(preorderEarliestDate, false)}. اختر موعداً من هذا التاريخ فصاعداً. الدفع إلكتروني فقط.`
+                            : isEn
+                              ? 'This order contains pre-order items. Online payment only.'
+                              : 'يحتوي هذا الطلب على منتجات طلب مسبق. الدفع إلكتروني فقط.'}
                         </span>
                       </div>
                     </div>
-                  )}
+                  ) : null}
+                  <CartCalendarPicker
+                    isEn={isEn}
+                    cart={cart}
+                    currentBranch={currentBranch}
+                    isPickup={isPickup}
+                    fulfillmentType={fulfillmentType}
+                  />
                 </>
               )}
 
@@ -3541,6 +3549,8 @@ function CartCalendarPicker({
     }
   }, [selectedDate, selectedTimeSlot, fetcher.state]);
 
+  const preorderEarliest = cartPreorderEarliestDate(cart?.lines?.nodes || []);
+
   // 1. Calculate max prep days
   const maxPrepDays = cart?.lines?.nodes?.reduce((max: number, line: any) => {
     const tags = line.merchandise?.product?.tags || [];
@@ -3554,7 +3564,11 @@ function CartCalendarPicker({
 
   // 2. Track current displayed month
   const [displayedMonth, setDisplayedMonth] = useState(() => {
-    const initial = selectedDate ? new Date(selectedDate + 'T12:00:00') : new Date();
+    const initial = selectedDate
+      ? new Date(selectedDate + 'T12:00:00')
+      : preorderEarliest
+        ? new Date(preorderEarliest + 'T12:00:00')
+        : new Date();
     return isNaN(initial.getTime()) ? new Date() : initial;
   });
 
@@ -3612,6 +3626,16 @@ function CartCalendarPicker({
   const minAvailableDate = new Date();
   minAvailableDate.setDate(today.getDate() + maxPrepDays);
   minAvailableDate.setHours(0, 0, 0, 0);
+
+  // Pre-orders: nothing before their earliest date, and the 30-day window
+  // counts from that date instead of today (~/lib/preorder).
+  if (preorderEarliest) {
+    const pre = new Date(`${preorderEarliest}T00:00:00`);
+    if (pre > minAvailableDate) minAvailableDate.setTime(pre.getTime());
+    const preMax = new Date(pre.getTime());
+    preMax.setDate(preMax.getDate() + 30);
+    if (preMax > maxFutureDate) maxFutureDate.setTime(preMax.getTime());
+  }
 
   // Check branch closed days
   const isBranchClosedOn = (date: Date) => {

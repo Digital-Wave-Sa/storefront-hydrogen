@@ -1,4 +1,5 @@
 import { Link, useOutletContext, useRouteLoaderData, useLocation } from 'react-router';
+import { getPreorderInfo, preorderAvailabilityText } from '~/lib/preorder';
 import { Image } from '@shopify/hydrogen';
 import { useState, useEffect, useMemo } from 'react';
 import { useVariantUrl } from '~/utils';
@@ -206,7 +207,10 @@ function ProductItemCard({
    *
    * The card still renders exactly as before; only the button waits.
    */
-  const availabilityUnresolved = inventoryVerdict === null && branchStockPending;
+  /** Pre-orders are sold whatever the branch stock says (~/lib/preorder). */
+  const preorder = getPreorderInfo(product);
+  const availabilityUnresolved =
+    !preorder.isPreorder && inventoryVerdict === null && branchStockPending;
 
   /**
    * `storeAvailabilityNodes.length === 0` used to be part of the test above,
@@ -230,8 +234,9 @@ function ProductItemCard({
    * branch does not stock. The claim waits for evidence; the layout does not
    * move.
    */
-  const isOutOfStock =
-    inventoryVerdict !== null
+  const isOutOfStock = preorder.isPreorder
+    ? preorder.closed
+    : inventoryVerdict !== null
       ? inventoryVerdict
       : availabilityUnresolved
       ? false
@@ -263,9 +268,7 @@ function ProductItemCard({
   );
   const isVisibilityBlocked = !visibility.isActive;
 
-  const isPreorder = product.tags?.some((tag: string) =>
-    ['preorder', 'pre-order', 'طلب مسبق'].includes(tag.toLowerCase())
-  );
+  const isPreorder = preorder.isPreorder && !preorder.closed;
 
   /**
    * The give-away half of a Buy X Get Y is added by the cart action now,
@@ -600,6 +603,15 @@ function ProductItemCard({
           )}
         </div>
 
+        {showPreorder && preorder.earliestDate ? (
+          <p
+            className="-mt-[10px] mb-[12px] text-[12px] font-bold text-[#906B51]"
+            style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+          >
+            {preorderAvailabilityText(preorder, isEn)}
+          </p>
+        ) : null}
+
         <div className="mt-auto">
           {isVisibilityBlocked ? (
             <button
@@ -628,7 +640,9 @@ function ProductItemCard({
               className="w-full h-[40px] md:h-[44px] px-2 md:px-4 flex items-center justify-center rounded-full font-bold text-[12px] md:text-[15px] bg-[#234745] text-white hover:bg-[#163529] shadow-sm transition-all duration-300 active:scale-95"
               style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
             >
-              {isEn ? 'Add to Cart' : 'أضف إلى السلة'}
+              {isPreorder
+                ? isEn ? 'Pre-order' : 'اطلب مسبقاً'
+                : isEn ? 'Add to Cart' : 'أضف إلى السلة'}
             </AddToCartButton>
           ) : (
             <button

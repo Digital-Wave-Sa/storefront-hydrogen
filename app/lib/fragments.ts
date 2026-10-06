@@ -53,6 +53,10 @@ export const CART_QUERY_FRAGMENT = `#graphql
           id
           vendor
           tags
+          preorder_enabled: metafield(namespace: "custom", key: "preorder_enabled") { value }
+          preorder_available_from: metafield(namespace: "custom", key: "preorder_available_from") { value }
+          preorder_lead_days: metafield(namespace: "custom", key: "preorder_lead_days") { value }
+          preorder_until: metafield(namespace: "custom", key: "preorder_until") { value }
           isGiftCard
           collections(first: 1) {
             nodes {
@@ -135,6 +139,10 @@ export const CART_QUERY_FRAGMENT = `#graphql
           id
           vendor
           tags
+          preorder_enabled: metafield(namespace: "custom", key: "preorder_enabled") { value }
+          preorder_available_from: metafield(namespace: "custom", key: "preorder_available_from") { value }
+          preorder_lead_days: metafield(namespace: "custom", key: "preorder_lead_days") { value }
+          preorder_until: metafield(namespace: "custom", key: "preorder_until") { value }
           isGiftCard
           availability_date: metafield(namespace: "custom", key: "visibility_start") {
             value

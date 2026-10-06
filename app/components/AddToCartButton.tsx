@@ -5,6 +5,7 @@ import { useAside } from './Aside';
 import { prefersCartToast, showCartToast } from '~/lib/cart-toast';
 import { numericId, snapTrack } from '~/lib/snap-pixel';
 import { tiktokTrack } from '~/lib/tiktok-pixel';
+import { metaTrack } from '~/lib/meta-pixel';
 
 export function AddToCartButton({
   analytics,
@@ -51,21 +52,26 @@ export function AddToCartButton({
   const pendingToast = useRef<{ title?: string; image?: string; quantity?: number } | null>(null);
 
   /**
-   * Ad-pixel add to cart (Snap ADD_CART, TikTok AddToCart), sent once the
-   * cart confirms the add. See ~/lib/snap-pixel and ~/lib/tiktok-pixel.
+   * Ad-pixel add to cart (Snap ADD_CART, TikTok and Meta AddToCart), sent once
+   * the cart confirms the add. See ~/lib/snap-pixel, ~/lib/tiktok-pixel and
+   * ~/lib/meta-pixel.
    */
   const pendingSnap = useRef<Record<string, unknown> | null>(null);
   const pendingTikTok = useRef<Record<string, unknown> | null>(null);
+  const pendingMeta = useRef<Record<string, unknown> | null>(null);
   useEffect(() => {
     if (fetcher.state !== 'idle' || !pendingSnap.current) return;
     const snap = pendingSnap.current;
     const tiktok = pendingTikTok.current;
+    const meta = pendingMeta.current;
     pendingSnap.current = null;
     pendingTikTok.current = null;
+    pendingMeta.current = null;
     const res = fetcher.data as any;
     if (res?.error || res?.errors?.[0]?.message) return;
     snapTrack('ADD_CART', snap);
     if (tiktok) tiktokTrack('AddToCart', tiktok);
+    if (meta) metaTrack('AddToCart', meta);
   }, [fetcher.state, fetcher.data]);
 
   useEffect(() => {
@@ -185,6 +191,22 @@ export function AddToCartButton({
             quantity: Number(l.quantity) || 1,
           };
         }),
+        value: Math.round(unit * Math.max(quantity, 1) * 100) / 100,
+        currency: v?.price?.currencyCode || 'SAR',
+      };
+      pendingMeta.current = {
+        content_ids: paid.map((l: any) => numericId(l.merchandiseId)).filter(Boolean),
+        contents: paid.map((l: any) => {
+          const lv = l.selectedVariant || v;
+          return {
+            id: numericId(l.merchandiseId),
+            quantity: Number(l.quantity) || 1,
+            item_price: parseFloat(lv?.price?.amount || '0'),
+          };
+        }),
+        content_type: 'product',
+        content_name: v?.product?.title,
+        num_items: quantity || 1,
         value: Math.round(unit * Math.max(quantity, 1) * 100) / 100,
         currency: v?.price?.currencyCode || 'SAR',
       };

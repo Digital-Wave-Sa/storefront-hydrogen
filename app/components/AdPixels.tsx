@@ -7,11 +7,12 @@ import {
   snapTrack,
 } from '~/lib/snap-pixel';
 import {tiktokIdentify, tiktokPage, tiktokTrack} from '~/lib/tiktok-pixel';
+import {metaTrack, setMetaUserEmail} from '~/lib/meta-pixel';
 
 /**
- * Ad pixels loaded outside GTM — Snapchat (~/lib/snap-pixel) and TikTok
- * (~/lib/tiktok-pixel). Page views on every page (first load and client-side
- * navigations), once cookies are accepted. Mounted once in root.
+ * Ad pixels loaded outside GTM — Snapchat (~/lib/snap-pixel), TikTok
+ * (~/lib/tiktok-pixel) and Meta (~/lib/meta-pixel). Page views on every page
+ * (first load and client-side navigations), once cookies are accepted. Mounted once in root.
  */
 export function AdPixels() {
   const location = useLocation();
@@ -25,6 +26,7 @@ export function AdPixels() {
       .then((res: any) => {
         const email = res?.customer?.emailAddress?.emailAddress || res?.customer?.email;
         setSnapUserEmail(email);
+        setMetaUserEmail(email);
         void tiktokIdentify(email);
       })
       .catch(() => {});
@@ -33,6 +35,7 @@ export function AdPixels() {
   useEffect(() => {
     snapTrack('PAGE_VIEW');
     tiktokPage();
+    metaTrack('PageView');
   }, [location.pathname, location.search]);
 
   // Accepted after the page loaded: count this page now.
@@ -40,6 +43,7 @@ export function AdPixels() {
     const onAccept = () => {
       snapTrack('PAGE_VIEW');
       tiktokPage();
+      metaTrack('PageView');
     };
     window.addEventListener(CONSENT_ACCEPTED_EVENT, onAccept);
     return () => window.removeEventListener(CONSENT_ACCEPTED_EVENT, onAccept);
@@ -48,7 +52,7 @@ export function AdPixels() {
   return null;
 }
 
-/** VIEW_CONTENT (Snap) / ViewContent (TikTok), once per product/variant shown. */
+/** VIEW_CONTENT (Snap) / ViewContent (TikTok, Meta), once per product/variant shown. */
 export function AdViewContent({product, variant}: {product: any; variant: any}) {
   const variantId = variant?.id || '';
   useEffect(() => {
@@ -64,6 +68,14 @@ export function AdViewContent({product, variant}: {product: any; variant: any}) 
     });
     tiktokTrack('ViewContent', {
       contents: [{content_id: id, content_type: 'product', content_name: product.title, price, quantity: 1}],
+      value: price,
+      currency,
+    });
+    metaTrack('ViewContent', {
+      content_ids: [id],
+      content_type: 'product',
+      content_name: product.title,
+      content_category: product.productType || product.collections?.nodes?.[0]?.title,
       value: price,
       currency,
     });

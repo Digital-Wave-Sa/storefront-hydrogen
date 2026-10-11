@@ -24,6 +24,11 @@ import type {Route} from './+types/($locale).collections.all';
 import {pageTitle} from '~/lib/seo';
 import {InfiniteScrollLoader} from '~/components/InfiniteScrollLoader';
 import {DIETARY_OPTIONS} from '~/lib/catalog-filters';
+import {
+  collectionPath,
+  subCollections,
+  type CollectionTree,
+} from '~/lib/collection-tree';
 export const meta: Route.MetaFunction = ({matches}) => {
   return [{title: pageTitle(matches, 'All Products', 'كل المنتجات')}];
 };
@@ -1964,6 +1969,7 @@ export function FilterSidebar({
    * minus the occasion/internal ones below, as before.
    */
   const rootData = useRouteLoaderData('root') as any;
+  const collectionTree: CollectionTree = rootData?.collectionTree || {};
   const menuCategoryItems: any[] =
     rootData?.megaMenuData?.categoryFilterMenu?.items || [];
   const collectionsByHandle = new Map<string, any>(
@@ -2008,10 +2014,37 @@ export function FilterSidebar({
     {id: 'cat-sweets', handle: 'sweets', title: isEn ? 'Sweets' : 'الحلويات'},
   ];
 
-  const categoryCollections =
+  const baseCategoryCollections =
     dynamicCategoryCollections.length > 0
       ? dynamicCategoryCollections
       : DEFAULT_CATEGORIES;
+
+  /**
+   * On a collection page the list is navigation, so it follows the
+   * sub-category tree (~/lib/collection-tree): a sub-category is not listed
+   * on its own but indented under its main category, and only the open
+   * branch (the current main category, or the current one's parent) shows
+   * its children. Filtering (/collections/all, search) keeps the flat list.
+   */
+  const currentParent = currentCollection
+    ? collectionTree[currentCollection]?.parent || ''
+    : '';
+  const categoryCollections: any[] = currentCollection
+    ? baseCategoryCollections
+        .filter((c: any) => !collectionTree[c.handle]?.parent)
+        .flatMap((c: any) => {
+          const open = c.handle === currentCollection || c.handle === currentParent;
+          const children = open
+            ? subCollections(c.handle, collectionTree).map((sub) => ({
+                id: `sub-${sub.handle}`,
+                handle: sub.handle,
+                title: sub.title,
+                isSubCategory: true,
+              }))
+            : [];
+          return [c, ...children];
+        })
+    : baseCategoryCollections;
 
   const occasionHandles = [
     'wedding',
@@ -2506,11 +2539,13 @@ export function FilterSidebar({
                           return;
                         }
                         if (isActive) return;
-                        const prefix = location.pathname.startsWith('/en') ? '/en' : '';
+                        const isEnPath =
+                          location.pathname === '/en' || location.pathname.startsWith('/en/');
                         if (!isDesktop) onClose();
-                        navigate(`${prefix}/collections/${collection.handle}`);
+                        navigate(collectionPath(collection.handle, collectionTree, isEnPath));
                       }}
                       className="flex items-center justify-between w-full outline-none group text-start"
+                      style={collection.isSubCategory ? {paddingInlineStart: 24} : undefined}
                     >
                       <div className="flex items-center gap-2">
                         <div

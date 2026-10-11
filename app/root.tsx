@@ -24,6 +24,7 @@ import tailwindCss from './styles/tailwind.css?url';
 import {PageLayout} from './components/PageLayout';
 import {GTMAnalytics} from './components/GTMAnalytics';
 import {AdPixels} from './components/AdPixels';
+import {loadCollectionTree} from '~/lib/collection-tree.server';
 import {WishlistProvider} from './context/WishlistContext';
 import {NotFound} from './components/NotFound';
 import {ServerError} from './components/ServerError';
@@ -282,7 +283,7 @@ export async function loader(args: Route.LoaderArgs) {
 async function loadCriticalData({context}: Route.LoaderArgs) {
   const {storefront} = context;
 
-  const [header, locations, reviews, megaMenuData, locationDiscountsRaw] = await Promise.all([
+  const [header, locations, reviews, megaMenuData, locationDiscountsRaw, collectionTree] = await Promise.all([
     storefront.query(HEADER_QUERY, {
       cache: storefront.CacheLong(),
       variables: {
@@ -357,9 +358,12 @@ async function loadCriticalData({context}: Route.LoaderArgs) {
       cache: storefront.CacheLong(),
     }).then(res => res.shop?.locationDiscounts?.value || res.shop?.locationDiscountsAlt?.value || null)
       .catch(() => null),
+    // Sub-categories (/collections/<parent>/<child>), for every collection
+    // link on the page — ~/lib/collection-tree. Never throws.
+    loadCollectionTree(storefront),
   ]);
 
-  return {header, locations, reviews, megaMenuData, locationDiscounts: locationDiscountsRaw};
+  return {header, locations, reviews, megaMenuData, locationDiscounts: locationDiscountsRaw, collectionTree};
 }
 
 /**

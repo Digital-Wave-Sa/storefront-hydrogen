@@ -1,3 +1,4 @@
+import {useCollectionHref} from '~/lib/collection-tree';
 import {Link, useFetcher, type Fetcher} from 'react-router';
 import {Image, Money} from '@shopify/hydrogen';
 import React, {useRef, useEffect} from 'react';
@@ -135,6 +136,7 @@ function SearchResultsPredictiveCollections({
       c.handle !== 'featured-packages' &&
       c.handle !== 'custom-packages',
   );
+  const collectionHref = useCollectionHref();
   if (!filteredCollections.length) return null;
 
   return (
@@ -143,7 +145,7 @@ function SearchResultsPredictiveCollections({
       <ul>
         {filteredCollections.map((collection) => {
           const collectionUrl = urlWithTrackingParams({
-            baseUrl: `/collections/${collection.handle}`,
+            baseUrl: collectionHref(collection.handle),
             trackingParams: (collection as any).trackingParameters,
             term: term.current,
           });

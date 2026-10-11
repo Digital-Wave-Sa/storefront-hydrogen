@@ -37,6 +37,8 @@ import {FilterSidebar} from './($locale).collections.all';
 import patternBg from '/images/second-bg-pattern.svg';
 import {InfiniteScrollLoader} from '~/components/InfiniteScrollLoader';
 import {dietaryOptionForTag} from '~/lib/catalog-filters';
+import {collectionPath, useCollectionTree} from '~/lib/collection-tree';
+import {loadCollectionTree} from '~/lib/collection-tree.server';
 
 export const meta: MetaFunction<typeof loader> = ({data}) => {
   if (!data?.collection) {
@@ -66,6 +68,23 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
 
   if (!handle) {
     return localeRedirect(request, '/collections');
+  }
+
+  /**
+   * A sub-category has one address: /collections/<parent>/<url name>
+   * (~/lib/collection-tree). Its flat one, /collections/<handle>, redirects
+   * there for good, filters and sort kept. The nested route calls this loader
+   * with `__nested` set, so it does not redirect to itself.
+   */
+  if (!params.__nested) {
+    const tree = await loadCollectionTree(storefront);
+    if (tree[handle]?.parent) {
+      const prefix = params.locale ? `/${params.locale}` : '';
+      return redirect(
+        `${prefix}${collectionPath(handle, tree)}${new URL(request.url).search}`,
+        301,
+      );
+    }
   }
 
   // Parse filters from URL
@@ -399,6 +418,11 @@ export default function Collection() {
   const locale = rootData?.locale || 'ar';
   const isEn = locale === 'en';
   const globalCollections = rootData?.header?.collections || rootData?.collections || [];
+  const collectionTree = useCollectionTree();
+  /** Sub-category: its parent; main category: none. */
+  const parentHandle = collectionTree[collection.handle]?.parent || '';
+  const parentTitle = parentHandle ? collectionTree[parentHandle]?.title || '' : '';
+  const pageUrl = `https://saadeddin.com${collectionPath(collection.handle, collectionTree, isEn)}`;
 
   useEffect(() => {
     setMounted(true);
@@ -418,7 +442,7 @@ export default function Collection() {
             '@type': 'CollectionPage',
             name: collection.title,
             description: collection.description,
-            url: `https://saadeddin.com${isEn ? `/en/collections/${collection.handle}` : `/collections/${collection.handle}`}`,
+            url: pageUrl,
             ...(collection.image && {image: collection.image.url}),
             mainEntity: {
               '@type': 'ItemList',
@@ -438,6 +462,41 @@ export default function Collection() {
         }}
       />
 
+      {/* Breadcrumb for search results: Home › (main category ›) this page */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              {
+                '@type': 'ListItem',
+                position: 1,
+                name: isEn ? 'Home' : 'الرئيسية',
+                item: `https://saadeddin.com${isEn ? '/en' : ''}`,
+              },
+              ...(parentHandle
+                ? [
+                    {
+                      '@type': 'ListItem',
+                      position: 2,
+                      name: parentTitle,
+                      item: `https://saadeddin.com${collectionPath(parentHandle, collectionTree, isEn)}`,
+                    },
+                  ]
+                : []),
+              {
+                '@type': 'ListItem',
+                position: parentHandle ? 3 : 2,
+                name: getCollectionDisplayTitle(collection, isEn),
+                item: pageUrl,
+              },
+            ],
+          }),
+        }}
+      />
+
       {/* 1. Header Hero Section */}
       <CollectionHero
         collection={collection}
@@ -452,11 +511,24 @@ export default function Collection() {
             {isEn ? 'Home' : 'الرئيسية'}
           </span>
           <span className="text-gray-300">/</span>
+          {parentHandle && (
+            <>
+              <Link
+                to={collectionPath(parentHandle, collectionTree, isEn)}
+                prefetch="intent"
+                className="text-[#7d7d7d] hover:text-[#234745] transition-colors"
+              >
+                {parentTitle}
+              </Link>
+              <span className="text-gray-300">/</span>
+            </>
+          )}
           <span className="text-[#171717]-800">
             {getCollectionDisplayTitle(collection, isEn)}
           </span>
         </div>
       </div>
+
 
       <div className="bg-[#FEF8EB] min-h-screen">
         <div className="px-4 md:px-8 lg:px-12 py-10 max-w-[1440px] mx-auto text-right">

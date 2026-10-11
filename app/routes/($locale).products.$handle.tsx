@@ -1,3 +1,4 @@
+import {collectionPath} from '~/lib/collection-tree';
 import {Suspense, Fragment, useState, useEffect, useMemo} from 'react';
 import {counted, REVIEWS} from '~/lib/plural';
 import {
@@ -2456,9 +2457,7 @@ export default function Product() {
               }
 
               const collectionUrl = primaryCollection?.handle
-                ? isEn
-                  ? `/en/collections/${primaryCollection.handle}`
-                  : `/collections/${primaryCollection.handle}`
+                ? collectionPath(primaryCollection.handle, rootData?.collectionTree, isEn)
                 : null;
 
               return collectionUrl ? (

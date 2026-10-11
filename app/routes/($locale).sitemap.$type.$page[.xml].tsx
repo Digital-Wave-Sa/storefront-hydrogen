@@ -1,12 +1,19 @@
 // @ts-ignore - route types generated during build
 import type {Route} from './+types/sitemap.$type.$page[.xml]';
 import {getSitemap} from '@shopify/hydrogen';
+import {collectionPath} from '~/lib/collection-tree';
+import {loadCollectionTree} from '~/lib/collection-tree.server';
 
 export async function loader({
   request,
   params,
   context: {storefront},
 }: Route.LoaderArgs) {
+  // Sub-categories are listed at /collections/<parent>/<url name>, the only
+  // address they answer on (~/lib/collection-tree).
+  const collectionTree =
+    params.type === 'collections' ? await loadCollectionTree(storefront) : {};
+
   const response = await getSitemap({
     storefront,
     request,
@@ -21,8 +28,12 @@ export async function loader({
      */
     locales: ['ar', 'en'],
     getLink: ({type, baseUrl, handle, locale}) => {
-      if (locale === 'en') return `${baseUrl}/en/${type}/${handle}`;
-      return `${baseUrl}/${type}/${handle}`;
+      const path =
+        type === 'collections' && handle
+          ? collectionPath(handle, collectionTree)
+          : `/${type}/${handle}`;
+      if (locale === 'en') return `${baseUrl}/en${path}`;
+      return `${baseUrl}${path}`;
     },
   });
 

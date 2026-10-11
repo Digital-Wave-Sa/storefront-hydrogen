@@ -1,3 +1,5 @@
+import {collectionPath} from '~/lib/collection-tree';
+import {loadCollectionTree} from '~/lib/collection-tree.server';
 import {data, type LoaderFunctionArgs} from 'react-router';
 import {
   searchProductIndex,
@@ -150,6 +152,8 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
   }
 
   if (predictiveSearch?.collections?.length > 0) {
+    // Sub-categories link to their nested address (~/lib/collection-tree).
+    const collectionTree = await loadCollectionTree(context.storefront);
     results.push({
       type: 'collections',
       items: predictiveSearch.collections.map((item: any) => ({
@@ -158,7 +162,7 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
         id: item.id,
         title: item.title,
         image: item.image,
-        url: `${isEn ? '/en' : ''}/collections/${item.handle}`,
+        url: collectionPath(item.handle, collectionTree, isEn),
       })),
     });
   }

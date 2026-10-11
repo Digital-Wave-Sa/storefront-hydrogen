@@ -1,3 +1,4 @@
+import {collectionPath, useCollectionTree} from '~/lib/collection-tree';
 import { Await, NavLink, useMatches, Form, useLocation, useFetcher, useRouteLoaderData, useRevalidator } from 'react-router';
 import React, { Suspense, useState, useEffect, useRef, startTransition } from 'react';
 import type { HeaderQuery, CartApiQueryFragment } from 'storefrontapi.generated';
@@ -1246,6 +1247,7 @@ function CategoryNav({
 }
 
 function ProductMegaMenu({ locale, megaMenuData, onClose }: { locale?: string; megaMenuData?: any; onClose?: () => void }) {
+  const collectionTree = useCollectionTree();
   const location = useLocation();
   const isEn = location.pathname.startsWith('/en');
 
@@ -1264,7 +1266,7 @@ function ProductMegaMenu({ locale, megaMenuData, onClose }: { locale?: string; m
       const title = col?.title || item.title;
       const handle = col?.handle || (item.url ? item.url.split('/').pop()?.split('?')[0] : '');
       const colUrl = handle
-        ? (isEn ? `/en/collections/${handle}` : `/collections/${handle}`)
+        ? collectionPath(handle, collectionTree, isEn)
         : (item.url || '#');
 
       const firstProductImg = col?.products?.nodes?.find((p: any) => p.featuredImage?.url)?.featuredImage?.url;
@@ -1285,6 +1287,10 @@ function ProductMegaMenu({ locale, megaMenuData, onClose }: { locale?: string; m
           } else if (!isEn && url.startsWith('/en/')) {
             url = url.replace('/en', '');
           }
+          // A collection link goes to its nested address when it is a
+          // sub-category (~/lib/collection-tree).
+          const colMatch = url.match(/^(?:\/en)?\/collections\/([^/?#]+)$/);
+          if (colMatch) url = collectionPath(colMatch[1], collectionTree, isEn);
           return {
             title: sub.resource?.title || sub.title,
             url: url || '#',
@@ -1306,7 +1312,7 @@ function ProductMegaMenu({ locale, megaMenuData, onClose }: { locale?: string; m
     });
   } else if (collections.length > 0) {
     categories = collections.map((col: any) => {
-      const colUrl = isEn ? `/en/collections/${col.handle}` : `/collections/${col.handle}`;
+      const colUrl = collectionPath(col.handle, collectionTree, isEn);
       const firstProductImg = col.products?.nodes?.find((p: any) => p.featuredImage?.url)?.featuredImage?.url;
       const catImage = col.image?.url || firstProductImg || 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
 

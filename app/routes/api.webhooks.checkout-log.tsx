@@ -48,8 +48,19 @@ export async function action({request, context}: ActionFunctionArgs) {
     const topic = request.headers.get('x-shopify-topic') || '';
     const payload = JSON.parse(verification.rawBody) as any;
 
-    if (!payload?.id) {
-      return Response.json({success: false, error: 'Invalid payload'}, {status: 400});
+    /**
+     * A checkout is identified by `id`, or by `token` when a payload carries
+     * no id. Neither: log what did arrive (keys only -- the body holds the
+     * shopper's contact details) and answer 200. A 4xx makes Shopify retry
+     * the same body for two days and then remove the webhook altogether.
+     */
+    const checkoutRef = payload?.id ?? payload?.token;
+    if (!checkoutRef) {
+      console.warn(
+        `[Checkout Log] ${topic || 'no topic'}: no id/token — not forwarded. Keys:`,
+        Object.keys(payload || {}).slice(0, 40).join(','),
+      );
+      return Response.json({success: false, forwarded: false, error: 'no checkout id'});
     }
 
     if (topic && !CHECKOUT_TOPICS.includes(topic)) {
@@ -93,7 +104,7 @@ export async function action({request, context}: ActionFunctionArgs) {
 
       const answer = await res.text().catch(() => '');
       console.log(
-        `[Checkout Log] ${topic || 'checkout'} ${payload.id} → ${res.status}`,
+        `[Checkout Log] ${topic || 'checkout'} ${checkoutRef} → ${res.status}`,
         answer ? answer.slice(0, 300) : '',
       );
     } finally {

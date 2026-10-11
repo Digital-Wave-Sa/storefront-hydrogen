@@ -58,10 +58,15 @@ export default async function handleRequest(
       'https://maps.google.com',
       'https://www.googletagmanager.com',
       'https://tagassistant.google.com',
-      // Tracking tags (Google Ads, Meta)
+      // Tracking tags (Google Ads, Meta, Snap, TikTok). Snap's pixel opens a
+      // hidden tr.snapchat.com frame (its cookie sync); blocked, Snap loses
+      // part of its matching and the console shows a CSP error.
       'https://td.doubleclick.net',
       'https://*.doubleclick.net',
       'https://www.facebook.com',
+      'https://tr.snapchat.com',
+      'https://*.snapchat.com',
+      'https://analytics.tiktok.com',
     ],
     imgSrc: [
       "'self'", 

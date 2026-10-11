@@ -1,48 +1,21 @@
 import { Link, useOutletContext } from 'react-router';
 import { CardSlider } from './CardSlider';
-
-const CDN = 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files';
+import { resolveOccasions } from '~/lib/occasions';
 
 /**
- * Homepage occasion cards.
- *
- * Order here is the order on the page. `visible: false` hides a card without
- * deleting it, so a seasonal occasion can be brought back for its season by
- * flipping one word — Ramadan and Eid before Ramadan, Mother's Day in March.
- *
- * `image` is only a fallback. If the matching Shopify collection has a
- * collection image set, that wins (see the merge in the component below), so
- * the client can change a card's picture from the Shopify admin today.
+ * Homepage occasion cards. Which occasions, their order, titles, images and
+ * visibility come from Shopify (collection metafields custom.is_occasion /
+ * occasion_order / occasion_visible) through ~/lib/occasions, the same resolver
+ * /occasions uses and the same rules as the app.
  */
-const occasions = [
-    {handle: 'national-day', nameEn: 'National Day', nameAr: 'اليوم الوطني', image: `${CDN}/national_day_design.png?v=1711234572`, visible: true},
-    {handle: 'birthdays', nameEn: 'Birthdays', nameAr: 'أعياد الميلاد', image: `${CDN}/birthday_design.png?v=1711234569`, visible: true},
-    {handle: 'graduation', nameEn: 'Graduation', nameAr: 'التخرج', image: `${CDN}/graduation_design.png?v=1711234574`, visible: true},
-    {handle: 'new-baby', nameEn: 'New Baby', nameAr: 'مواليد', image: `${CDN}/new_baby_design.png?v=1711234571`, visible: true},
-    {handle: 'wedding', nameEn: 'Wedding', nameAr: 'زفاف', image: `${CDN}/wedding_design.png?v=1711234567`, visible: true},
-
-    // Seasonal — hidden for now, kept so they can be switched back on.
-    {handle: 'mothers-day', nameEn: "Mother's Day", nameAr: 'يوم الأم', image: `${CDN}/mothers_day_design.png?v=1711234573`, visible: false},
-    {handle: 'ramadan', nameEn: 'Ramadan', nameAr: 'رمضان', image: `${CDN}/ramadan_design.png?v=1711234568`, visible: false},
-    {handle: 'eid', nameEn: 'Eid', nameAr: 'العيد', image: `${CDN}/eid_design.png?v=1711234570`, visible: false},
-];
-
 export function ShopByOccasion({ collections }: { collections?: any[] }) {
     const { locale = 'ar' } = useOutletContext<{ locale?: string }>() ?? {};
     const isEn = locale === 'en';
 
-    // Visible cards only, in the order declared above, with the Shopify
-    // collection image taking priority over the static fallback.
-    const visibleOccasions = occasions
-        .filter(occasion => occasion.visible)
-        .map(occasion => {
-            const shopifyCollection = collections?.find(c => c.handle === occasion.handle);
-            return {
-                handle: occasion.handle,
-                name: isEn ? occasion.nameEn : occasion.nameAr,
-                image: shopifyCollection?.image?.url || occasion.image,
-            };
-        });
+    // Visible cards only, in the merchandised order (~/lib/occasions).
+    const visibleOccasions = resolveOccasions(collections, isEn).filter(
+        occasion => occasion.visible,
+    );
 
     return (
         <section className={`w-full lg:py-24 bg-[#FEF8EB] ${isEn ? 'font-en' : 'font-ar'}`} dir={isEn ? 'ltr' : 'rtl'} style={{ paddingTop: '50px', paddingBottom: '50px' }}>

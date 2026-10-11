@@ -561,6 +561,9 @@ const NEW_ARRIVALS_QUERY = `#graphql
 const OCCASIONS_QUERY = `#graphql
   query Occasions($country: CountryCode, $language: LanguageCode)
     @inContext(country: $country, language: $language) {
+    # Every collection, filtered in code by ~/lib/occasions: the Storefront API
+    # cannot filter by metafield. ~55 collections today -- keep this window above
+    # the store's collection count or an occasion silently drops off the row.
     collections(first: 100) {
       nodes {
         id
@@ -572,6 +575,9 @@ const OCCASIONS_QUERY = `#graphql
           width
           height
         }
+        isOccasion: metafield(namespace: "custom", key: "is_occasion") { value }
+        occasionOrder: metafield(namespace: "custom", key: "occasion_order") { value }
+        occasionVisible: metafield(namespace: "custom", key: "occasion_visible") { value }
       }
     }
   }

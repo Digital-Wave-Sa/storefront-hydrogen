@@ -12,6 +12,7 @@ import {ProductItem} from '~/components/ProductItem';
 import {PageHeader} from '~/components/layout/PageHeader';
 
 import {pageTitle} from '~/lib/seo';
+import {resolveOccasions} from '~/lib/occasions';
 import { ComingSoonBadge } from '~/components/ComingSoonBadge';
 import { useCakeBuilderEnabled, isCustomCakeUrl } from '~/lib/cake-builder';
 export const meta: MetaFunction = ({matches}) => {
@@ -100,6 +101,9 @@ export async function loader({context, request}: LoaderFunctionArgs) {
       $handle: String!
       $hasHandle: Boolean!
     ) @inContext(country: $country, language: $language) {
+      # All collections, filtered in code by ~/lib/occasions (the Storefront
+      # API cannot filter by metafield). Keep the window above the store's
+      # collection count (~55) or an occasion silently drops off the cards.
       collections(first: 100) {
         nodes {
           id
@@ -109,6 +113,9 @@ export async function loader({context, request}: LoaderFunctionArgs) {
             url
             altText
           }
+          isOccasion: metafield(namespace: "custom", key: "is_occasion") { value }
+          occasionOrder: metafield(namespace: "custom", key: "occasion_order") { value }
+          occasionVisible: metafield(namespace: "custom", key: "occasion_visible") { value }
         }
       }
       occasionCollection: collection(handle: $handle) @include(if: $hasHandle) {
@@ -158,31 +165,6 @@ export async function loader({context, request}: LoaderFunctionArgs) {
   }
 }
 
-/**
- * The occasion cards on first load, and the filter chips after one is picked.
- *
- * Order here is the order on the page. `visible: false` hides an occasion from
- * both without deleting it, so a seasonal one can be brought back for its
- * season by flipping one word. Keep this list in step with the homepage list in
- * app/components/ShopByOccasion.tsx -- until both are moved onto an `occasion`
- * metaobject, they are two copies of the same thing and can drift apart.
- *
- * Note this does NOT control filtering: `categories` below still holds all
- * eight, so an existing /occasions?category=eid link keeps working.
- */
-const occasionList = [
-  {handle: 'national-day', nameEn: 'National Day', nameAr: 'اليوم الوطني', visible: true},
-  {handle: 'birthdays', nameEn: 'Birthdays', nameAr: 'أعياد الميلاد', visible: true},
-  {handle: 'graduation', nameEn: 'Graduation', nameAr: 'التخرج', visible: true},
-  {handle: 'new-baby', nameEn: 'New Baby', nameAr: 'مواليد', visible: true},
-  {handle: 'wedding', nameEn: 'Wedding', nameAr: 'زفاف', visible: true},
-
-  // Seasonal -- hidden for now, kept so they can be switched back on.
-  {handle: 'mothers-day', nameEn: "Mother's Day", nameAr: 'يوم الأم', visible: false},
-  {handle: 'ramadan', nameEn: 'Ramadan', nameAr: 'رمضان', visible: false},
-  {handle: 'eid', nameEn: 'Eid', nameAr: 'العيد', visible: false},
-];
-
 export default function OccasionsPage() {
   const {products, collections, collectionHandle, collectionProducts, error} =
     useLoaderData<typeof loader>();
@@ -191,17 +173,14 @@ export default function OccasionsPage() {
   const isEn = locale === 'en';
   const cakeBuilderOpen = useCakeBuilderEnabled();
 
-  const categories = [
-    {id: 'all', en: 'All', ar: 'الكل'},
-    {id: 'eid', en: 'Eid', ar: 'العيد'},
-    {id: 'birthdays', en: 'Birthdays', ar: 'أعياد الميلاد'},
-    {id: 'ramadan', en: 'Ramadan', ar: 'رمضان'},
-    {id: 'wedding', en: 'Wedding', ar: 'زفاف'},
-    {id: 'graduation', en: 'Graduation', ar: 'التخرج'},
-    {id: 'mothers-day', en: "Mother's Day", ar: 'يوم الأم'},
-    {id: 'national-day', en: 'National Day', ar: 'اليوم الوطني'},
-    {id: 'new-baby', en: 'New Baby', ar: 'مواليد'},
-  ];
+  /**
+   * Every occasion, hidden ones included, merchandised in Shopify
+   * (~/lib/occasions -- same resolver and rules as the homepage row and the
+   * app). Cards and chips show the visible ones; tag filtering and the heading
+   * look an occasion up by handle across all of them, so a hidden occasion's
+   * page (/occasions?category=eid) keeps working while its card is off.
+   */
+  const allOccasions = resolveOccasions(collections, isEn);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const urlCategory = searchParams.get('category');
@@ -213,33 +192,23 @@ export default function OccasionsPage() {
     setSelectedCategory(urlCategory || null);
   }, [urlCategory]);
 
-  const baseOccasions = occasionList
+  const occasionCards = allOccasions
     .filter((occ) => occ.visible)
-    .map((occ) => ({
-      handle: occ.handle,
-      name: isEn ? occ.nameEn : occ.nameAr,
-      image: '',
-    }));
+    .map((occ) => {
+      const matchingProd = (products || []).find((p: any) => {
+        const tags = (p.tags || []).map((t: string) => t.toLowerCase());
+        return tags.includes(occ.handle.toLowerCase());
+      });
 
-  const occasionCards = baseOccasions.map((occ) => {
-    const shopifyColl = (collections || []).find(
-      (c: any) => c.handle === occ.handle,
-    );
-    const matchingProd = (products || []).find((p: any) => {
-      const tags = (p.tags || []).map((t: string) => t.toLowerCase());
-      return tags.includes(occ.handle.toLowerCase());
+      return {
+        handle: occ.handle,
+        name: occ.name,
+        image:
+          occ.image ||
+          matchingProd?.featuredImage?.url ||
+          '/images/custom-cake.webp',
+      };
     });
-
-    return {
-      ...occ,
-      image:
-        shopifyColl?.image?.url ||
-        matchingProd?.featuredImage?.url ||
-        occ.image ||
-        '/images/custom-cake.webp',
-      name: shopifyColl?.title || occ.name,
-    };
-  });
 
   // Tag-based selection. This is now the FALLBACK, kept for occasions that have
   // no collection in Shopify yet -- most products carry no tags at all, which is
@@ -247,16 +216,15 @@ export default function OccasionsPage() {
   const filteredProducts = products.filter((p: any) => {
     if (!selectedCategory || selectedCategory === 'all') return true;
 
-    const cat = categories.find((c) => c.id === selectedCategory);
-    if (!cat) return true;
+    const occ = allOccasions.find((o) => o.handle === selectedCategory);
+    if (!occ) return true;
 
     const tags = (p.tags || []).map((t: string) => t.toLowerCase());
     return (
-      tags.includes(cat.id.toLowerCase()) ||
-      tags.includes(cat.en.toLowerCase()) ||
-      tags.includes(cat.ar.toLowerCase()) ||
-      tags.includes(`occasion-${cat.id}`) ||
-      tags.includes(cat.id.replace('-', ''))
+      tags.includes(occ.handle.toLowerCase()) ||
+      tags.includes(occ.name.toLowerCase()) ||
+      tags.includes(`occasion-${occ.handle}`) ||
+      tags.includes(occ.handle.replace('-', ''))
     );
   });
 
@@ -278,9 +246,9 @@ export default function OccasionsPage() {
     collectionMatchesSelection && collectionProducts.length > 0
       ? collectionProducts
       : filteredProducts;
-  const selectedCatLabel = isEn
-    ? categories.find((c) => c.id === selectedCategory)?.en || selectedCategory
-    : categories.find((c) => c.id === selectedCategory)?.ar || selectedCategory;
+  const selectedCatLabel =
+    allOccasions.find((o) => o.handle === selectedCategory)?.name ||
+    selectedCategory;
 
   const isInitialLanding = !selectedCategory;
 

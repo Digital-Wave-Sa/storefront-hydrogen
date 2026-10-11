@@ -1,4 +1,5 @@
 import type {ActionFunctionArgs} from 'react-router';
+import {describeRejection, verifyShopifyWebhook} from '~/lib/webhook-verify.server';
 
 /**
  * Abandoned checkouts, forwarded to the CRM's `/logCartCheckout`.
@@ -15,7 +16,10 @@ import type {ActionFunctionArgs} from 'react-router';
  * would only give it something to drift away from. `event_type` is the one
  * addition, because Shopify carries the topic in a header rather than the body.
  *
- * Subscribe to `checkouts/create` and `checkouts/update`.
+ * Subscribe to `checkouts/create` and `checkouts/update` in Shopify admin
+ * (Settings → Notifications → Webhooks → https://saadeddin.com/api/webhooks/checkout-log).
+ * Admin webhooks are signed with the shop's signing secret, SHOPIFY_WEBHOOK_SECRET,
+ * the same one api.webhooks.orders checks.
  */
 
 /** Shopify's own topics for this. Anything else is ignored rather than sent. */
@@ -28,9 +32,21 @@ export async function action({request, context}: ActionFunctionArgs) {
 
   const {env} = context;
 
+  /**
+   * Only Shopify. The URL is public and the body is forwarded to the CRM as a
+   * shopper's checkout, so an unsigned POST could plant fake abandoned carts
+   * (and WhatsApp follow-ups) for any phone number. 401, not 200: a request
+   * that fails this did not come from Shopify, so there is no retry to avoid.
+   */
+  const verification = await verifyShopifyWebhook(request, env);
+  if (!verification.ok) {
+    console.warn(describeRejection('Checkout Log', verification, request));
+    return new Response('Unauthorized', {status: 401});
+  }
+
   try {
     const topic = request.headers.get('x-shopify-topic') || '';
-    const payload = (await request.json()) as any;
+    const payload = JSON.parse(verification.rawBody) as any;
 
     if (!payload?.id) {
       return Response.json({success: false, error: 'Invalid payload'}, {status: 400});
@@ -42,25 +58,12 @@ export async function action({request, context}: ActionFunctionArgs) {
     }
 
     /**
-     * The destination, from the environment.
-     *
-     * Not hardcoded, because the URL supplied is `http://178.128.200.162/demo/...`
-     * -- plain HTTP to a bare IP, on a body carrying the shopper's email,
-     * phone, name and both addresses. That is personal data in clear text
-     * across the internet. Keeping it in a variable means moving to HTTPS is a
-     * config change rather than a deploy, and it means this ships without the
-     * demo IP baked into the repository.
-     *
-     * Absent, this logs and forwards nothing.
+     * The middleware's /logCartCheckout (HTTPS). CART_CHECKOUT_LOG_URL, when
+     * set in Oxygen, overrides it -- e.g. to point at a staging middleware --
+     * without a deploy.
      */
-    const url = env?.CART_CHECKOUT_LOG_URL;
-    if (!url) {
-      console.warn(
-        '[Checkout Log] CART_CHECKOUT_LOG_URL is not set — nothing forwarded for checkout',
-        payload.id,
-      );
-      return Response.json({success: true, forwarded: false});
-    }
+    const url =
+      env?.CART_CHECKOUT_LOG_URL || 'https://api.saadeddin.top/logCartCheckout';
 
     const body = {
       event_type: 'checkout',

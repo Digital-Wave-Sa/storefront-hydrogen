@@ -1,0 +1,31 @@
+# Input for «locked delivery address».
+#
+# `_locked_delivery_address` is written by the storefront's checkout route
+# (app/routes/($locale).checkout.initiate.tsx) when the customer picked one of
+# their saved addresses in the cart: {"address1": "...", "city": "..."}.
+# No attribute → nothing is checked.
+
+query CartValidationsGenerateRunInput {
+  buyerJourney {
+    step
+  }
+  localization {
+    language {
+      isoCode
+    }
+  }
+  cart {
+    lockedAddress: attribute(key: "_locked_delivery_address") {
+      value
+    }
+    deliveryGroups {
+      deliveryAddress {
+        address1
+        city
+      }
+      selectedDeliveryOption {
+        deliveryMethodType
+      }
+    }
+  }
+}

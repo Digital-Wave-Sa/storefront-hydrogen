@@ -1,0 +1,4 @@
+{
+  "name": "Locked delivery address",
+  "description": "Keeps the saved address chosen in the Saadeddin cart: checkout cannot be completed with a different delivery address."
+}

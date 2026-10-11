@@ -1010,6 +1010,33 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
    * email can still be added any time from the account profile.
    */
 
+  /**
+   * Saved address lock (Checkout Rules app → locked-delivery-address).
+   *
+   * When the customer chose one of their saved addresses in the cart, branch,
+   * fee, date and slot were all worked out for it, so checkout must not take
+   * the order to another address. Shopify cannot make the fields read-only;
+   * the app's validation blocks checkout while the address differs from this
+   * one. Rewritten on every checkout: a lock left by an earlier visit (or by a
+   * pickup that has since become delivery) is always dropped first, and no
+   * saved address resolved above means no lock at all.
+   */
+  const LOCK_KEY = '_locked_delivery_address';
+  for (let i = finalAttributes.length - 1; i >= 0; i--) {
+    if (finalAttributes[i].key === LOCK_KEY) finalAttributes.splice(i, 1);
+  }
+  const lockedAddress = addressPreference?.[0]?.deliveryAddress;
+  if (
+    String(sessionFulfillment || '').toLowerCase() === 'delivery' &&
+    lockedAddress?.address1 &&
+    lockedAddress?.city
+  ) {
+    finalAttributes.push({
+      key: LOCK_KEY,
+      value: JSON.stringify({address1: lockedAddress.address1, city: lockedAddress.city}),
+    });
+  }
+
   // 4. Update the cart attributes and cart note on Shopify server
   try {
     await context.cart.updateAttributes(finalAttributes);

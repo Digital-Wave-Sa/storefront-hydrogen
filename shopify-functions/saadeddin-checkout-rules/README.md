@@ -1,13 +1,14 @@
 # Saadeddin Checkout Rules (deployed app)
 
 Separate Shopify app, owned by the **Modern advanced services** organization,
-installed on Saadeddin Pastry by custom distribution (4 Oct 2026). It holds only
-two Shopify Functions; it does not touch the storefront or the
+installed on Saadeddin Pastry by custom distribution (4 Oct 2026). It holds Shopify
+Functions and one checkout UI extension; it does not touch the storefront or the
 «Saad Al Deen Store Access» app.
 
 | Extension | Status |
 |---|---|
 | free-delivery-without-gift-cards | Live. Delivery customization «Free delivery without gift cards», threshold 299 SAR (config metafield `$app:free-delivery/config`). Standard Delivery's 298.99 cap was removed so the function picks between Standard (19) and Free. |
+| locked-delivery-address | Cart & checkout validation. When the customer picked a saved address in the site's cart, checkout cannot be completed with a different delivery address (street + city, compared loosely). Lock = cart attribute `_locked_delivery_address` written by `checkout.initiate`. Turn on in Settings → Checkout → Checkout rules. |
 | pickup-chosen-branch | Deployed. Activated from Settings → Shipping and delivery → pickup service. Uses `api_version = "unstable"` — no stable version accepted it on 4 Oct 2026. |
 
 - Client ID: `34c05e9b07b44a0aaa29748f90f13180`
@@ -19,6 +20,7 @@ two Shopify Functions; it does not touch the storefront or the
   turn off **and** put the "up to 298.99" condition back on Standard Delivery
   (otherwise big orders see both Standard and Free).
 - Pickup: deactivate the pickup service on the same page.
+- Address lock: Settings → Checkout → Checkout rules → turn off «Locked delivery address».
 
 ## Redeploying after a change
 

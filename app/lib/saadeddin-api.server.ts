@@ -290,7 +290,7 @@ export class SaadeddinApi {
   }) {
     return this.api('/cart/sync', {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({...payload, source: 'web'}),
     });
   }
 

@@ -10,6 +10,7 @@ import {
   type BuilderOption,
 } from '~/lib/cake-render/builder-options';
 import { CAKE_FILLINGS, findFilling } from '~/lib/cake-render/catalog';
+import { findSizedArt, sizedShapeThumb, sizedToppingArt } from '~/lib/cake-render/sized-art';
 import type { CakeView, CakeAngle } from '~/lib/cake-render/compose';
 import { FaqModal } from './FaqModal';
 import { SaudiRiyalSymbol } from '~/components/Price';
@@ -124,6 +125,45 @@ const FONT_FOR_RENDERER: Record<string, string> = {
  * family of the shape.
  */
 type ShapeId = 'round' | 'square' | 'rectangle';
+
+/**
+ * The order picture for a per-size cake: its front picture with the chosen
+ * topping laid on top, on white, as a JPEG data URL.
+ *
+ * Both files are served from our own origin, so the canvas is never tainted
+ * and `toDataURL` is allowed. Returns null if either picture fails to load;
+ * the order then goes through without a picture rather than being held up.
+ */
+async function composeSizedPreview(
+  frontSrc: string,
+  toppingSrc?: string,
+): Promise<string | null> {
+  const load = (src: string) =>
+    new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+  try {
+    const layers = await Promise.all(
+      [frontSrc, toppingSrc].filter(Boolean).map((src) => load(src as string)),
+    );
+    const size = 600;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, size, size);
+    for (const img of layers) ctx.drawImage(img, 0, 0, size, size);
+    return canvas.toDataURL('image/jpeg', 0.6);
+  } catch (e) {
+    console.warn('[CAKE] Could not compose the order picture:', e);
+    return null;
+  }
+}
 
 const SHAPE_CARDS: Array<{id: ShapeId; nameAr: string; nameEn: string}> = [
   {id: 'round', nameAr: 'دائري', nameEn: 'Round'},
@@ -648,6 +688,12 @@ export default function CustomCakeBuilder({
    * shape's own front / top / slice pictures instead of drawing the cake.
    */
   const artMode = mergedOptions.shapes.some((s) => !!s.art);
+  /**
+   * The agency's per-size pictures: shapes that have pictures AND a size.
+   * Step 1 then asks shape → size → height like the drawn catalog does, and
+   * the preview stacks that size's own pictures.
+   */
+  const sizedMode = mergedOptions.shapes.some((s) => !!s.art && !!s.shape);
 
   /**
    * Nothing is chosen until the customer chooses it, so the total opens at
@@ -1060,7 +1106,9 @@ export default function CustomCakeBuilder({
   const shapeSlice =
     (selections.shape &&
       selections.flavor &&
-      sliceIndex.get(`${selections.shape.id}|${selections.flavor.id}`)) ||
+      sliceIndex.get(
+        `${selections.shape.family ?? selections.shape.id}|${selections.flavor.id}`,
+      )) ||
     shapeArt?.sliced;
   const topHasArt = shapeArt
     ? Boolean(shapeArt.top)
@@ -1097,7 +1145,10 @@ export default function CustomCakeBuilder({
   }, [toppingDesigns]);
   const toppingArt =
     shapeArt && selections.shape && selections.style
-      ? toppingIndex.get(`${selections.shape.id}|${selections.style.id}`)
+      ? selections.shape.family
+        ? // A per-size cake: the topping drawn for exactly this size.
+          sizedToppingArt(findSizedArt(selections.shape.id), selections.style.id)
+        : toppingIndex.get(`${selections.shape.id}|${selections.style.id}`)
       : undefined;
   /**
    * No topping in the cutaway.
@@ -1562,6 +1613,16 @@ export default function CustomCakeBuilder({
     // A Shopify-managed shape already has its picture on the CDN; the order
     // carries that URL rather than a screenshot.
     if (shapeArt?.front) cakePreviewImage = shapeArt.front;
+    // A per-size cake's pictures are our own files, so the order gets the cake
+    // WITH its topping: both layers drawn onto one canvas and sent as a JPEG,
+    // which the order route uploads to Shopify Files like a screenshot.
+    if (shapeArt?.front && selections.shape?.family) {
+      const composed = await composeSizedPreview(
+        shapeArt.front,
+        toppingArt?.front,
+      );
+      if (composed) cakePreviewImage = composed;
+    }
     const canvas = shapeArt?.front
       ? null
       : (document.getElementById('cake-3d-canvas') as HTMLCanvasElement);
@@ -2258,7 +2319,7 @@ export default function CustomCakeBuilder({
                       in Arabic, the left in English. One class list, correct in
                       both, with nothing to keep in sync.
                     */}
-                    {artMode ? (
+                    {artMode && !sizedMode ? (
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mt-5">
                         {mergedOptions.shapes.map((option) => {
                           const isSelected = selections.shape?.id === option.id;
@@ -2311,7 +2372,10 @@ export default function CustomCakeBuilder({
                     ) : (
                     <>
                     <div className="grid grid-cols-3 gap-3 sm:gap-4 mt-5">
-                      {SHAPE_CARDS.map((card) => {
+                      {SHAPE_CARDS.filter((card) =>
+                        // A shape whose every size is hidden in admin has nothing to offer.
+                        mergedOptions.shapes.some((s) => s.shape === card.id),
+                      ).map((card) => {
                         const isSelected = pickShape === card.id;
                         return (
                           <button
@@ -2399,9 +2463,13 @@ export default function CustomCakeBuilder({
                             */}
                             <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-[#D6C3AC] flex items-center justify-center overflow-hidden mb-3">
                               <img
-                                src={`/cake/v5/thumbnails/shape-${card.id}-${
-                                  card.id === 'rectangle' ? '40x30' : '25x25'
-                                }-h8.webp`}
+                                src={
+                                  sizedMode
+                                    ? sizedShapeThumb(card.id)
+                                    : `/cake/v5/thumbnails/shape-${card.id}-${
+                                        card.id === 'rectangle' ? '40x30' : '25x25'
+                                      }-h8.webp`
+                                }
                                 alt=""
                                 className="w-full h-full object-contain"
                                 loading="lazy"

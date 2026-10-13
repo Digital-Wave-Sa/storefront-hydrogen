@@ -29,6 +29,12 @@ import {
   CAKE_COLORS,
   CAKE_DECORATIONS,
 } from './catalog';
+import {
+  SIZED_ART_FORMATS,
+  sizedFrontUrl,
+  sizedTopUrl,
+  sizedShapeThumb,
+} from './sized-art';
 
 export type BuilderOption = {
   /** The catalog id — also the `builder_key` on the metaobject row. */
@@ -78,6 +84,12 @@ export type BuilderOption = {
   };
   /** Present on colours only: the swatch the preview tints with. */
   color?: string;
+  /**
+   * Present on the agency's per-size shapes: the managed shape row this size
+   * belongs to (classic_round, standard, classic_square, sheet). The slice
+   * pictures are stored per family, not per size.
+   */
+  family?: string;
   /** Present on shapes only: the geometry the renderer needs. */
   shape?: 'round' | 'square' | 'rectangle';
   width?: number;
@@ -210,7 +222,49 @@ export function buildCakeOptions(
     ...priceOf(f.id),
   }));
 
-  const shapes = managedShapes.length > 0 ? managedShapes : catalogShapes;
+  /**
+   * The agency's per-size cakes: shape → size → height, each size with its own
+   * pictures (see sized-art.ts) and its own price row.
+   *
+   * They take over whenever the managed shape rows exist, and a size is only
+   * listed while its family's row is there and not hidden — so hiding «sheet»
+   * in admin removes every sheet size, with no deploy. The family row also
+   * supplies the slice picture used when no filling is chosen yet.
+   */
+  const sizedShapes: BuilderOption[] = SIZED_ART_FORMATS.flatMap((f) => {
+    const familyRow = managedShapes.find((s) => s.id === f.family);
+    if (!familyRow) return [];
+    const cat = CAKE_FORMATS.find((c) => c.id === f.id);
+    const nameAr = cat?.nameAr ?? f.id;
+    const nameEn = cat?.nameEn ?? f.id;
+    return [
+      {
+        id: f.id,
+        name: label(nameAr, nameEn, isEn),
+        nameAr,
+        nameEn,
+        image: sizedShapeThumb(f.shape),
+        family: f.family,
+        shape: f.shape,
+        width: f.width,
+        depth: f.depth,
+        height: f.height,
+        art: {
+          front: sizedFrontUrl(f),
+          top: sizedTopUrl(f),
+          sliced: familyRow.art?.sliced,
+        },
+        ...priceOf(f.id),
+      },
+    ];
+  });
+
+  const shapes =
+    sizedShapes.length > 0
+      ? sizedShapes
+      : managedShapes.length > 0
+        ? managedShapes
+        : catalogShapes;
 
   /**
    * Flavours managed in Shopify, the same way as shapes: a `cake_attribute`

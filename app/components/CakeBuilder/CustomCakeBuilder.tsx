@@ -2511,10 +2511,74 @@ export default function CustomCakeBuilder({
                         <h3 className={`text-lg font-bold text-[#1a1a1a] ${isEn ? 'text-left' : 'text-right'}`}>
                           {isEn ? 'Choose Size' : 'اختر المقاس'}
                         </h3>
-                        <div className="mt-3 flex flex-col gap-2">
+                        <div
+                          className={
+                            sizedMode
+                              ? 'mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3'
+                              : 'mt-3 flex flex-col gap-2'
+                          }
+                        >
                           {sizesForShape.map((size) => {
                             const isSelected =
                               pickSize?.w === size.w && pickSize?.d === size.d;
+                            /*
+                              With the agency's per-size pictures each size is a
+                              picture card, like the shape cards above it, so the
+                              customer sees the cake they are choosing.
+                            */
+                            const sizeArt = sizedMode
+                              ? formatFor(pickShape, size, Number(selections.shape?.height) || null)
+                              : null;
+                            if (sizeArt) {
+                              return (
+                                <button
+                                  key={`${size.w}x${size.d}`}
+                                  type="button"
+                                  onClick={() => {
+                                    if (isSelected) return;
+                                    const next = {w: size.w, d: size.d};
+                                    const carriedHeight =
+                                      Number(selections.shape?.height) || null;
+                                    setPickSize(next);
+                                    setSelections((prev) => ({
+                                      ...prev,
+                                      shape: formatFor(pickShape, next, carriedHeight),
+                                    }));
+                                  }}
+                                  aria-pressed={isSelected}
+                                  className={`relative flex flex-col items-center rounded-2xl border p-3 transition-all cursor-pointer ${
+                                    isSelected
+                                      ? 'border-[#294941] bg-[#F7EAE6]'
+                                      : 'border-[#E5E7EB] bg-white hover:border-[#294941]/50'
+                                  }`}
+                                >
+                                  {isSelected && (
+                                    <div className="absolute top-2.5 right-2.5 text-white bg-[#294941] rounded-full p-1 z-10 w-5 h-5 flex items-center justify-center">
+                                      <CheckIcon className="w-3 h-3" />
+                                    </div>
+                                  )}
+                                  <div className="w-full aspect-square rounded-xl bg-[#EED5D73D] flex items-center justify-center overflow-hidden mb-2">
+                                    <img
+                                      src={sizeArt.image}
+                                      alt=""
+                                      width={320}
+                                      height={320}
+                                      className="w-full h-full object-contain"
+                                      loading="lazy"
+                                    />
+                                  </div>
+                                  <div className="font-bold text-[#1a1a1a] font-en text-center">
+                                    {sizeLabel(size.w, size.d)}
+                                  </div>
+                                  {size.from !== null && size.from > 0 && (
+                                    <div className="mt-0.5 flex items-center gap-1 text-[#6B7B77] text-sm font-bold">
+                                      {isEn ? 'from' : 'من'} {toArabicDigits(size.from)}
+                                      <SaudiRiyalSymbol className="w-auto h-3 text-[#6B7B77]" />
+                                    </div>
+                                  )}
+                                </button>
+                              );
+                            }
                             return (
                               <button
                                 key={`${size.w}x${size.d}`}
@@ -2571,9 +2635,62 @@ export default function CustomCakeBuilder({
                         <h3 className={`text-lg font-bold text-[#1a1a1a] ${isEn ? 'text-left' : 'text-right'}`}>
                           {isEn ? 'Choose Height' : 'اختر الارتفاع'}
                         </h3>
-                        <div className="mt-3 flex flex-col gap-2">
+                        <div
+                          className={
+                            sizedMode
+                              ? 'mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3'
+                              : 'mt-3 flex flex-col gap-2'
+                          }
+                        >
                           {heightsForSize.map((option) => {
                             const isSelected = selections.shape?.id === option.id;
+                            if (sizedMode) {
+                              return (
+                                <button
+                                  key={option.id}
+                                  type="button"
+                                  onClick={() => handleSelect('shape', option)}
+                                  aria-pressed={isSelected}
+                                  className={`relative flex flex-col items-center rounded-2xl border p-3 transition-all cursor-pointer ${
+                                    isSelected
+                                      ? 'border-[#294941] bg-[#F7EAE6]'
+                                      : 'border-[#E5E7EB] bg-white hover:border-[#294941]/50'
+                                  }`}
+                                >
+                                  {isSelected && (
+                                    <div className="absolute top-2.5 right-2.5 text-white bg-[#294941] rounded-full p-1 z-10 w-5 h-5 flex items-center justify-center">
+                                      <CheckIcon className="w-3 h-3" />
+                                    </div>
+                                  )}
+                                  <div className="w-full aspect-square rounded-xl bg-[#EED5D73D] flex items-center justify-center overflow-hidden mb-2">
+                                    <img
+                                      src={option.image}
+                                      alt=""
+                                      width={320}
+                                      height={320}
+                                      className="w-full h-full object-contain"
+                                      loading="lazy"
+                                    />
+                                  </div>
+                                  <div className="font-bold text-[#1a1a1a] font-en">
+                                    {toArabicDigits(Number(option.height))}{' '}
+                                    {isEn ? 'cm' : 'سم'}
+                                  </div>
+                                  <div className="mt-0.5 flex items-center gap-1 text-[#1a1a1a] text-sm font-bold">
+                                    {option.priced && option.price > 0 ? (
+                                      <>
+                                        {toArabicDigits(option.price)}
+                                        <SaudiRiyalSymbol className="w-auto h-3 text-[#1a1a1a]" />
+                                      </>
+                                    ) : (
+                                      <span className="text-[#8BA19C]">
+                                        {isEn ? 'Price on request' : 'السعر عند الطلب'}
+                                      </span>
+                                    )}
+                                  </div>
+                                </button>
+                              );
+                            }
                             return (
                               <button
                                 key={option.id}

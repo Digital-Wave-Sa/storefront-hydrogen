@@ -123,6 +123,10 @@ export const sizedFrostingUrls = (f: SizedArtFormat) => ({
   top: `${SIZED_ART_BASE}/frosting/top-${f.topKey}.webp`,
 });
 
+/** This size's own card picture on the size step: its front picture, cropped. */
+export const sizedSizeThumb = (f: SizedArtFormat) =>
+  `${SIZED_ART_BASE}/thumbs/size-${f.id}.webp`;
+
 /** Shape card picture on step 1. */
 export const sizedShapeThumb = (shape: SizedArtFormat['shape']) =>
   `${SIZED_ART_BASE}/thumbs/shape-${shape}.webp`;

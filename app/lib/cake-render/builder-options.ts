@@ -35,6 +35,7 @@ import {
   sizedTopUrl,
   sizedShapeThumb,
   sizedFrostingUrls,
+  sizedSizeThumb,
 } from './sized-art';
 
 export type BuilderOption = {
@@ -244,7 +245,7 @@ export function buildCakeOptions(
         name: label(nameAr, nameEn, isEn),
         nameAr,
         nameEn,
-        image: sizedShapeThumb(f.shape),
+        image: sizedSizeThumb(f),
         family: f.family,
         shape: f.shape,
         width: f.width,

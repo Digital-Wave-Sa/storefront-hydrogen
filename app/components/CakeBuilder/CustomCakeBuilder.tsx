@@ -1,6 +1,8 @@
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { useRouteLoaderData, useFetcher, useRevalidator } from 'react-router';
 import { DeliveryPickupModal } from '~/components/DeliveryPickupModal';
+import { generateDynamicSlots } from '~/components/CartSummary';
+import { useAdminLocations } from '~/lib/locations-meta';
 import { Cake, Palette, Sparkles, MessageSquare, Layers, ArrowRight, ArrowLeft, Eye, Compass, Clock, Check } from 'lucide-react';
 import CakeRenderer from './CakeRenderer';
 import {
@@ -201,6 +203,9 @@ type CakeDayOption = {
   dayAr: string;
   dateEn: string;
   dateAr: string;
+  /** The dropdown label: «Tomorrow · Wed 14 Oct». */
+  labelEn: string;
+  labelAr: string;
   /** What the order records as «خيار التحضير». */
   nameEn: string;
   nameAr: string;
@@ -250,6 +255,8 @@ function cakeDayOptions(preparationHours: number): CakeDayOption[] {
       dayAr,
       dateEn,
       dateAr,
+      labelEn: offset <= 2 ? `${dayEn} · ${dateEn}` : dateEn,
+      labelAr: offset <= 2 ? `${dayAr} · ${dateAr}` : dateAr,
       nameEn: `${dayEn} — ${dateEn} (${date})`,
       nameAr: `${dayAr} — ${dateAr} (${date})`,
       price: 0,
@@ -259,13 +266,14 @@ function cakeDayOptions(preparationHours: number): CakeDayOption[] {
 }
 
 /**
- * A remembered day, if it is still on offer; otherwise the earliest day.
+ * A remembered day, if it is still on offer; otherwise none -- the shopper
+ * picks the day themselves rather than being handed tomorrow unnoticed.
  * Saved designs from before this change hold an hours option with no date,
  * and a saved date can have slipped into the past overnight.
  */
 function matchDayOption(options: CakeDayOption[], saved: any): CakeDayOption | null {
   const date = saved && typeof saved === 'object' ? saved.date : null;
-  return (date && options.find((o) => o.date === date)) || options[0] || null;
+  return (date && options.find((o) => o.date === date)) || null;
 }
 
 /**
@@ -427,6 +435,8 @@ const emptySelections = () => ({
   textFont: 'Classic',
   uploadedImage: null as string | null,
   prepTime: null as any,
+  /** «1:00 PM - 2:00 PM» -- the same labels the cart writes as `Time Slot`. */
+  timeSlot: '' as string,
 });
 
 export default function CustomCakeBuilder({
@@ -783,6 +793,7 @@ export default function CustomCakeBuilder({
     [preparationHours],
   );
 
+
   const photoPrintPrice = React.useMemo(() => {
     /**
      * Matched on `builder_key`, not on the English name.
@@ -847,6 +858,47 @@ export default function CustomCakeBuilder({
    * customer was never offered.
    */
   const [selections, setSelections] = useState(emptySelections);
+
+  /**
+   * The times on offer for the chosen day: the chosen branch's own hours for
+   * that weekday, delivery window or shop hours depending on the choice --
+   * the cart's generator, so a cake and a cart order offer the same times.
+   * With no branch chosen yet it falls back to the generator's default hours,
+   * and recomputes once the shopper picks one.
+   */
+  const adminLocations = useAdminLocations();
+  const cakeBranch = React.useMemo(() => {
+    const target = String(selectedBranchId || '').split('/').pop();
+    if (!target) return undefined;
+    const rootLocations =
+      cakeRootData?.locations?.locations?.nodes || cakeRootData?.locations?.nodes || [];
+    const all = adminLocations.length > 0 ? adminLocations : rootLocations;
+    return all.find(
+      (loc: any) =>
+        String(loc?.id || '') === selectedBranchId ||
+        String(loc?.id || '').split('/').pop() === target,
+    );
+  }, [adminLocations, cakeRootData, selectedBranchId]);
+  const cakeTimeSlots = React.useMemo(
+    () =>
+      selections.prepTime?.date
+        ? generateDynamicSlots(
+            cakeBranch,
+            isEn,
+            String(selectedFulfillment || 'delivery'),
+            selections.prepTime.date,
+          )
+        : [],
+    [cakeBranch, isEn, selectedFulfillment, selections.prepTime?.date],
+  );
+  // A time from another day or branch is not on offer any more.
+  useEffect(() => {
+    if (selections.timeSlot && !cakeTimeSlots.includes(selections.timeSlot)) {
+      setSelections((prev) => ({...prev, timeSlot: ''}));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cakeTimeSlots]);
+  const hasDeliveryTime = Boolean(selections.prepTime?.date && selections.timeSlot);
 
   const hasLoadedRef = useRef(false);
 
@@ -982,6 +1034,7 @@ export default function CustomCakeBuilder({
             textFont: textFontVal,
             uploadedImage: savedPending?.uploadedImage || null,
             prepTime: matchDayOption(prepTimeOptions, savedPending?.prepTime),
+            timeSlot: typeof savedPending?.timeSlot === 'string' ? savedPending.timeSlot : '',
           });
 
           /**
@@ -1068,6 +1121,7 @@ export default function CustomCakeBuilder({
       textColor: selections.textColor,
       uploadedImage: selections.uploadedImage,
       prepTime: selections.prepTime,
+      timeSlot: selections.timeSlot,
       savedAt: Date.now(),
     }),
     [selections],
@@ -1761,6 +1815,8 @@ export default function CustomCakeBuilder({
       return;
     }
 
+    if (!hasDeliveryTime) return;
+
     setIsSubmitting(true);
 
     if (view === 'top' && !shapeArt) {
@@ -1894,6 +1950,7 @@ export default function CustomCakeBuilder({
           branchName: selectedBranchName,
           fulfillmentType: selectedFulfillment,
           deliveryDate: selections.prepTime?.date || selectedDeliveryDate,
+          timeSlot: selections.timeSlot || undefined,
           // Without these the draft order has no address and a free delivery
           // line -- see the note on handleSelectBranchForCake.
           deliveryFee: submittedDeliveryFee,
@@ -2625,12 +2682,15 @@ export default function CustomCakeBuilder({
                               shading that was always in the file becomes
                               visible. Going darker still reads as muddy.
 
+                              Changed to #eed5d73d (a light, translucent pink)
+                              at the user's request, 13 Oct 2026.
+
                               Padding removed and the plate widened for the same
                               reason: the cake occupies only the middle ~79% of
                               its own square canvas, so every pixel of box spent
                               on padding shrinks the subject twice over.
                             */}
-                            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-[#D6C3AC] flex items-center justify-center overflow-hidden mb-3">
+                            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-[#eed5d73d] flex items-center justify-center overflow-hidden mb-3">
                               <img
                                 src={
                                   sizedMode
@@ -3682,93 +3742,71 @@ export default function CustomCakeBuilder({
             </div>
 
             {/*
-              Two cards for the nearest days, then one for any other day with
-              the rest of the fortnight in a list. Picking the third card
-              without touching the list selects its first date, so the card
-              is never ticked with nothing chosen.
+              Day, then time -- both lists, both required. The day list runs
+              from the earliest day the kitchen can make the cake to two
+              weeks out; the time list is the chosen branch's hours for that
+              day and stays disabled until a day is picked.
             */}
-            <div className="flex flex-col gap-3 w-full">
-              {prepTimeOptions.slice(0, 2).map((option) => {
-                const isSelected = selections.prepTime?.id === option.id;
-                return (
-                  <button
-                    type="button"
-                    key={option.id}
-                    className={`p-5 rounded-2xl border transition-all relative flex flex-col justify-start gap-1 text-start ${isSelected
-                      ? 'border-[#294941] bg-[#F6FAF8]'
-                      : 'border-[#E5E7EB] bg-white hover:border-[#294941]/50'
-                      }`}
-                    onClick={() => setSelections(prev => ({ ...prev, prepTime: option }))}
-                    aria-pressed={isSelected}
-                  >
-                    <span className={`absolute top-5 ${isEn ? 'right-5' : 'left-5'} w-6 h-6 rounded-full flex items-center justify-center border transition-all ${isSelected
-                      ? 'bg-[#294941] border-[#294941] text-white'
-                      : 'border-gray-300 bg-white text-transparent'
-                      }`}>
-                      <Check className="w-4 h-4 stroke-[3]" />
-                    </span>
-                    <span className="font-bold text-[#1a1a1a] pe-8 text-[16px] leading-tight">
-                      {isEn ? option.dayEn : option.dayAr}
-                    </span>
-                    <span className="text-[#8BA19C] text-[13px] pe-8">
-                      {isEn ? option.dateEn : option.dateAr}
-                    </span>
-                  </button>
-                );
-              })}
+            <div className="flex flex-col gap-4 w-full">
+              <div className="flex flex-col gap-2">
+                <label htmlFor="cake-day" className="text-[14px] font-bold text-[#1a1a1a]">
+                  {isEn ? 'Day' : 'اليوم'}
+                </label>
+                <select
+                  id="cake-day"
+                  value={selections.prepTime?.id || ''}
+                  onChange={(e) => {
+                    const option = prepTimeOptions.find((o) => o.id === e.target.value) || null;
+                    setSelections((prev) => ({...prev, prepTime: option}));
+                  }}
+                  className="w-full rounded-xl border border-[#D7E0DD] bg-white px-4 py-3 text-[15px] text-[#1a1a1a] focus:outline-none focus:ring-2 focus:ring-[#294941]/40"
+                >
+                  <option value="" disabled>
+                    {isEn ? 'Choose a day' : 'اختر اليوم'}
+                  </option>
+                  {prepTimeOptions.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {isEn ? o.labelEn : o.labelAr}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-              {prepTimeOptions.length > 2 && (() => {
-                const later = prepTimeOptions.slice(2);
-                const pickedLater = later.find((o) => o.id === selections.prepTime?.id);
-                return (
-                  <div
-                    className={`p-5 rounded-2xl border transition-all relative flex flex-col justify-start gap-3 ${pickedLater
-                      ? 'border-[#294941] bg-[#F6FAF8]'
-                      : 'border-[#E5E7EB] bg-white hover:border-[#294941]/50'
-                      }`}
-                  >
-                    <button
-                      type="button"
-                      className="flex flex-col gap-1 text-start"
-                      onClick={() => {
-                        if (!pickedLater) setSelections(prev => ({ ...prev, prepTime: later[0] }));
-                      }}
-                      aria-pressed={Boolean(pickedLater)}
-                    >
-                      <span className={`absolute top-5 ${isEn ? 'right-5' : 'left-5'} w-6 h-6 rounded-full flex items-center justify-center border transition-all ${pickedLater
-                        ? 'bg-[#294941] border-[#294941] text-white'
-                        : 'border-gray-300 bg-white text-transparent'
-                        }`}>
-                        <Check className="w-4 h-4 stroke-[3]" />
-                      </span>
-                      <span className="font-bold text-[#1a1a1a] pe-8 text-[16px] leading-tight">
-                        {isEn ? 'Another date' : 'تاريخ آخر'}
-                      </span>
-                    </button>
-                    <label htmlFor="cake-other-date" className="sr-only">
-                      {isEn ? 'Choose a date' : 'اختر التاريخ'}
-                    </label>
-                    <select
-                      id="cake-other-date"
-                      value={pickedLater?.id || ''}
-                      onChange={(e) => {
-                        const option = later.find((o) => o.id === e.target.value);
-                        if (option) setSelections(prev => ({ ...prev, prepTime: option }));
-                      }}
-                      className="w-full rounded-xl border border-[#D7E0DD] bg-white px-4 py-3 text-[15px] text-[#1a1a1a] focus:outline-none focus:ring-2 focus:ring-[#294941]/40"
-                    >
-                      <option value="" disabled>
-                        {isEn ? 'Choose a date' : 'اختر التاريخ'}
-                      </option>
-                      {later.map((o) => (
-                        <option key={o.id} value={o.id}>
-                          {isEn ? o.dateEn : o.dateAr}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                );
-              })()}
+              <div className="flex flex-col gap-2">
+                <label htmlFor="cake-time" className="text-[14px] font-bold text-[#1a1a1a]">
+                  {isEn
+                    ? String(selectedFulfillment).toLowerCase() === 'pickup' ? 'Pickup time' : 'Delivery time'
+                    : String(selectedFulfillment).toLowerCase() === 'pickup' ? 'وقت الاستلام' : 'وقت التوصيل'}
+                </label>
+                <select
+                  id="cake-time"
+                  value={selections.timeSlot || ''}
+                  disabled={!selections.prepTime?.date || cakeTimeSlots.length === 0}
+                  onChange={(e) => {
+                    const slot = e.target.value;
+                    setSelections((prev) => ({...prev, timeSlot: slot}));
+                  }}
+                  className="w-full rounded-xl border border-[#D7E0DD] bg-white px-4 py-3 text-[15px] text-[#1a1a1a] focus:outline-none focus:ring-2 focus:ring-[#294941]/40 disabled:bg-[#F5F7F6] disabled:text-[#8BA19C]"
+                >
+                  <option value="" disabled>
+                    {!selections.prepTime?.date
+                      ? isEn ? 'Choose a day first' : 'اختر اليوم أولاً'
+                      : isEn ? 'Choose a time' : 'اختر الوقت'}
+                  </option>
+                  {cakeTimeSlots.map((slot) => (
+                    <option key={slot} value={slot}>
+                      {slot}
+                    </option>
+                  ))}
+                </select>
+                {selections.prepTime?.date && cakeTimeSlots.length === 0 && (
+                  <span className="text-[13px] text-[#9B3D32]">
+                    {isEn
+                      ? 'No times are available on this day. Please choose another day.'
+                      : 'لا توجد أوقات متاحة في هذا اليوم. يرجى اختيار يوم آخر.'}
+                  </span>
+                )}
+              </div>
             </div>
 
             {/*
@@ -3856,7 +3894,7 @@ export default function CustomCakeBuilder({
                 type="button"
                 className="flex-1 py-3.5 rounded-full font-bold bg-[#294941] text-white hover:bg-[#1E3A34] transition-all text-[16px] disabled:opacity-50 flex items-center justify-center"
                 onClick={handleCheckout}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !hasDeliveryTime}
               >
                 {isSubmitting ? (isEn ? 'Preparing...' : 'جاري التحضير...') : (isEn ? 'Confirm & Checkout' : 'تأكيد وإتمام الطلب')}
               </button>

@@ -1803,7 +1803,8 @@ function formatHour(h: number, isEn: boolean): string {
   return `${startDisplay}:00 ${startPeriod} - ${endDisplay}:00 ${endPeriod}`;
 }
 
-function generateDynamicSlots(branch: any, isEn: boolean, fulfillmentType: string = 'delivery', targetDateStr?: string): string[] {
+// Exported for the custom-cake builder, which offers the same branch hours.
+export function generateDynamicSlots(branch: any, isEn: boolean, fulfillmentType: string = 'delivery', targetDateStr?: string): string[] {
   /**
    * Case-insensitive: the cart attribute is written `'Delivery'` while this
    * compared against lowercase `'delivery'`, so `isDelivery` was ALWAYS false.

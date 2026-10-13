@@ -142,6 +142,9 @@ async function composeSizedPreview(
   const load = (src: string) =>
     new Promise<HTMLImageElement>((resolve, reject) => {
       const img = new Image();
+      // The pictures come from Shopify's CDN; without CORS the canvas is
+      // tainted and toDataURL throws.
+      img.crossOrigin = 'anonymous';
       img.onload = () => resolve(img);
       img.onerror = reject;
       img.src = src;
@@ -187,6 +190,132 @@ async function composeSizedPreview(
   }
 }
 
+/** How far ahead the «another date» list reaches, in days. */
+const CAKE_LAST_DAY = 14;
+
+type CakeDayOption = {
+  id: string;
+  /** Riyadh calendar date, YYYY-MM-DD -- sent as the order's `delivery_date`. */
+  date: string;
+  dayEn: string;
+  dayAr: string;
+  dateEn: string;
+  dateAr: string;
+  /** What the order records as «خيار التحضير». */
+  nameEn: string;
+  nameAr: string;
+  price: number;
+};
+
+/** Today's date in Riyadh as YYYY-MM-DD. */
+function riyadhToday(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Riyadh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
+/**
+ * The days a custom cake can be ordered for: the earliest the kitchen can make
+ * it (from `preparation_hours`), then every day after it up to two weeks out.
+ * Labels use Latin digits and the Gregorian calendar in Arabic too -- plain
+ * `ar-SA` formatting would print Hijri dates in Arabic-Indic digits.
+ */
+function cakeDayOptions(preparationHours: number): CakeDayOption[] {
+  const minDays = Math.max(1, Math.ceil((Number(preparationHours) || 24) / 24));
+  const lastDay = Math.max(CAKE_LAST_DAY, minDays + 1);
+  const [y, m, d] = riyadhToday().split('-').map(Number);
+  const fmtEn = new Intl.DateTimeFormat('en-GB', {
+    weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC',
+  });
+  const fmtAr = new Intl.DateTimeFormat('ar-u-ca-gregory-nu-latn', {
+    weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC',
+  });
+  const options: CakeDayOption[] = [];
+  for (let offset = minDays; offset <= lastDay; offset++) {
+    // Noon UTC, so no timezone can tip the label onto a neighbouring day.
+    const at = new Date(Date.UTC(y, m - 1, d + offset, 12));
+    const date = at.toISOString().slice(0, 10);
+    const dayEn = offset === 1 ? 'Tomorrow' : offset === 2 ? 'In 2 days' : `In ${offset} days`;
+    const dayAr =
+      offset === 1 ? 'غداً' : offset === 2 ? 'بعد يومين' : offset <= 10 ? `بعد ${offset} أيام` : `بعد ${offset} يوماً`;
+    const dateEn = fmtEn.format(at);
+    const dateAr = fmtAr.format(at);
+    options.push({
+      id: `day-${date}`,
+      date,
+      dayEn,
+      dayAr,
+      dateEn,
+      dateAr,
+      nameEn: `${dayEn} — ${dateEn} (${date})`,
+      nameAr: `${dayAr} — ${dateAr} (${date})`,
+      price: 0,
+    });
+  }
+  return options;
+}
+
+/**
+ * A remembered day, if it is still on offer; otherwise the earliest day.
+ * Saved designs from before this change hold an hours option with no date,
+ * and a saved date can have slipped into the past overnight.
+ */
+function matchDayOption(options: CakeDayOption[], saved: any): CakeDayOption | null {
+  const date = saved && typeof saved === 'object' ? saved.date : null;
+  return (date && options.find((o) => o.date === date)) || options[0] || null;
+}
+
+/**
+ * The frosting layer painted in the chosen colour, as an image.
+ *
+ * The preview used to tint it with an SVG `filter: url(#…)` on the <img>.
+ * That depends on the browser applying SVG filters to HTML content, which
+ * Safari in particular does unreliably, so the colour is now baked into a
+ * picture once per layer and colour and shown plainly. The SVG filter stays
+ * underneath as the fallback while this runs, or if it fails.
+ */
+const tintCache = new Map<string, Promise<string | null>>();
+function tintFrostingLayer(src: string, rgb: [number, number, number]): Promise<string | null> {
+  const key = `${src}|${rgb.join(',')}`;
+  const hit = tintCache.get(key);
+  if (hit) return hit;
+  const job = new Promise<string | null>((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const w = img.naturalWidth || 900;
+        const h = img.naturalHeight || 900;
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return resolve(null);
+        const [r, g, b] = rgb.map((v) => Math.round(v * 255));
+        ctx.drawImage(img, 0, 0, w, h);
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+        ctx.fillRect(0, 0, w, h);
+        ctx.globalCompositeOperation = 'destination-in';
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/webp', 0.9));
+      } catch {
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+  tintCache.set(key, job);
+  job.then((v) => {
+    if (!v) tintCache.delete(key);
+  });
+  return job;
+}
+
 const SHAPE_CARDS: Array<{id: ShapeId; nameAr: string; nameEn: string}> = [
   {id: 'round', nameAr: 'دائري', nameEn: 'Round'},
   {id: 'square', nameAr: 'مربع', nameEn: 'Square'},
@@ -196,8 +325,15 @@ const SHAPE_CARDS: Array<{id: ShapeId; nameAr: string; nameEn: string}> = [
 const steps = [
   { id: 1, titleEn: 'Shape', titleAr: 'اختر الشكل', icon: Cake },
   { id: 2, titleEn: 'Flavor', titleAr: 'أختر النكهة', icon: FlavorIcon },
-  { id: 3, titleEn: 'Decoration', titleAr: 'أختر التزيين', icon: DecorationIcon },
-  { id: 4, titleEn: 'Message', titleAr: 'أضف رسالتك الخاصة', icon: MessageIcon }
+  /*
+    Its own step since the client's review (Oct 2026). Sharing step 2 with
+    the filling meant the colour was picked while the preview showed the
+    cut slice -- the one view the frosting colour does not appear on -- so
+    choosing a colour looked like it did nothing.
+  */
+  { id: 3, titleEn: 'Colour', titleAr: 'اختر اللون', icon: Palette },
+  { id: 4, titleEn: 'Decoration', titleAr: 'أختر التزيين', icon: DecorationIcon },
+  { id: 5, titleEn: 'Message', titleAr: 'أضف رسالتك الخاصة', icon: MessageIcon }
 ];
 
 /**
@@ -629,39 +765,23 @@ export default function CustomCakeBuilder({
   const touchEndRef = useRef<number | null>(null);
   const minSwipeDistance = 50;
 
-  const prepTimeOptions = React.useMemo(() => {
-    const options = [
-      {
-        id: `${preparationHours}h`,
-        nameEn: `I want it ready in ${preparationHours} Hours`,
-        nameAr: `أريدها جاهزة خلال ${preparationHours} ساعة`,
-        price: 0,
-        descEn: `Your cake will be prepared and ready starting ${preparationHours} hours from now.`,
-        descAr: `سيتم تحضير الكيكة وتجهيزها بعد ${preparationHours} ساعة من الآن.`
-      },
-      {
-        id: `${preparationHours + 24}h`,
-        nameEn: `I want it ready in ${preparationHours + 24} Hours`,
-        nameAr: `أريدها جاهزة خلال ${preparationHours + 24} ساعة`,
-        price: 0,
-        descEn: `Your cake will be prepared and ready starting ${preparationHours + 24} hours from now.`,
-        descAr: `سيتم تحضير الكيكة وتجهيزها بعد ${preparationHours + 24} ساعة من الآن.`
-      }
-    ];
-
-    if (preparationHours === 24) {
-      options.push({
-        id: '72h',
-        nameEn: 'I want it ready in 72 Hours',
-        nameAr: 'أريدها جاهزة خلال 72 ساعة',
-        price: 0,
-        descEn: 'Your cake will be prepared and ready starting 72 hours from now.',
-        descAr: 'سيتم تحضير الكيكة وتجهيزها بعد 72 ساعة من الآن.'
-      });
-    }
-
-    return options;
-  }, [preparationHours]);
+  /**
+   * The day the cake is for, chosen at the last step.
+   *
+   * This used to be three cards in hours -- «ready in 24 / 48 / 72 hours» --
+   * which left the shopper to work out the date and sent the kitchen a lead
+   * time rather than a day. The client asked for days instead: the earliest
+   * day, the day after, or any other day up to two weeks out from a list.
+   *
+   * The earliest day still honours `preparation_hours` from Shopify: 24 hours
+   * makes it tomorrow, 48 makes it the day after. Dates are Riyadh dates, the
+   * same calendar the cart's date check uses, and the chosen one is sent as
+   * the order's `delivery_date`.
+   */
+  const prepTimeOptions = React.useMemo(
+    () => cakeDayOptions(preparationHours),
+    [preparationHours],
+  );
 
   const photoPrintPrice = React.useMemo(() => {
     /**
@@ -861,7 +981,7 @@ export default function CustomCakeBuilder({
             textColor: textColorVal,
             textFont: textFontVal,
             uploadedImage: savedPending?.uploadedImage || null,
-            prepTime: savedPending?.prepTime || prepTimeOptions[0] || null,
+            prepTime: matchDayOption(prepTimeOptions, savedPending?.prepTime),
           });
 
           /**
@@ -881,11 +1001,13 @@ export default function CustomCakeBuilder({
            */
           const restoredStep = !shape
             ? 1
-            : !flavor || !color
+            : !flavor
               ? 2
-              : !style
+              : !color
                 ? 3
-                : 4;
+                : !style
+                  ? 4
+                  : 5;
           setCurrentStep(restoredStep);
 
           if (restoredStep === 1 && (shapeVal || flavorVal || toppingVal)) {
@@ -918,7 +1040,7 @@ export default function CustomCakeBuilder({
         style: prev.style
           ? mergedOptions.styles.find((s) => s.id === prev.style?.id) || prev.style
           : null,
-        prepTime: prev.prepTime || prepTimeOptions[0] || null,
+        prepTime: matchDayOption(prepTimeOptions, prev.prepTime),
       }));
     }
   }, [mergedOptions, cakeAttributes, prepTimeOptions]);
@@ -1208,6 +1330,25 @@ export default function CustomCakeBuilder({
         undefined
       : undefined;
 
+  const frostingKey =
+    frostingLayer && frostingRgb ? `${frostingLayer}|${frostingRgb.join(',')}` : '';
+  const [tintedFrosting, setTintedFrosting] = useState<{key: string; src: string} | null>(null);
+  useEffect(() => {
+    if (!frostingLayer || !frostingRgb) return;
+    let cancelled = false;
+    const key = frostingKey;
+    tintFrostingLayer(frostingLayer, frostingRgb).then((src) => {
+      if (!cancelled && src) setTintedFrosting({key, src});
+    });
+    return () => {
+      cancelled = true;
+    };
+    // frostingKey carries both inputs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [frostingKey]);
+  const tintedFrostingSrc =
+    tintedFrosting && tintedFrosting.key === frostingKey ? tintedFrosting.src : null;
+
   // Switching to a shape without the current view would leave the shopper on
   // a view that no longer exists.
   useEffect(() => {
@@ -1447,8 +1588,9 @@ export default function CustomCakeBuilder({
    */
   const stepComplete = (step: number) => {
     if (step === 1) return Boolean(selections.shape);
-    if (step === 2) return Boolean(selections.flavor && selections.color);
-    if (step === 3) return Boolean(selections.style);
+    if (step === 2) return Boolean(selections.flavor);
+    if (step === 3) return Boolean(selections.color);
+    if (step === 4) return Boolean(selections.style);
     return true;
   };
 
@@ -1495,6 +1637,7 @@ export default function CustomCakeBuilder({
     stepComplete(1) &&
     stepComplete(2) &&
     stepComplete(3) &&
+    stepComplete(4) &&
     unpriced.length === 0;
   /*
    * `provisional` is intentionally NOT in that condition.
@@ -1525,12 +1668,15 @@ export default function CustomCakeBuilder({
       missing.push(isEn ? 'a shape' : 'الشكل');
     }
 
-    if (step === 2) {
-      if (!selections.flavor) missing.push(isEn ? 'a flavour' : 'النكهة');
-      if (!selections.color) missing.push(isEn ? 'a frosting colour' : 'لون الكريمة');
+    if (step === 2 && !selections.flavor) {
+      missing.push(isEn ? 'a flavour' : 'النكهة');
     }
 
-    if (step === 3 && !selections.style) {
+    if (step === 3 && !selections.color) {
+      missing.push(isEn ? 'a frosting colour' : 'لون الكريمة');
+    }
+
+    if (step === 4 && !selections.style) {
       missing.push(isEn ? 'a decoration' : 'التزيين');
     }
 
@@ -1747,7 +1893,7 @@ export default function CustomCakeBuilder({
           branchId: selectedBranchId,
           branchName: selectedBranchName,
           fulfillmentType: selectedFulfillment,
-          deliveryDate: selectedDeliveryDate,
+          deliveryDate: selections.prepTime?.date || selectedDeliveryDate,
           // Without these the draft order has no address and a free delivery
           // line -- see the note on handleSelectBranchForCake.
           deliveryFee: submittedDeliveryFee,
@@ -2748,14 +2894,17 @@ export default function CustomCakeBuilder({
                     </div>
                     {renderPictureGrid('flavor', mergedOptions.flavors, artMode ? 'contain' : 'cover')}
                   </div>
-                  <div>
-                    <h2 className={`text-2xl font-bold text-[#1a1a1a] ${isEn ? 'text-left' : 'text-right'}`}>{isEn ? 'Frosting Color' : 'لون التغليف (الكريمة)'}</h2>
-                    {renderOptionsGrid('color', mergedOptions.colors)}
-                  </div>
                 </div>
               )}
 
               {currentStep === 3 && (
+                <div className="animate-in fade-in duration-300 space-y-4">
+                  <h2 className={`text-2xl font-bold text-[#1a1a1a] ${isEn ? 'text-left' : 'text-right'}`}>{isEn ? 'Frosting Color' : 'لون التغليف (الكريمة)'}</h2>
+                  {renderOptionsGrid('color', mergedOptions.colors)}
+                </div>
+              )}
+
+              {currentStep === 4 && (
                 <div className="animate-in fade-in duration-300 space-y-4">
                   <h2 className={`text-2xl font-bold text-[#1a1a1a] ${isEn ? 'text-left' : 'text-right'}`}>{isEn ? 'Choose Decoration Style' : 'اختر أسلوب التزيين'}</h2>
 
@@ -2771,7 +2920,7 @@ export default function CustomCakeBuilder({
                 </div>
               )}
 
-              {currentStep === 4 && (
+              {currentStep === 5 && (
                 <div className="animate-in fade-in duration-300 space-y-8">
                   {/* 1. Text Customization Position & Options */}
                   <div className={isEn ? 'text-left' : 'text-right'}>
@@ -3028,6 +3177,22 @@ export default function CustomCakeBuilder({
               )}
 
               {/*
+                Back, from the second step on. The step boxes at the top
+                already jump to any step, but they scroll out of view on a
+                phone, and the client asked for a plain way back.
+              */}
+              {currentStep > 1 && (
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-3 px-8 py-4 rounded-full font-bold border border-[#294941] text-[#294941] bg-white hover:bg-[#F6FAF8] transition-all text-xl"
+                  onClick={prevStep}
+                >
+                  <ArrowRight className={`w-5 h-5 ${isEn ? 'rotate-180' : ''}`} />
+                  {isEn ? 'Back' : 'السابق'}
+                </button>
+              )}
+
+              {/*
                 Why the button beside this is dim.
 
                 Rendered for the last step too, where «إتمام الطلب والدفع» is
@@ -3060,7 +3225,7 @@ export default function CustomCakeBuilder({
                 const gateStep =
                   currentStep < steps.length
                     ? currentStep
-                    : [1, 2, 3].find((s) => !stepComplete(s));
+                    : [1, 2, 3, 4].find((s) => !stepComplete(s));
 
                 if (!gateStep) return null;
 
@@ -3205,10 +3370,10 @@ export default function CustomCakeBuilder({
                       </svg>
                       <img
                         key={`frost-${selections.shape?.id}-${view}`}
-                        src={frostingLayer}
+                        src={tintedFrostingSrc || frostingLayer}
                         alt=""
                         aria-hidden="true"
-                        style={{filter: `url(#${frostingFilterId})`}}
+                        style={tintedFrostingSrc ? undefined : {filter: `url(#${frostingFilterId})`}}
                         className="absolute inset-0 z-30 w-full h-full object-contain p-6 select-none pointer-events-none animate-in fade-in duration-300"
                         draggable={false}
                       />
@@ -3507,47 +3672,103 @@ export default function CustomCakeBuilder({
           <div className="bg-white rounded-[32px] max-w-lg w-full p-8 shadow-2xl border border-gray-100 flex flex-col gap-6 animate-zoom-in max-h-[90vh] overflow-y-auto">
             <div className={isEn ? 'text-left' : 'text-right'}>
               <h2 className="text-2xl font-bold text-[#1a1a1a] mb-2">
-                {isEn ? 'Select Preparation & Time' : 'اختر وقت التجهيز والاستلام'}
+                {isEn ? 'When do you need it?' : 'متى تريد الكيكة؟'}
               </h2>
               <p className="text-[#8BA19C] text-sm">
                 {isEn
-                  ? `Custom cakes require a minimum of ${preparationHours} hours of preparation time. Please select one of the options below:`
-                  : `تحتاج الكيكات المخصصة إلى ${preparationHours} ساعة كحد أدنى للتجهيز والتحضير. يرجى اختيار أحد الخيارات التالية:`}
+                  ? `Custom cakes need at least ${preparationHours} hours to prepare. Choose the day you want it.`
+                  : `تحتاج الكيكات المخصصة إلى ${preparationHours} ساعة على الأقل للتجهيز. اختر اليوم الذي تريدها فيه.`}
               </p>
             </div>
 
-            <div className="flex flex-col gap-4 w-full">
-              {prepTimeOptions.map(option => {
+            {/*
+              Two cards for the nearest days, then one for any other day with
+              the rest of the fortnight in a list. Picking the third card
+              without touching the list selects its first date, so the card
+              is never ticked with nothing chosen.
+            */}
+            <div className="flex flex-col gap-3 w-full">
+              {prepTimeOptions.slice(0, 2).map((option) => {
                 const isSelected = selections.prepTime?.id === option.id;
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={option.id}
-                    className={`p-6 rounded-2xl border transition-all cursor-pointer relative flex flex-col justify-start gap-2 ${isSelected
+                    className={`p-5 rounded-2xl border transition-all relative flex flex-col justify-start gap-1 text-start ${isSelected
                       ? 'border-[#294941] bg-[#F6FAF8]'
                       : 'border-[#E5E7EB] bg-white hover:border-[#294941]/50'
                       }`}
                     onClick={() => setSelections(prev => ({ ...prev, prepTime: option }))}
+                    aria-pressed={isSelected}
                   >
-                    <div className={`absolute top-5 ${isEn ? 'right-5' : 'left-5'} w-6 h-6 rounded-full flex items-center justify-center border transition-all ${isSelected
+                    <span className={`absolute top-5 ${isEn ? 'right-5' : 'left-5'} w-6 h-6 rounded-full flex items-center justify-center border transition-all ${isSelected
                       ? 'bg-[#294941] border-[#294941] text-white'
                       : 'border-gray-300 bg-white text-transparent'
                       }`}>
                       <Check className="w-4 h-4 stroke-[3]" />
-                    </div>
-                    <div className="font-bold text-[#1a1a1a] pr-6 pl-6 text-[16px] leading-tight">
-                      {isEn ? option.nameEn : option.nameAr}
-                    </div>
-                    <div className="text-[#8BA19C] text-xs pr-6 pl-6 mt-1">
-                      {isEn ? option.descEn : option.descAr}
-                    </div>
-                    {option.price > 0 && (
-                      <div className="text-[#294941] font-bold text-sm mt-1 pr-6 pl-6">
-                        +{toArabicDigits(option.price)} <SaudiRiyalSymbol className="w-auto h-3.5 inline-block text-[#294941]" />
-                      </div>
-                    )}
-                  </div>
+                    </span>
+                    <span className="font-bold text-[#1a1a1a] pe-8 text-[16px] leading-tight">
+                      {isEn ? option.dayEn : option.dayAr}
+                    </span>
+                    <span className="text-[#8BA19C] text-[13px] pe-8">
+                      {isEn ? option.dateEn : option.dateAr}
+                    </span>
+                  </button>
                 );
               })}
+
+              {prepTimeOptions.length > 2 && (() => {
+                const later = prepTimeOptions.slice(2);
+                const pickedLater = later.find((o) => o.id === selections.prepTime?.id);
+                return (
+                  <div
+                    className={`p-5 rounded-2xl border transition-all relative flex flex-col justify-start gap-3 ${pickedLater
+                      ? 'border-[#294941] bg-[#F6FAF8]'
+                      : 'border-[#E5E7EB] bg-white hover:border-[#294941]/50'
+                      }`}
+                  >
+                    <button
+                      type="button"
+                      className="flex flex-col gap-1 text-start"
+                      onClick={() => {
+                        if (!pickedLater) setSelections(prev => ({ ...prev, prepTime: later[0] }));
+                      }}
+                      aria-pressed={Boolean(pickedLater)}
+                    >
+                      <span className={`absolute top-5 ${isEn ? 'right-5' : 'left-5'} w-6 h-6 rounded-full flex items-center justify-center border transition-all ${pickedLater
+                        ? 'bg-[#294941] border-[#294941] text-white'
+                        : 'border-gray-300 bg-white text-transparent'
+                        }`}>
+                        <Check className="w-4 h-4 stroke-[3]" />
+                      </span>
+                      <span className="font-bold text-[#1a1a1a] pe-8 text-[16px] leading-tight">
+                        {isEn ? 'Another date' : 'تاريخ آخر'}
+                      </span>
+                    </button>
+                    <label htmlFor="cake-other-date" className="sr-only">
+                      {isEn ? 'Choose a date' : 'اختر التاريخ'}
+                    </label>
+                    <select
+                      id="cake-other-date"
+                      value={pickedLater?.id || ''}
+                      onChange={(e) => {
+                        const option = later.find((o) => o.id === e.target.value);
+                        if (option) setSelections(prev => ({ ...prev, prepTime: option }));
+                      }}
+                      className="w-full rounded-xl border border-[#D7E0DD] bg-white px-4 py-3 text-[15px] text-[#1a1a1a] focus:outline-none focus:ring-2 focus:ring-[#294941]/40"
+                    >
+                      <option value="" disabled>
+                        {isEn ? 'Choose a date' : 'اختر التاريخ'}
+                      </option>
+                      {later.map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {isEn ? o.dateEn : o.dateAr}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              })()}
             </div>
 
             {/*

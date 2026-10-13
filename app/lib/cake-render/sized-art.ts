@@ -3,9 +3,12 @@
  *
  * Every size the agency finished has its own front picture of the cake on its
  * board, and its own front picture of each of the 29 toppings, drawn on the
- * same 1254px canvas so the layers stack exactly. The files live in
- * `public/cake/v6` and are built from the agency package by a script; nothing
- * here is drawn or measured at runtime.
+ * same 1254px canvas so the layers stack exactly. They are built from the
+ * agency package by a script and live in Shopify Files (Content → Files),
+ * named `cake-v6-<folder>-<file>.webp` -- `toppings/roses/round-20x20-h8.webp`
+ * is `cake-v6-toppings-roses-round-20x20-h8.webp`. Replacing a file there
+ * under the same name replaces it here; nothing is drawn or measured at
+ * runtime.
  *
  * ── Only the finished sizes ──
  *
@@ -20,7 +23,11 @@
  * `cake_attribute` metaobject, exactly as for the drawn catalog.
  */
 
-export const SIZED_ART_BASE = '/cake/v6';
+/** Shopify Files on the store's CDN (sends `Access-Control-Allow-Origin: *`). */
+export const SIZED_ART_CDN = 'https://cdn.shopify.com/s/files/1/0821/1752/5737/files';
+
+/** `front/round-20x20-h8.webp` → that file's Shopify Files URL. */
+const art = (path: string) => `${SIZED_ART_CDN}/cake-v6-${path.replace(/\//g, '-')}`;
 
 /** Which managed shape row (and slice pictures) a size belongs to. */
 export type SizedArtFamily = 'classic_round' | 'standard' | 'classic_square' | 'sheet';
@@ -106,10 +113,10 @@ export const findSizedArt = (id?: string | null) =>
   id ? SIZED_ART_FORMATS.find((f) => f.id === id) : undefined;
 
 /** The cake on its board, from the front. */
-export const sizedFrontUrl = (f: SizedArtFormat) => `${SIZED_ART_BASE}/front/${f.id}.webp`;
+export const sizedFrontUrl = (f: SizedArtFormat) => art(`front/${f.id}.webp`);
 
 /** The cake on its board, from above. */
-export const sizedTopUrl = (f: SizedArtFormat) => `${SIZED_ART_BASE}/top/${f.topKey}.webp`;
+export const sizedTopUrl = (f: SizedArtFormat) => art(`top/${f.topKey}.webp`);
 
 /**
  * The frosting alone, in grey, transparent everywhere else: the plain cake
@@ -119,17 +126,16 @@ export const sizedTopUrl = (f: SizedArtFormat) => `${SIZED_ART_BASE}/top/${f.top
  * toppings stay as drawn.
  */
 export const sizedFrostingUrls = (f: SizedArtFormat) => ({
-  front: `${SIZED_ART_BASE}/frosting/${f.id}.webp`,
-  top: `${SIZED_ART_BASE}/frosting/top-${f.topKey}.webp`,
+  front: art(`frosting/${f.id}.webp`),
+  top: art(`frosting/top-${f.topKey}.webp`),
 });
 
 /** This size's own card picture on the size step: its front picture, cropped. */
-export const sizedSizeThumb = (f: SizedArtFormat) =>
-  `${SIZED_ART_BASE}/thumbs/size-${f.id}.webp`;
+export const sizedSizeThumb = (f: SizedArtFormat) => art(`thumbs/size-${f.id}.webp`);
 
 /** Shape card picture on step 1. */
 export const sizedShapeThumb = (shape: SizedArtFormat['shape']) =>
-  `${SIZED_ART_BASE}/thumbs/shape-${shape}.webp`;
+  art(`thumbs/shape-${shape}.webp`);
 
 /** A topping's transparent layers for one size, or undefined when it has none. */
 export function sizedToppingArt(
@@ -138,9 +144,7 @@ export function sizedToppingArt(
 ): {front?: string; top?: string} | undefined {
   if (!f || !design || !SIZED_ART_DESIGNS.has(design)) return undefined;
   return {
-    front: `${SIZED_ART_BASE}/toppings/${design}/${f.id}.webp`,
-    top: NO_TOP_LAYER.has(design)
-      ? undefined
-      : `${SIZED_ART_BASE}/toppings-top/${design}/${f.topKey}.webp`,
+    front: art(`toppings/${design}/${f.id}.webp`),
+    top: NO_TOP_LAYER.has(design) ? undefined : art(`toppings-top/${design}/${f.topKey}.webp`),
   };
 }

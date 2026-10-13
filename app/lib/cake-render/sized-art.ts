@@ -111,6 +111,18 @@ export const sizedFrontUrl = (f: SizedArtFormat) => `${SIZED_ART_BASE}/front/${f
 /** The cake on its board, from above. */
 export const sizedTopUrl = (f: SizedArtFormat) => `${SIZED_ART_BASE}/top/${f.topKey}.webp`;
 
+/**
+ * The frosting alone, in grey, transparent everywhere else: the plain cake
+ * from the agency turned to luminance, with the lit cream at white. The
+ * builder multiplies it by the chosen colour and lays it over the cake, so
+ * the frosting takes the colour and keeps its texture while the board and
+ * toppings stay as drawn.
+ */
+export const sizedFrostingUrls = (f: SizedArtFormat) => ({
+  front: `${SIZED_ART_BASE}/frosting/${f.id}.webp`,
+  top: `${SIZED_ART_BASE}/frosting/top-${f.topKey}.webp`,
+});
+
 /** Shape card picture on step 1. */
 export const sizedShapeThumb = (shape: SizedArtFormat['shape']) =>
   `${SIZED_ART_BASE}/thumbs/shape-${shape}.webp`;

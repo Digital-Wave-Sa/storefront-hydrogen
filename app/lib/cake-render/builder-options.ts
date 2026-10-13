@@ -34,6 +34,7 @@ import {
   sizedFrontUrl,
   sizedTopUrl,
   sizedShapeThumb,
+  sizedFrostingUrls,
 } from './sized-art';
 
 export type BuilderOption = {
@@ -253,6 +254,7 @@ export function buildCakeOptions(
           front: sizedFrontUrl(f),
           top: sizedTopUrl(f),
           sliced: familyRow.art?.sliced,
+          frosting: sizedFrostingUrls(f),
         },
         ...priceOf(f.id),
       },

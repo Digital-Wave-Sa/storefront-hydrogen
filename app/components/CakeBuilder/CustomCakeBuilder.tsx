@@ -137,6 +137,7 @@ type ShapeId = 'round' | 'square' | 'rectangle';
 async function composeSizedPreview(
   frontSrc: string,
   toppingSrc?: string,
+  frosting?: {src?: string; rgb?: [number, number, number] | null},
 ): Promise<string | null> {
   const load = (src: string) =>
     new Promise<HTMLImageElement>((resolve, reject) => {
@@ -146,9 +147,11 @@ async function composeSizedPreview(
       img.src = src;
     });
   try {
-    const layers = await Promise.all(
-      [frontSrc, toppingSrc].filter(Boolean).map((src) => load(src as string)),
-    );
+    const [front, topping, frost] = await Promise.all([
+      load(frontSrc),
+      toppingSrc ? load(toppingSrc) : Promise.resolve(null),
+      frosting?.src && frosting.rgb ? load(frosting.src) : Promise.resolve(null),
+    ]);
     const size = 600;
     const canvas = document.createElement('canvas');
     canvas.width = size;
@@ -157,7 +160,26 @@ async function composeSizedPreview(
     if (!ctx) return null;
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, size, size);
-    for (const img of layers) ctx.drawImage(img, 0, 0, size, size);
+    ctx.drawImage(front, 0, 0, size, size);
+    if (frost && frosting?.rgb) {
+      // The same tint the preview applies: grey frosting × chosen colour,
+      // keeping the frosting's own transparency.
+      const tint = document.createElement('canvas');
+      tint.width = size;
+      tint.height = size;
+      const t = tint.getContext('2d');
+      if (t) {
+        const [r, g, b] = frosting.rgb.map((v) => Math.round(v * 255));
+        t.drawImage(frost, 0, 0, size, size);
+        t.globalCompositeOperation = 'multiply';
+        t.fillStyle = `rgb(${r}, ${g}, ${b})`;
+        t.fillRect(0, 0, size, size);
+        t.globalCompositeOperation = 'destination-in';
+        t.drawImage(frost, 0, 0, size, size);
+        ctx.drawImage(tint, 0, 0);
+      }
+    }
+    if (topping) ctx.drawImage(topping, 0, 0, size, size);
     return canvas.toDataURL('image/jpeg', 0.6);
   } catch (e) {
     console.warn('[CAKE] Could not compose the order picture:', e);
@@ -1620,6 +1642,7 @@ export default function CustomCakeBuilder({
       const composed = await composeSizedPreview(
         shapeArt.front,
         toppingArt?.front,
+        {src: shapeArt.frosting?.front, rgb: frostingRgb},
       );
       if (composed) cakePreviewImage = composed;
     }

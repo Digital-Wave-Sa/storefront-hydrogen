@@ -331,17 +331,17 @@ const SHAPE_CARDS: Array<{id: ShapeId; nameAr: string; nameEn: string}> = [
 ];
 
 const steps = [
-  { id: 1, titleEn: 'Shape', titleAr: 'اختر الشكل', icon: Cake },
-  { id: 2, titleEn: 'Flavor', titleAr: 'أختر النكهة', icon: FlavorIcon },
+  { id: 1, titleEn: 'Shape', titleAr: 'الشكل', icon: Cake },
+  { id: 2, titleEn: 'Flavor', titleAr: 'النكهة', icon: FlavorIcon },
   /*
     Its own step since the client's review (Oct 2026). Sharing step 2 with
     the filling meant the colour was picked while the preview showed the
     cut slice -- the one view the frosting colour does not appear on -- so
     choosing a colour looked like it did nothing.
   */
-  { id: 3, titleEn: 'Colour', titleAr: 'اختر اللون', icon: Palette },
-  { id: 4, titleEn: 'Decoration', titleAr: 'أختر التزيين', icon: DecorationIcon },
-  { id: 5, titleEn: 'Message', titleAr: 'أضف رسالتك الخاصة', icon: MessageIcon }
+  { id: 3, titleEn: 'Colour', titleAr: 'اللون', icon: Palette },
+  { id: 4, titleEn: 'Decoration', titleAr: 'التزيين', icon: DecorationIcon },
+  { id: 5, titleEn: 'Message', titleAr: 'الرسالة', icon: MessageIcon }
 ];
 
 /**
@@ -2479,37 +2479,37 @@ export default function CustomCakeBuilder({
               <p className="text-[#8BA19C] text-[14px]">{isEn ? 'Shape, size, flavor, decoration, and your message' : 'شكل، حجم، نكهة، تزيين، ورسالتك'}</p>
             </div>
 
-            {/* Steps Boxes */}
-            <div
-              className="flex flex-row gap-4 mb-[30px] overflow-x-auto pb-2"
-              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-            >
+            {/*
+              Steps Boxes -- five since colour got its own step, so they are
+              compact enough to sit in one row at any width: number and a
+              one-word name, no icon, no horizontal scroll.
+            */}
+            <div className="grid grid-cols-5 gap-2 sm:gap-3 mb-[30px]">
               {steps.map((step) => {
                 const isActive = currentStep === step.id;
                 const isCompleted = currentStep > step.id;
                 return (
                   <button
+                    type="button"
                     key={step.id}
                     onClick={() => setCurrentStep(step.id)}
-                    className={`flex-1 min-w-[120px] py-[16px] px-[24px] rounded-3xl border transition-all flex flex-col items-center justify-center gap-2 ${isActive
+                    aria-current={isActive ? 'step' : undefined}
+                    className={`min-w-0 py-3 px-1 sm:px-2 rounded-2xl border transition-all flex flex-col items-center justify-center gap-1.5 ${isActive
                       ? 'border-[#234745] bg-[#F7EAEB]'
                       : isCompleted
                         ? 'border-[#234745]/30 bg-white hover:border-[#234745]'
                         : 'border-[#E5E7EB] bg-white hover:border-[#234745]/50'
                       }`}
                   >
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl transition-all duration-300 ${isActive
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-base transition-all duration-300 ${isActive || isCompleted
                       ? 'bg-[#234745] text-white'
-                      : isCompleted
-                        ? 'bg-[#234745] text-white'
-                        : 'bg-[#A6C1B7] text-white'
+                      : 'bg-[#A6C1B7] text-white'
                       }`}>
-                      {isCompleted ? <CheckIcon className="w-5 h-5" /> : toArabicDigits(step.id)}
+                      {isCompleted ? <CheckIcon className="w-4 h-4" /> : toArabicDigits(step.id)}
                     </div>
-                    <div className="text-[14px] font-normal text-center text-[#234745]">
+                    <div className={`w-full truncate text-[12px] sm:text-[14px] text-center text-[#234745] ${isActive ? 'font-bold' : 'font-normal'}`}>
                       {isEn ? step.titleEn : step.titleAr}
                     </div>
-                    <step.icon className={`w-6 h-6 transition-colors duration-300 ${isActive || isCompleted ? 'text-[#294941]' : 'text-[#A6C1B7]'}`} />
                   </button>
                 );
               })}

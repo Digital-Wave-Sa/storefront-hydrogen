@@ -576,7 +576,8 @@ export default function AboutPage() {
                   fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif",
                 }}
               >
-                {yearsSinceFounding()}+
+                {/* Isolated LTR run so the plus sits to the right of the number in Arabic too. */}
+                <span dir="ltr" className="inline-block">{yearsSinceFounding()}+</span>
               </p>
               <p
                 className="!text-[12px] text-[#9FB7AE]"
@@ -616,7 +617,13 @@ export default function AboutPage() {
                   fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif",
                 }}
               >
-                {isEn ? '5+ Million' : '5+ مليون'}
+                {isEn ? (
+                  '5+ Million'
+                ) : (
+                  <>
+                    <span dir="ltr" className="inline-block">5+</span> مليون
+                  </>
+                )}
               </p>
               <p
                 className="!text-[12px] text-[#9FB7AE]"
@@ -636,7 +643,7 @@ export default function AboutPage() {
                   fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif",
                 }}
               >
-                200+
+                <span dir="ltr" className="inline-block">200+</span>
               </p>
               <p
                 className="!text-[12px] text-[#9FB7AE]"

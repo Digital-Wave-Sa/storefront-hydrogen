@@ -111,7 +111,10 @@ export function links() {
 
 export async function loader(args: Route.LoaderArgs) {
   // The custom cake builder's on/off switch — read alongside, not after.
-  const cakeBuilderEnabledPromise = isCakeBuilderEnabled(args.context.storefront);
+  const cakeBuilderEnabledPromise = isCakeBuilderEnabled(
+    args.context.storefront,
+    args.context.env,
+  );
   // Await the critical data required to render initial state of the page
   const criticalData = await loadCriticalData(args);
   const {storefront, env, session} = args.context;

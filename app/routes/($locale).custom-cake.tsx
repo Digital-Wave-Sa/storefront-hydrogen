@@ -153,7 +153,7 @@ export async function loader({context}: LoaderFunctionArgs) {
    * «قريباً» until the builder is switched on (see ~/lib/cake-builder) —
    * none of the builder's data is fetched for it.
    */
-  if (!(await isCakeBuilderEnabled(storefront))) {
+  if (!(await isCakeBuilderEnabled(storefront, context.env))) {
     return {
       comingSoon: true as const,
       locale: storefront.i18n.language.toLowerCase(),

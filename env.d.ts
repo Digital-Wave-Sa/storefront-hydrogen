@@ -18,6 +18,12 @@ declare global {
     PUBLIC_CHECKOUT_DOMAIN: string;
     SHOPIFY_ADMIN_API_ACCESS_TOKEN: string;
     /**
+     * `on` / `off` forces the custom cake builder open or closed in this
+     * environment; unset, the cake_settings metaobject decides. See
+     * ~/lib/cake-builder.server.
+     */
+    CAKE_BUILDER?: string;
+    /**
      * Both spellings are declared because the codebase reads the plural
      * (account.feedback-analytics.tsx) while only the singular was ever typed.
      * Whichever one your .env actually carries, the other reads as undefined

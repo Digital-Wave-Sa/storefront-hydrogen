@@ -305,7 +305,7 @@ export async function action({request, context}: ActionFunctionArgs) {
      * Closed while the builder shows «قريباً» (see ~/lib/cake-builder), so
      * an old tab or a saved link cannot order a cake whose prices are not in.
      */
-    if (!(await isCakeBuilderEnabled(context.storefront))) {
+    if (!(await isCakeBuilderEnabled(context.storefront, context.env))) {
       return Response.json(
         {
           error:

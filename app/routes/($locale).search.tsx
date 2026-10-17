@@ -203,8 +203,19 @@ export async function loader({request, context}: LoaderFunctionArgs) {
     }
   }
 
-  // Strictly filter by selected categories if 'category' params exist
-  const selectedCategories = searchParams.getAll('category');
+  // Strictly filter by selected categories if 'category' params exist.
+  // A ticked sub-category narrows its main category (narrowCategorySelection).
+  let selectedCategories = searchParams.getAll('category');
+  if (selectedCategories.length > 1) {
+    const [{loadCollectionTree}, {narrowCategorySelection}] = await Promise.all([
+      import('~/lib/collection-tree.server'),
+      import('~/lib/collection-tree'),
+    ]);
+    selectedCategories = narrowCategorySelection(
+      selectedCategories,
+      await loadCollectionTree(storefront),
+    );
+  }
   if (selectedCategories.length > 0) {
     try {
       const collectionPromises = selectedCategories.map((handle) =>

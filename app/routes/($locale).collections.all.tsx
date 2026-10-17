@@ -26,6 +26,7 @@ import {InfiniteScrollLoader} from '~/components/InfiniteScrollLoader';
 import {DIETARY_OPTIONS} from '~/lib/catalog-filters';
 import {
   collectionPath,
+  narrowCategorySelection,
   subCollections,
   type CollectionTree,
 } from '~/lib/collection-tree';
@@ -139,7 +140,19 @@ export async function loader({context, request}: LoaderFunctionArgs) {
     } catch (e) {}
   }
 
-  const selectedCategories = searchParams.getAll('category');
+  /*
+    A ticked sub-category narrows its main category (see
+    narrowCategorySelection). The tree is only loaded when a category is
+    ticked; it is the same cached query the root loader runs.
+  */
+  let selectedCategories = searchParams.getAll('category');
+  if (selectedCategories.length > 1) {
+    const {loadCollectionTree} = await import('~/lib/collection-tree.server');
+    selectedCategories = narrowCategorySelection(
+      selectedCategories,
+      await loadCollectionTree(storefront),
+    );
+  }
 
   // Build unified search query
   const queryParts: string[] = [];
@@ -665,10 +678,13 @@ async function loadFilteredCatalog({
     country: storefront.i18n.country,
     language: storefront.i18n.language,
   };
-  const {loadCollectionMembership, allowedProductIds} = await import(
-    '~/lib/catalog-filters.server'
+  const {loadCollectionMembership, allowedProductIds, withCollectionMembership} =
+    await import('~/lib/catalog-filters.server');
+  const membership = await withCollectionMembership(
+    storefront,
+    await loadCollectionMembership(storefront),
+    categories,
   );
-  const membership = await loadCollectionMembership(storefront);
   let allowed =
     (await allowedProductIds(storefront, {tags, categories, membership})) ||
     new Set<string>();
@@ -1557,6 +1573,8 @@ export function ActiveFilterChips({
 }) {
   const location = useLocation();
   const rawSubmit = useSubmit();
+  const chipTree: CollectionTree =
+    (useRouteLoaderData('root') as any)?.collectionTree || {};
   /*
     Every filter change starts again on page one. The category, tag, price and
     occasion handlers carried the page-2 cursor along, so ticking «منتجات
@@ -1683,9 +1701,11 @@ export function ActiveFilterChips({
   // Also include categories
   params.getAll('category').forEach((value) => {
     const found = collections?.find((c: any) => c.handle === value);
+    // Sub-categories are often not among `collections` (first 50 only).
     let labelText = found
       ? found.title
-      : value.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+      : chipTree[value]?.title ||
+        value.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
     const localOccasionTranslation: {[key: string]: string} = {
       wedding: 'زفاف وخطوبة',
@@ -2024,7 +2044,12 @@ export function FilterSidebar({
    * sub-category tree (~/lib/collection-tree): a sub-category is not listed
    * on its own but indented under its main category, and only the open
    * branch (the current main category, or the current one's parent) shows
-   * its children. Filtering (/collections/all, search) keeps the flat list.
+   * its children.
+   *
+   * Filtering (/collections/all, search): every main category with its
+   * sub-categories indented under it, each one a filter. A sub-category on the
+   * menu itself is not listed twice. Ticking a sub-category unticks its parent
+   * and the reverse (toggleCategory), so «Small Cake» means small cakes.
    */
   const currentParent = currentCollection
     ? collectionTree[currentCollection]?.parent || ''
@@ -2044,7 +2069,17 @@ export function FilterSidebar({
             : [];
           return [c, ...children];
         })
-    : baseCategoryCollections;
+    : baseCategoryCollections
+        .filter((c: any) => !collectionTree[c.handle]?.parent)
+        .flatMap((c: any) => [
+          c,
+          ...subCollections(c.handle, collectionTree).map((sub) => ({
+            id: `sub-${sub.handle}`,
+            handle: sub.handle,
+            title: sub.title,
+            isSubCategory: true,
+          })),
+        ]);
 
   const occasionHandles = [
     'wedding',
@@ -2231,6 +2266,24 @@ export function FilterSidebar({
     } else {
       params.append(key, value);
     }
+    submit(params, {replace: true, preventScrollReset: true});
+  };
+
+  /** A category filter box: a main category and its own sub-categories exclude each other. */
+  const toggleCategory = (handle: string) => {
+    const params = new URLSearchParams(window.location.search);
+    const current = params.getAll('category');
+    params.delete('category');
+    const parent = collectionTree[handle]?.parent;
+    const next = current.includes(handle)
+      ? current.filter((v) => v !== handle)
+      : [
+          ...current.filter(
+            (v) => v !== parent && collectionTree[v]?.parent !== handle,
+          ),
+          handle,
+        ];
+    next.forEach((v) => params.append('category', v));
     submit(params, {replace: true, preventScrollReset: true});
   };
 
@@ -2535,7 +2588,7 @@ export function FilterSidebar({
                       aria-current={currentCollection && isActive ? 'page' : undefined}
                       onClick={() => {
                         if (!currentCollection) {
-                          toggleParamLink('category', collection.handle);
+                          toggleCategory(collection.handle);
                           return;
                         }
                         if (isActive) return;

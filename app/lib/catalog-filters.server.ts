@@ -71,6 +71,54 @@ export async function loadCollectionMembership(
   return out;
 }
 
+const COLLECTION_IDS_QUERY = `#graphql
+  query CatalogFilterCollectionIds(
+    $handle: String!
+    $country: CountryCode
+    $language: LanguageCode
+  ) @inContext(country: $country, language: $language) {
+    collection(handle: $handle) {
+      products(first: 250) {
+        nodes {
+          id
+        }
+      }
+    }
+  }
+`;
+
+/**
+ * `membership` plus any of `handles` it is missing. It holds only the first
+ * 60 collections the Storefront API lists, and sub-categories (Small Cake…)
+ * are usually newer than that, so ticking one matched nothing.
+ */
+export async function withCollectionMembership(
+  storefront: any,
+  membership: Map<string, string[]>,
+  handles: string[],
+): Promise<Map<string, string[]>> {
+  const missing = [...new Set(handles.filter(Boolean))].filter(
+    (h) => !membership.has(h),
+  );
+  if (!missing.length) return membership;
+  const results: any[] = await Promise.all(
+    missing.map((handle) =>
+      storefront
+        .query(COLLECTION_IDS_QUERY, {
+          variables: {handle, ...ctxOf(storefront)},
+          cache: storefront.CacheShort(),
+        })
+        .catch(() => null),
+    ),
+  );
+  const out = new Map(membership);
+  missing.forEach((handle, i) => {
+    const nodes = results[i]?.collection?.products?.nodes;
+    if (nodes) out.set(handle, nodes.map((n: any) => n?.id).filter(Boolean));
+  });
+  return out;
+}
+
 /** Ids of products carrying ANY of `tags`, by exact tag. */
 export async function productIdsWithTags(
   storefront: any,

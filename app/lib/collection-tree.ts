@@ -118,6 +118,23 @@ export function subCollections(
     .sort((a, b) => a.title.localeCompare(b.title, 'ar'));
 }
 
+/**
+ * The category filter's ticked handles with a main category dropped when one
+ * of its own sub-categories is ticked too: «كيك + Small Cake» means small
+ * cakes, not every cake. The sidebar already unticks the parent when a child
+ * is ticked; this covers hand-typed and old links.
+ */
+export function narrowCategorySelection(
+  handles: string[],
+  tree: CollectionTree | null | undefined,
+): string[] {
+  const ticked = new Set(handles);
+  const nodes = Object.entries(tree || {});
+  return handles.filter(
+    (h) => !nodes.some(([child, n]) => n.parent === h && ticked.has(child)),
+  );
+}
+
 /** The tree from the root loader. */
 export function useCollectionTree(): CollectionTree {
   const rootData = useRouteLoaderData('root') as any;

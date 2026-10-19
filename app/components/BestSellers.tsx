@@ -10,6 +10,7 @@ import { getVisibilityStatus } from '~/lib/visibility';
 import { getIsOutOfStockForFulfillment, shouldHideProduct, isOutOfStockAtBranch, isPickupSession, resolveBranchLocationId } from '~/lib/stock';
 import { useBranchAvailabilityReader } from '~/lib/useBranchAvailability';
 import { StockPendingButton } from './ProductItem';
+import { useLiveDiscounts, withLiveDiscount } from '~/lib/product-discounts';
 import { AddToCartButton } from './AddToCartButton';
 
 import { StockNotificationModal } from '~/components/StockNotificationModal';
@@ -63,6 +64,7 @@ export function BestSellers({
 
     const t = useI18n(locale);
     const isEn = locale === 'en';
+    const liveDiscounts = useLiveDiscounts();
 
     const tabs = isEn
         ? ['All', 'Kunafa', 'Cakes', 'Chocolate', 'Gifts']
@@ -242,7 +244,9 @@ export function BestSellers({
                             }
                             return (
                                 <div className="flex md:grid md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6 overflow-x-auto md:overflow-visible hide-scrollbars snap-x snap-mandatory pb-8 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
-                                    {visibleProducts.map((product: any, idx: number) => {
+                                    {visibleProducts.map((rawProduct: any, idx: number) => {
+                                        // Live automatic discount as a before/after price (~/lib/product-discounts).
+                                        const product = withLiveDiscount(rawProduct, liveDiscounts);
                                         const variant = product.variants?.nodes?.[0];
                                         const storeAvailabilityNodes = variant?.storeAvailability?.nodes || [];
 
@@ -384,16 +388,21 @@ export function BestSellers({
                                                     </Link>
 
                                                     {/* Price Row (Side by side) */}
-                                                    <div className="mt-2 mb-4 flex items-center gap-3 justify-start min-h-[32px]" style={{ opacity: isOutOfStock && !isPreorder ? 0.4 : 1 }} dir={isEn ? 'ltr' : 'rtl'}>
+                                                    <div className="mt-2 mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 justify-start min-h-[32px]" style={{ opacity: isOutOfStock && !isPreorder ? 0.4 : 1 }} dir={isEn ? 'ltr' : 'rtl'}>
                                                         {!isVisibilityBlocked ? (
                                                             <>
                                                                 <div className="text-[#234745] flex items-baseline gap-1">
                                                                     <Price data={product.priceRange.minVariantPrice} isEn={isEn} showSymbol={true} size="lg" />
                                                                 </div>
                                                                 {hasDiscount && (
-                                                                    <div className="text-[#E64950] line-through flex gap-1 items-baseline">
+                                                                    <div className="text-[#E64950] flex gap-1 items-baseline relative after:content-[''] after:absolute after:inset-x-0 after:top-1/2 after:-translate-y-1/2 after:h-[2px] after:rounded-full after:bg-current after:pointer-events-none">
                                                                         <Price data={compareAtPrice} isEn={isEn} showSymbol={true} size="md" />
                                                                     </div>
+                                                                )}
+                                                                {product.offerDiscountPct > 0 && (
+                                                                    <span className="bg-[#E64950] text-white font-bold text-[11px] leading-none px-2 py-1 rounded-full font-en">
+                                                                        {isEn ? `${product.offerDiscountPct}% OFF` : `خصم ${product.offerDiscountPct}%`}
+                                                                    </span>
                                                                 )}
                                                             </>
                                                         ) : (

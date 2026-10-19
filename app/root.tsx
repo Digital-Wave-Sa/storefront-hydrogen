@@ -25,6 +25,7 @@ import {PageLayout} from './components/PageLayout';
 import {GTMAnalytics} from './components/GTMAnalytics';
 import {AdPixels} from './components/AdPixels';
 import {loadCollectionTree} from '~/lib/collection-tree.server';
+import {loadLiveDiscounts} from '~/lib/product-discounts.server';
 import {WishlistProvider} from './context/WishlistContext';
 import {NotFound} from './components/NotFound';
 import {ServerError} from './components/ServerError';
@@ -283,7 +284,7 @@ export async function loader(args: Route.LoaderArgs) {
 async function loadCriticalData({context}: Route.LoaderArgs) {
   const {storefront} = context;
 
-  const [header, locations, reviews, megaMenuData, locationDiscountsRaw, collectionTree] = await Promise.all([
+  const [header, locations, reviews, megaMenuData, locationDiscountsRaw, collectionTree, liveDiscounts] = await Promise.all([
     storefront.query(HEADER_QUERY, {
       cache: storefront.CacheLong(),
       variables: {
@@ -361,9 +362,12 @@ async function loadCriticalData({context}: Route.LoaderArgs) {
     // Sub-categories (/collections/<parent>/<child>), for every collection
     // link on the page — ~/lib/collection-tree. Never throws.
     loadCollectionTree(storefront),
+    // Active automatic discounts, for before/after prices on cards and
+    // product pages — ~/lib/product-discounts. Never throws.
+    loadLiveDiscounts(context.env),
   ]);
 
-  return {header, locations, reviews, megaMenuData, locationDiscounts: locationDiscountsRaw, collectionTree};
+  return {header, locations, reviews, megaMenuData, locationDiscounts: locationDiscountsRaw, collectionTree, liveDiscounts};
 }
 
 /**

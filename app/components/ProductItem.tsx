@@ -15,6 +15,7 @@ import { useWishlist } from '~/context/WishlistContext';
 import { fixMojibake } from '~/lib/mojibake';
 import { isGiftCardProduct } from '~/lib/digital-lines';
 import { isAddonOnlyProduct } from '~/lib/photo-print';
+import { useLiveDiscounts, withLiveDiscount } from '~/lib/product-discounts';
 
 function formatNumbers(text: string) {
   if (!text) return text;
@@ -75,7 +76,7 @@ export function StockPendingButton({className}: {className: string}) {
 }
 
 function ProductItemCard({
-  product,
+  product: rawProduct,
   loading,
   view = 'grid',
   isExport,
@@ -101,6 +102,16 @@ function ProductItemCard({
     imageAlt?: string | null;
   } | null;
 }) {
+  /**
+   * Live automatic discounts (e.g. 25% off) shown as before/after prices: the
+   * product is re-shaped like a marked-down one, so the struck-through price
+   * below shows it. Not on the export journey, which checks out separately.
+   */
+  const liveDiscounts = useLiveDiscounts();
+  const product = useMemo(
+    () => (isExport ? rawProduct : withLiveDiscount(rawProduct, liveDiscounts)),
+    [rawProduct, liveDiscounts, isExport],
+  );
   const location = useLocation();
   const isCorporatePage = 
     location.pathname.includes('/corporate') ||
@@ -523,7 +534,8 @@ function ProductItemCard({
                   title: product.title,
                   handle: product.handle,
                   image: product.featuredImage || product.images?.nodes?.[0],
-                  priceRange: product.priceRange
+                  // The product's own price, not a temporary offer price.
+                  priceRange: rawProduct.priceRange
                 });
               }}
               aria-label={
@@ -593,8 +605,15 @@ function ProductItemCard({
                 )}
               </div>
               {product.compareAtPriceRange?.minVariantPrice && parseFloat(product.compareAtPriceRange.minVariantPrice.amount) > parseFloat(product.priceRange.minVariantPrice.amount) && (
-                <div className="flex items-center text-[#E64950] line-through">
-                  <Price data={product.compareAtPriceRange.minVariantPrice} size="md" isEn={isEn} />
+                <div className="flex items-center gap-1.5">
+                  <div className="flex items-center text-[#E64950] relative after:content-[''] after:absolute after:inset-x-0 after:top-1/2 after:-translate-y-1/2 after:h-[2px] after:rounded-full after:bg-current after:pointer-events-none">
+                    <Price data={product.compareAtPriceRange.minVariantPrice} size="md" isEn={isEn} />
+                  </div>
+                  {product.offerDiscountPct > 0 && (
+                    <span className="bg-[#E64950] text-white font-bold text-[11px] leading-none px-2 py-1 rounded-full font-en">
+                      {isEn ? `${product.offerDiscountPct}% OFF` : `خصم ${product.offerDiscountPct}%`}
+                    </span>
+                  )}
                 </div>
               )}
             </>

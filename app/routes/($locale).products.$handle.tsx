@@ -1,4 +1,5 @@
 import {collectionPath} from '~/lib/collection-tree';
+import {useLiveDiscounts, liveVariantPrice} from '~/lib/product-discounts';
 import {Suspense, Fragment, useState, useEffect, useMemo} from 'react';
 import {counted, REVIEWS} from '~/lib/plural';
 import {
@@ -964,6 +965,12 @@ export default function Product() {
   }
 
   const {selectedVariant} = product;
+  /**
+   * A live automatic discount on this variant (e.g. 25% off), shown as a
+   * before/after price. Display only — the cart applies the real discount.
+   */
+  const liveDiscounts = useLiveDiscounts();
+  const liveOffer = liveVariantPrice(liveDiscounts, product.id, selectedVariant as any);
   const {selectedLocationId, selectedLocationName} = useOutletContext<{
     selectedLocationId?: string;
     selectedLocationName?: string;
@@ -1731,7 +1738,9 @@ export default function Product() {
   };
 
   // Calculate the Dynamic Total
-  const basePrice = parseFloat(selectedVariant?.price?.amount || '0');
+  const basePrice = liveOffer
+    ? liveOffer.after
+    : parseFloat(selectedVariant?.price?.amount || '0');
   const addonsTotal = selectedAddons.reduce((sum, id) => {
     const addon = addonNodes.find((n: any) => n.variants.nodes[0].id === id);
     return sum + parseFloat(addon?.variants.nodes[0].price.amount || '0');
@@ -2234,7 +2243,10 @@ export default function Product() {
             offers: {
               '@type': 'Offer',
               priceCurrency: product.selectedVariant?.price?.currencyCode,
-              price: product.selectedVariant?.price?.amount,
+              // The price shown on the page (after a live automatic discount).
+              price: liveOffer
+                ? liveOffer.after.toFixed(2)
+                : product.selectedVariant?.price?.amount,
               availability: !effectiveOutOfStock
                 ? 'https://schema.org/InStock'
                 : 'https://schema.org/OutOfStock',
@@ -2766,22 +2778,47 @@ export default function Product() {
                       verticalAlign: 'middle',
                     }}
                   >
-                    {selectedVariant?.price?.amount
-                      ? parseFloat(selectedVariant.price.amount).toLocaleString(
-                          'en-US',
-                        )
-                      : '0'}
+                    {liveOffer
+                      ? liveOffer.after.toLocaleString('en-US', {maximumFractionDigits: 2})
+                      : selectedVariant?.price?.amount
+                        ? parseFloat(selectedVariant.price.amount).toLocaleString(
+                            'en-US',
+                          )
+                        : '0'}
                   </span>
                   <SaudiRiyalSymbol className="h-[28px] w-[28px] text-[#255441]" />
                 </div>
 
+                {/* Live automatic discount: before price + badge */}
+                {liveOffer && (
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-2 text-[#906B51] opacity-75 relative after:content-[''] after:absolute after:inset-x-0 after:top-1/2 after:-translate-y-1/2 after:h-[2px] after:rounded-full after:bg-current after:pointer-events-none">
+                    <span
+                      className="font-bold"
+                      style={{
+                        fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif",
+                        fontSize: '22px',
+                        lineHeight: '1.2',
+                      }}
+                    >
+                      {liveOffer.before.toLocaleString('en-US', {maximumFractionDigits: 2})}
+                    </span>
+                    <SaudiRiyalSymbol className="h-[20px] w-[20px] text-[#906B51]" />
+                    </span>
+                    <span className="bg-[#E64950] text-white font-bold text-[12px] px-2.5 py-1 rounded-full shadow-sm">
+                      {liveOffer.pct}% {isEn ? 'OFF' : 'خصم'}
+                    </span>
+                  </div>
+                )}
+
                 {/* Compare At Price (Strikethrough Before Price) */}
-                {selectedVariant?.compareAtPrice?.amount &&
+                {!liveOffer && selectedVariant?.compareAtPrice?.amount &&
                   parseFloat(selectedVariant.compareAtPrice.amount) >
                     parseFloat(selectedVariant.price.amount || '0') && (
                     <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-2 text-[#906B51] opacity-75 relative after:content-[''] after:absolute after:inset-x-0 after:top-1/2 after:-translate-y-1/2 after:h-[2px] after:rounded-full after:bg-current after:pointer-events-none">
                       <span
-                        className="text-[#906B51] line-through font-bold opacity-75"
+                        className="font-bold"
                         style={{
                           fontFamily:
                             "'EnglishDigits', 'Bahij Janna', sans-serif",
@@ -2793,7 +2830,8 @@ export default function Product() {
                           selectedVariant.compareAtPrice.amount,
                         ).toLocaleString('en-US')}
                       </span>
-                      <SaudiRiyalSymbol className="h-[20px] w-[20px] text-[#906B51] opacity-75" />
+                      <SaudiRiyalSymbol className="h-[20px] w-[20px] text-[#906B51]" />
+                      </span>
 
                       {/* Calculated Discount Badge */}
                       <span className="bg-[#E64950] text-white font-bold text-[12px] px-2.5 py-1 rounded-full shadow-sm">

@@ -9,6 +9,7 @@ import { getVisibilityStatus } from '~/lib/visibility';
 import { getIsOutOfStockForFulfillment, shouldHideProduct, isOutOfStockAtBranch, isPickupSession, resolveBranchLocationId } from '~/lib/stock';
 import { useBranchAvailabilityReader } from '~/lib/useBranchAvailability';
 import { StockPendingButton } from './ProductItem';
+import { useLiveDiscounts, withLiveDiscount } from '~/lib/product-discounts';
 import { AddToCartButton } from './AddToCartButton';
 import { StockNotificationModal } from '~/components/StockNotificationModal';
 import { StarRating, parseRatingValue } from '~/components/StarRating';
@@ -31,6 +32,7 @@ export function NewArrivals({
         useBranchAvailabilityReader(naBranchId);
     const t = useI18n(locale);
     const isEn = locale === 'en';
+    const liveDiscounts = useLiveDiscounts();
 
     const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<{ title: string, variantId: string } | null>(null);
@@ -85,7 +87,9 @@ export function NewArrivals({
                             return (
                                 <>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                                        {visibleProducts.slice(0, 4).map((product: any, idx: number) => {
+                                        {visibleProducts.slice(0, 4).map((rawProduct: any, idx: number) => {
+                                        // Live automatic discount as a before/after price (~/lib/product-discounts).
+                                        const product = withLiveDiscount(rawProduct, liveDiscounts);
                                             const variant = product.variants?.nodes?.[0];
                                             const storeAvailabilityNodes = variant?.storeAvailability?.nodes || [];
 
@@ -219,7 +223,7 @@ export function NewArrivals({
                                                         </Link>
 
                                                         {/* Price — preserved height placeholder for visibility blocked seasonal products */}
-                                                        <div className="mt-2 mb-4 flex items-center gap-3 min-h-[32px]" style={{ opacity: effectiveOutOfStock ? 0.4 : 1 }}>
+                                                        <div className="mt-2 mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 min-h-[32px]" style={{ opacity: effectiveOutOfStock ? 0.4 : 1 }}>
                                                             {!isVisibilityBlocked ? (
                                                                 <>
                                                                     <Price
@@ -229,8 +233,13 @@ export function NewArrivals({
                                                                         className="text-[#234745] font-bold"
                                                                     />
                                                                     {hasDiscount && (
-                                                                        <span className="text-[#E64950] line-through">
+                                                                        <span className="text-[#E64950] inline-flex items-center relative after:content-[''] after:absolute after:inset-x-0 after:top-1/2 after:-translate-y-1/2 after:h-[2px] after:rounded-full after:bg-current after:pointer-events-none">
                                                                             <Price data={compareAtPrice} isEn={isEn} size="md" showSymbol={false} />
+                                                                        </span>
+                                                                    )}
+                                                                    {product.offerDiscountPct > 0 && (
+                                                                        <span className="bg-[#E64950] text-white font-bold text-[11px] leading-none px-2 py-1 rounded-full font-en">
+                                                                            {isEn ? `${product.offerDiscountPct}% OFF` : `خصم ${product.offerDiscountPct}%`}
                                                                         </span>
                                                                     )}
                                                                 </>

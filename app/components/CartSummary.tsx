@@ -556,11 +556,24 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
     return acc + lineCost;
   }, 0) || 0;
 
-  // Deduct applied discounts (coupons, loyalty points, store credit) from taxable product total
-  const netTaxableAmount = Math.max(
-    0,
-    taxableProductsTotal - otherDiscountDisplay - loyaltyDiscountDisplay - storeCreditDiscountDisplay,
-  );
+  /**
+   * Take off only the ORDER-level discounts here.
+   *
+   * `line.cost.totalAmount` above is already net of every discount Shopify
+   * allocated to the line itself — product discounts such as the automatic
+   * 25% offer, or a free item. The «الخصم» row (`otherDiscountDisplay`) adds
+   * those line discounts back in so the shopper sees all their savings, and
+   * this used to subtract that row, taking product discounts off twice: a
+   * 99.00 cake at 25% off with 19.00 delivery showed VAT 8.93 while checkout
+   * said 12.16 — (74.25 + 19) × 15/115.
+   *
+   * What is NOT in the line totals is whatever Shopify allocates at cart level
+   * (`cartDiscountAmount`, shipping excluded): order-wide coupons, and points
+   * or wallet credit when their code is an order discount. If one of those is
+   * allocated to lines instead, it is already inside the line totals, so this
+   * is right either way.
+   */
+  const netTaxableAmount = Math.max(0, taxableProductsTotal - cartDiscountAmount);
 
   /*
     The VAT row: what Shopify's checkout will report, worked out the same way.

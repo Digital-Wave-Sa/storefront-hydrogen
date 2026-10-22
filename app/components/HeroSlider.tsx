@@ -148,8 +148,11 @@ export function HeroSlider({ config }: { config?: any }) {
         const btnText = pair(['button_text_arabic', 'button_text_ar', 'button_text', 'cta_text_ar'], ['button_text_english', 'button_text_en', 'button_text', 'cta_text_en']);
         const alt = pair(['alt_text_arabic', 'alt_text_ar', 'alt_text', 'image_alt'], ['alt_text_english', 'alt_text_en', 'alt_text', 'image_alt']);
         const btnLink = getVal('button_link', 'url', 'link', 'cta_link');
+        const order = parseFloat(getVal('sort_order', 'position', 'order'));
 
-        const slide: Slide = {
+        const slide: Slide & {order: number; createdIndex: number} = {
+          order: Number.isFinite(order) ? order : Number.POSITIVE_INFINITY,
+          createdIndex: idx,
           id: node.id || idx + 1,
           image: imageUrl,
           mobileImage: mobileImageUrl || undefined,
@@ -163,7 +166,13 @@ export function HeroSlider({ config }: { config?: any }) {
             : [],
         };
         return slide;
-      });
+      })
+      /**
+       * The client's order: `sort_order` 1, 2, 3... on each banner. Banners
+       * without a number follow, in the order they were created (Shopify's own
+       * order, which the admin cannot rearrange).
+       */
+      .sort((a: any, b: any) => a.order - b.order || a.createdIndex - b.createdIndex);
 
     return parsed.length > 0 ? parsed : DEFAULT_SLIDES;
   }, [config]);

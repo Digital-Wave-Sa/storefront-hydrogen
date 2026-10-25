@@ -18,7 +18,13 @@
  */
 import {getStoredConsent} from '~/components/CookieConsentBanner';
 
-export const SNAP_PIXEL_ID = 'd386a352-d03d-4d9b-9ac8-89d9c5b547c8';
+/**
+ * «Snap Pixel for Shopify», the pixel the Snapchat Ads app uses for checkout
+ * (browser + Conversions API). The site sends here too, so one pixel sees the
+ * whole journey. It used to be d386a352 («Saadeddin Pastry Pixel»), which got
+ * site events but no checkout or server data.
+ */
+export const SNAP_PIXEL_ID = '440133b2-afcb-4236-9abf-b2bbd73e6a69';
 export const CONSENT_ACCEPTED_EVENT = 'saadeddin:consent-accepted';
 
 let initialised = false;

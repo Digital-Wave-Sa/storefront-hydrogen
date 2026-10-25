@@ -7,7 +7,7 @@ import {
   snapTrack,
 } from '~/lib/snap-pixel';
 import {tiktokIdentify, tiktokPage, tiktokTrack} from '~/lib/tiktok-pixel';
-import {metaTrack, setMetaUserEmail} from '~/lib/meta-pixel';
+import {metaTrack, setMetaUser} from '~/lib/meta-pixel';
 
 /**
  * Ad pixels loaded outside GTM — Snapchat (~/lib/snap-pixel), TikTok
@@ -27,7 +27,7 @@ export function AdPixels() {
         const email = res?.customer?.emailAddress?.emailAddress || res?.customer?.email;
         const phone = res?.customer?.phoneNumber?.phoneNumber || res?.customer?.phone;
         setSnapUser({email, phone});
-        setMetaUserEmail(email);
+        setMetaUser({email, phone, id: res?.customer?.id});
         void tiktokIdentify({email, phone, id: res?.customer?.id});
       })
       .catch(() => {});

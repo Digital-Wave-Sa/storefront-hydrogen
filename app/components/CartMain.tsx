@@ -63,6 +63,9 @@ function productsInCartLabel(count: number, isEn: boolean): string {
 
 export function CartMain({ layout, cart: originalCart }: CartMainProps) {
   const location = useLocation();
+  // The cart drawer stays mounted on every page, so its view_cart must only
+  // fire while the drawer is actually open.
+  const { type: asideType } = useAside();
   const isEn = location.pathname.split('/')[1]?.toLowerCase() === 'en';
   const cartRoute = isEn ? '/en/cart' : '/cart';
   const rootData = useRouteLoaderData('root') as any;
@@ -501,7 +504,7 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
   // ASIDE LAYOUT
   return (
     <section className="flex flex-col h-full bg-white relative" aria-label={isEn ? 'Cart drawer' : 'سلة التسوق'} dir={isEn ? 'ltr' : 'rtl'}>
-      <CartAnalyticsView cart={cart as any} />
+      {asideType === 'cart' && <CartAnalyticsView cart={cart as any} />}
 
       {/* Free delivery, confirmed — same rule as the page layout above:
           shown only once Shopify has quoted this cart's delivery at zero.

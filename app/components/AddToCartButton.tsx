@@ -85,6 +85,14 @@ export function AddToCartButton({
   }, [fetcher.state, fetcher.data]);
 
   const fireAddToCartEvent = () => {
+    /**
+     * add_to_cart now comes from Hydrogen's product_added_to_cart (see
+     * GTMAnalytics), after the cart confirms the add, and goes to GA4 and the
+     * dataLayer from there. This click-time push fired even for adds that then
+     * failed, and would now count every add twice.
+     */
+    return;
+    // eslint-disable-next-line no-unreachable
     try {
       if (typeof window === 'undefined') return;
       const w = window as any;

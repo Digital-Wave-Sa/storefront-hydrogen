@@ -5,6 +5,26 @@ import { getStoredConsent } from './CookieConsentBanner';
 
 // ─── GA4 Enhanced E-commerce Data Layer Helper ────────────────────────────────
 
+/**
+ * GA4 runs as gtag.js in root.tsx (G-KFRRMTSS0Z), not through GTM, and gtag
+ * ignores plain `dataLayer.push({event: ...})` objects -- only GTM reads those.
+ * So every shopping event below used to stop at the dataLayer and GA4 saw
+ * page views only. Each event is now also sent to GA4 with gtag('event').
+ *
+ * page_view is left to GA4's enhanced measurement (history changes), so it is
+ * not sent twice. If GA4 tags are ever added inside a GTM container as well,
+ * remove this forward or the events will be counted twice.
+ */
+const GA4_SKIP = new Set(['page_view', 'user_properties', 'consent_update']);
+
+function ga4Forward(event: Record<string, unknown>) {
+  const w = window as any;
+  const name = String(event.event || '');
+  if (!name || GA4_SKIP.has(name) || typeof w.gtag !== 'function') return;
+  const {event: _event, ecommerce, ...rest} = event as any;
+  w.gtag('event', name, {...(ecommerce || {}), ...rest});
+}
+
 /** Push to dataLayer with consent gate and mandatory ecommerce reset */
 function dlPush(event: Record<string, unknown>) {
   if (typeof window === 'undefined') return;
@@ -13,7 +33,15 @@ function dlPush(event: Record<string, unknown>) {
   w.dataLayer = w.dataLayer || [];
   w.dataLayer.push({ ecommerce: null }); // clear previous ecommerce object (GA4 spec)
   w.dataLayer.push(event);
+  try {
+    ga4Forward(event);
+  } catch {
+    // analytics must never break the page
+  }
 }
+
+/** «gid://shopify/ProductVariant/123» → «123»: the same item id the ad pixels use. */
+const numericId = (gid: unknown) => String(gid ?? '').split('/').pop() || '';
 
 /**
  * Map a Hydrogen product/variant/line to a GA4 items array entry.
@@ -26,7 +54,7 @@ function mapItem(raw: any, index = 0): Record<string, unknown> {
     const product = merch.product || {};
     const collections = product.collections?.nodes || [];
     return {
-      item_id: merch.id || product.id || '',
+      item_id: numericId(merch.id || product.id),
       item_name: product.title || '',
       item_brand: product.vendor || 'سعد الدين',
       item_category: collections[0]?.title || product.productType || '',
@@ -42,7 +70,7 @@ function mapItem(raw: any, index = 0): Record<string, unknown> {
   // ── Analytics.ProductView shape ──────────────────────────────────────
   if (raw?.id && raw?.title) {
     return {
-      item_id: raw.variantId || raw.id,
+      item_id: numericId(raw.variantId || raw.id),
       item_name: raw.title,
       item_brand: raw.vendor || 'سعد الدين',
       item_category: raw.productType || '',
@@ -57,7 +85,7 @@ function mapItem(raw: any, index = 0): Record<string, unknown> {
 
   // ── Collection product node shape ─────────────────────────────────────
   return {
-    item_id: raw?.id || '',
+    item_id: numericId(raw?.id),
     item_name: raw?.title || '',
     item_brand: raw?.vendor || 'سعد الدين',
     item_category: raw?.productType || '',
@@ -127,15 +155,13 @@ export function GTMAnalytics() {
         preferred_branch: preferredBranch, // e.g. 'Riyadh - Al Olaya'
       });
 
-      // If GA4 Measurement ID is available, also set via gtag for direct GA4 config
-      const ga4Id = w.ENV?.PUBLIC_GA4_MEASUREMENT_ID;
-      if (ga4Id && typeof w.gtag === 'function') {
-        w.gtag('config', ga4Id, {
-          user_properties: {
-            language_preference: lang,
-            customer_type: type,
-            preferred_branch: preferredBranch,
-          },
+      // GA4 user properties. `set`, not a second `config` (which needed an
+      // env var that was never defined, and would have sent another page_view).
+      if (typeof w.gtag === 'function') {
+        w.gtag('set', 'user_properties', {
+          language_preference: lang,
+          customer_type: type,
+          preferred_branch: preferredBranch,
         });
       }
     };
@@ -200,10 +226,15 @@ export function GTMAnalytics() {
 
   // ── Hydrogen analytics subscription ───────────────────────────────────
   useEffect(() => {
-    const unsubscribe = subscribe('all_events' as `custom_${string}`, (data: any) => {
+    /**
+     * Hydrogen has no 'all_events' topic: subscribing to it never fired, so
+     * none of the handlers below ever ran. Each real Hydrogen event is mapped
+     * onto the name this handler already switches on.
+     */
+    const handle = (eventName: string, data: any) => {
       if (getStoredConsent() !== 'accepted') return;
 
-      const { eventName, ...payload } = data;
+      const payload = data || {};
       const lang = typeof document !== 'undefined' ? document.documentElement.lang || 'ar' : 'ar';
       const loc = typeof window !== 'undefined' ? window.location : null;
 
@@ -451,9 +482,40 @@ export function GTMAnalytics() {
         dlPush({ event: 'login', method: 'email', language: lang, ecommerce: null });
         return;
       }
-    });
+    };
 
-    return unsubscribe;
+    /** Lines in a cart update, with the quantity that changed. */
+    const changedLine = (data: any, sign: 1 | -1) => {
+      const current = data?.currentLine;
+      const prev = data?.prevLine;
+      const line = current || prev;
+      if (!line) return [];
+      const delta = Math.abs((current?.quantity || 0) - (prev?.quantity || 0)) || line.quantity || 1;
+      return [{...line, quantity: sign > 0 ? delta : delta}];
+    };
+
+    const unsubscribers = [
+      subscribe('product_viewed' as any, (d: any) => handle('view_product', d)),
+      subscribe('collection_viewed' as any, (d: any) => handle('view_collection', d)),
+      subscribe('cart_viewed' as any, (d: any) => handle('view_cart', d)),
+      subscribe('search_viewed' as any, (d: any) => handle('search_viewed', d)),
+      subscribe('product_added_to_cart' as any, (d: any) =>
+        handle('add_to_cart', {lines: changedLine(d, 1)}),
+      ),
+      subscribe('product_removed_from_cart' as any, (d: any) =>
+        handle('remove_from_cart', {lines: changedLine(d, -1)}),
+      ),
+    ];
+
+    return () => {
+      for (const off of unsubscribers) {
+        try {
+          (off as any)?.();
+        } catch {
+          // ignore
+        }
+      }
+    };
   }, [subscribe]);
 
   // ── Expose global helpers for events Hydrogen doesn't fire natively ──

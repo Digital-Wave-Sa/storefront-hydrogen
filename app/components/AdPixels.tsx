@@ -3,7 +3,7 @@ import {useLocation, useRouteLoaderData} from 'react-router';
 import {
   CONSENT_ACCEPTED_EVENT,
   numericId,
-  setSnapUserEmail,
+  setSnapUser,
   snapTrack,
 } from '~/lib/snap-pixel';
 import {tiktokIdentify, tiktokPage, tiktokTrack} from '~/lib/tiktok-pixel';
@@ -26,7 +26,7 @@ export function AdPixels() {
       .then((res: any) => {
         const email = res?.customer?.emailAddress?.emailAddress || res?.customer?.email;
         const phone = res?.customer?.phoneNumber?.phoneNumber || res?.customer?.phone;
-        setSnapUserEmail(email);
+        setSnapUser({email, phone});
         setMetaUserEmail(email);
         void tiktokIdentify({email, phone, id: res?.customer?.id});
       })

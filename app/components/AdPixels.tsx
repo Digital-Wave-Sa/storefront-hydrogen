@@ -25,9 +25,10 @@ export function AdPixels() {
     Promise.resolve(c)
       .then((res: any) => {
         const email = res?.customer?.emailAddress?.emailAddress || res?.customer?.email;
+        const phone = res?.customer?.phoneNumber?.phoneNumber || res?.customer?.phone;
         setSnapUserEmail(email);
         setMetaUserEmail(email);
-        void tiktokIdentify(email);
+        void tiktokIdentify({email, phone, id: res?.customer?.id});
       })
       .catch(() => {});
   }, [rootData?.customer]);

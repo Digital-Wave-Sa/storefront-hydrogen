@@ -76,15 +76,48 @@ async function sha256(value: string): Promise<string> {
     .join('');
 }
 
-/** Signed-in customer's email, hashed, for TikTok's matching. */
-export async function tiktokIdentify(email?: string | null) {
+/**
+ * Saudi mobile number in E.164 (+9665XXXXXXXX), the form TikTok hashes.
+ * Accepts 05XXXXXXXX, 5XXXXXXXX, 9665XXXXXXXX, 009665XXXXXXXX and +966….
+ */
+export function toE164(phone?: string | null): string {
+  let d = String(phone || '').replace(/\D/g, '');
+  if (!d) return '';
+  if (d.startsWith('00')) d = d.slice(2);
+  if (d.length === 10 && d.startsWith('05')) d = `966${d.slice(1)}`;
+  else if (d.length === 9 && d.startsWith('5')) d = `966${d}`;
+  return d.length >= 8 ? `+${d}` : '';
+}
+
+/**
+ * Advanced matching for the signed-in customer: hashed email, phone and
+ * customer id, so TikTok can tie site events to the person's TikTok account.
+ *
+ * Customers sign in by phone, so many accounts carry a stand-in address
+ * (`<phone>@saadeddin.dev`). Hashing that told TikTok nothing; it is skipped,
+ * and the phone number -- the identifier every customer actually has -- is
+ * sent instead.
+ */
+export async function tiktokIdentify(user?: {
+  email?: string | null;
+  phone?: string | null;
+  id?: string | null;
+}) {
   try {
-    const clean = String(email || '').trim().toLowerCase();
-    if (!clean || clean === identifiedEmail) return;
+    const email = String(user?.email || '').trim().toLowerCase();
+    const realEmail = email.includes('@') && !email.endsWith('@saadeddin.dev') ? email : '';
+    const phone = toE164(user?.phone);
+    const id = String(user?.id || '').split('/').pop() || '';
+    const signature = `${realEmail}|${phone}|${id}`;
+    if (signature === '||' || signature === identifiedEmail) return;
     const ttq = ready();
     if (!ttq) return;
-    identifiedEmail = clean;
-    ttq.identify({email: await sha256(clean)});
+    identifiedEmail = signature;
+    const data: Record<string, string> = {};
+    if (realEmail) data.email = await sha256(realEmail);
+    if (phone) data.phone_number = await sha256(phone);
+    if (id) data.external_id = await sha256(id);
+    ttq.identify(data);
   } catch {
     // never break the page
   }

@@ -707,6 +707,17 @@ type PageBanner = {
   titleEn?: string;
   subtitleAr?: string;
   subtitleEn?: string;
+  /** Parts ticked in «Hide parts»: badge, title, subtitle, buttons, bottom. */
+  hide: string[];
+};
+
+/** «Hide parts» choices as shown in Shopify → the part of the banner they hide. */
+const HIDE_CHOICES: Record<string, string> = {
+  badge: 'badge',
+  title: 'title',
+  subtitle: 'subtitle',
+  buttons: 'buttons',
+  'bottom text': 'bottom',
 };
 
 async function getPageBanner(storefront: any, handle: string): Promise<PageBanner | null> {
@@ -742,6 +753,17 @@ async function getPageBanner(storefront: any, handle: string): Promise<PageBanne
 
     if (text('hidden') === 'true') return null;
 
+    // A list field arrives as a JSON array of the ticked choices.
+    let hide: string[] = [];
+    try {
+      const picked = JSON.parse(field('hide_parts')?.value || '[]');
+      if (Array.isArray(picked)) {
+        hide = picked
+          .map((v) => HIDE_CHOICES[String(v).trim().toLowerCase()])
+          .filter(Boolean);
+      }
+    } catch {}
+
     return {
       desktopImage: image('desktop_image'),
       mobileImage: image('mobile_image'),
@@ -751,6 +773,7 @@ async function getPageBanner(storefront: any, handle: string): Promise<PageBanne
       titleEn: text('title_en'),
       subtitleAr: text('subtitle_ar'),
       subtitleEn: text('subtitle_en'),
+      hide,
     };
   } catch (e: any) {
     console.warn('[Vouchers] Could not read the page banner:', e?.message || e);
@@ -1020,6 +1043,13 @@ export default function VouchersPage() {
   const bannerBadge = isEn ? banner?.badgeEn : banner?.badgeAr;
   const bannerTitle = isEn ? banner?.titleEn : banner?.titleAr;
   const bannerSubtitle = isEn ? banner?.subtitleEn : banner?.subtitleAr;
+  const hidePart = (part: string) => Boolean(banner?.hide?.includes(part));
+  const showBadge = !hidePart('badge');
+  const showTitle = !hidePart('title');
+  const showSubtitle = !hidePart('subtitle');
+  const showButtons = !hidePart('buttons');
+  const showBottom = !hidePart('bottom');
+  const showAnyText = showBadge || showTitle || showSubtitle || showButtons || showBottom;
   const heroDesktop = banner?.desktopImage?.url || '/images/vouchers/voucher-hero.png';
   const heroMobile = banner?.mobileImage?.url;
   const heroAlt =
@@ -1280,8 +1310,10 @@ export default function VouchersPage() {
             />
           </picture>
 
-          {/* Gradient: physical CSS — Arabic darkens RIGHT side, English darkens LEFT side */}
+          {/* Gradient: physical CSS — Arabic darkens RIGHT side, English darkens LEFT side.
+              Dropped when every text part is hidden: nothing left to keep readable. */}
           <div
+            hidden={!showAnyText}
             className="absolute inset-0 z-10 pointer-events-none"
             style={{
               background: isEn
@@ -1300,6 +1332,7 @@ export default function VouchersPage() {
               }`}
             >
               {/* ── BADGE (top) ── matches reference image: gold pill with teal text and dashes */}
+              {showBadge && (
               <div
                 style={{
                   display: 'inline-flex',
@@ -1322,6 +1355,7 @@ export default function VouchersPage() {
                 <span>{bannerBadge || (isEn ? 'Gift Vouchers' : 'قسائم الهدايا')}</span>
                 <span style={{color: '#234745', opacity: 0.7}}>—</span>
               </div>
+              )}
 
               {/* ── MAIN CONTENT (middle): title + subtitle + buttons ── */}
               <div
@@ -1333,9 +1367,10 @@ export default function VouchersPage() {
                   textAlign: isEn ? 'left' : 'right',
                 }}
               >
-                {/* Title — Bahij Janna Bold 90px */}
+                {/* Title — Bahij Janna Bold 90px. When hidden it stays in the
+                    page for search engines and screen readers (sr-only). */}
                 <h1
-                  className="text-white font-bold"
+                  className={`text-white font-bold ${showTitle ? '' : 'sr-only'}`}
                   style={{
                     fontFamily: "'Bahij Janna', 'Bahij', serif",
                     fontSize: 'clamp(38px, 6vw, 90px)',
@@ -1361,6 +1396,7 @@ export default function VouchersPage() {
                 </h1>
 
                 {/* Subtitle — GE Dinar One Regular 400 14px */}
+                {showSubtitle && (
                 <p
                   className="text-white"
                   style={{
@@ -1380,8 +1416,10 @@ export default function VouchersPage() {
                     ? 'Give the gift of choice. Buy, gift, and redeem Saadeddin luxury vouchers — the perfect gift for every occasion.'
                     : 'امنح هدية الاختيار. اشترِ، أدر، واستبدل قسائم هدايا "سعد الدين" الراقية — الهدية المثالية لكل مناسبة'}
                 </p>
+                )}
 
                 {/* Buttons — radius 24px, #C5A96A + #BBCFCD */}
+                {showButtons && (
                 <div
                   className="flex flex-wrap gap-2 pt-2"
                   style={{
@@ -1431,9 +1469,11 @@ export default function VouchersPage() {
                     {isEn ? 'Redeem Voucher' : 'استبدال قسيمة'}
                   </a>
                 </div>
+                )}
               </div>
 
               {/* ── BOTTOM STRIP (bottom) — GE Dinar One Medium 500 14px ── */}
+              {showBottom && (
               <div
                 style={{
                   display: 'flex',
@@ -1468,6 +1508,7 @@ export default function VouchersPage() {
                   </div>
                 ))}
               </div>
+              )}
             </div>
           </div>
         </div>

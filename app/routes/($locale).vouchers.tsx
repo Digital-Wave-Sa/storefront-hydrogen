@@ -689,6 +689,90 @@ async function getCustomerUsedCodesAndHistory(context: any, lang: string) {
   return { usedCodesSet, voucherHistory, lookupFailed };
 }
 
+/**
+ * The page's top banner, editable in Shopify admin → Content → Metaobjects →
+ * «Page banner», entry with handle `vouchers`.
+ *
+ * Every field is optional. A field left empty (or holding only "." or "-")
+ * keeps the built-in text or picture below, so an unfinished entry never
+ * blanks the banner. Turning «Hidden» on ignores the whole entry and the page
+ * shows its built-in banner. No entry, or a failed lookup, does the same.
+ */
+type PageBanner = {
+  desktopImage?: {url: string; altText?: string | null};
+  mobileImage?: {url: string; altText?: string | null};
+  badgeAr?: string;
+  badgeEn?: string;
+  titleAr?: string;
+  titleEn?: string;
+  subtitleAr?: string;
+  subtitleEn?: string;
+};
+
+async function getPageBanner(storefront: any, handle: string): Promise<PageBanner | null> {
+  try {
+    const {metaobject} = await storefront.query(
+      `#graphql
+      query PageBanner($handle: MetaobjectHandleInput!) {
+        metaobject(handle: $handle) {
+          fields {
+            key
+            value
+            reference {
+              ... on MediaImage {
+                image { url altText }
+              }
+            }
+          }
+        }
+      }`,
+      {variables: {handle: {type: 'page_banner', handle}}, cache: storefront.CacheShort()},
+    );
+    if (!metaobject) return null;
+
+    const field = (key: string) => metaobject.fields.find((f: any) => f.key === key);
+    const text = (key: string) => {
+      const value = String(field(key)?.value ?? '').trim();
+      return value && value !== '.' && value !== '-' ? value : undefined;
+    };
+    const image = (key: string) => {
+      const img = field(key)?.reference?.image;
+      return img?.url ? {url: img.url as string, altText: img.altText as string | null} : undefined;
+    };
+
+    if (text('hidden') === 'true') return null;
+
+    return {
+      desktopImage: image('desktop_image'),
+      mobileImage: image('mobile_image'),
+      badgeAr: text('badge_ar'),
+      badgeEn: text('badge_en'),
+      titleAr: text('title_ar'),
+      titleEn: text('title_en'),
+      subtitleAr: text('subtitle_ar'),
+      subtitleEn: text('subtitle_en'),
+    };
+  } catch (e: any) {
+    console.warn('[Vouchers] Could not read the page banner:', e?.message || e);
+    return null;
+  }
+}
+
+/** Multi-line text from Shopify: each line break becomes a <br />. */
+function Lines({text}: {text: string}) {
+  const lines = text.split(/\r?\n/);
+  return (
+    <>
+      {lines.map((line, i) => (
+        <span key={i}>
+          {line}
+          {i < lines.length - 1 && <br />}
+        </span>
+      ))}
+    </>
+  );
+}
+
 export async function loader({context}: LoaderFunctionArgs) {
   const {storefront, env} = context;
   const lang = storefront?.i18n?.language === 'EN' ? 'en' : 'ar';
@@ -846,8 +930,11 @@ export async function loader({context}: LoaderFunctionArgs) {
     }
   }
 
+  const banner = await getPageBanner(storefront, 'vouchers');
+
   return {
     lang,
+    banner,
     shopifyVouchers,
     voucherHistory: combinedHistory,
     customerName,
@@ -929,6 +1016,15 @@ export default function VouchersPage() {
     isLoggedIn = false,
     giftProduct,
   } = loaderData || {};
+  const banner = (loaderData as any)?.banner as PageBanner | null | undefined;
+  const bannerBadge = isEn ? banner?.badgeEn : banner?.badgeAr;
+  const bannerTitle = isEn ? banner?.titleEn : banner?.titleAr;
+  const bannerSubtitle = isEn ? banner?.subtitleEn : banner?.subtitleAr;
+  const heroDesktop = banner?.desktopImage?.url || '/images/vouchers/voucher-hero.png';
+  const heroMobile = banner?.mobileImage?.url;
+  const heroAlt =
+    banner?.desktopImage?.altText ||
+    (isEn ? 'Saadeddin gift vouchers' : 'قسائم هدايا سعد الدين');
 
   const cartFetcher = useFetcher<any>();
   const balanceFetcher = useFetcher<any>();
@@ -1173,11 +1269,16 @@ export default function VouchersPage() {
       <section className="w-full relative mb-8">
         <div className="relative w-full min-h-[580px] sm:min-h-[520px] sm:h-[560px] lg:h-[620px] overflow-hidden shadow-md flex items-center">
           {/* Background Image — full cover */}
-          <img
-            src="/images/vouchers/voucher-hero.png"
-            alt="Saadeddin Luxury Vouchers Banner"
-            className="absolute inset-0 w-full h-full object-cover object-center"
-          />
+          {/* Picture from the «Page banner» entry (mobile picture under 640px,
+              falling back to the desktop one), else the built-in picture. */}
+          <picture>
+            {heroMobile && <source media="(max-width: 639px)" srcSet={heroMobile} />}
+            <img
+              src={heroDesktop}
+              alt={heroAlt}
+              className="absolute inset-0 w-full h-full object-cover object-center"
+            />
+          </picture>
 
           {/* Gradient: physical CSS — Arabic darkens RIGHT side, English darkens LEFT side */}
           <div
@@ -1218,7 +1319,7 @@ export default function VouchersPage() {
                 }}
               >
                 <span style={{color: '#234745', opacity: 0.7}}>—</span>
-                <span>{isEn ? 'Gift Vouchers' : 'قسائم الهدايا'}</span>
+                <span>{bannerBadge || (isEn ? 'Gift Vouchers' : 'قسائم الهدايا')}</span>
                 <span style={{color: '#234745', opacity: 0.7}}>—</span>
               </div>
 
@@ -1244,7 +1345,9 @@ export default function VouchersPage() {
                     textShadow: '0 2px 20px rgba(0,0,0,0.5)',
                   }}
                 >
-                  {isEn ? (
+                  {bannerTitle ? (
+                    <Lines text={bannerTitle} />
+                  ) : isEn ? (
                     <>
                       Gifts & Promotional <br />
                       Vouchers
@@ -1271,7 +1374,9 @@ export default function VouchersPage() {
                     maxWidth: '480px',
                   }}
                 >
-                  {isEn
+                  {bannerSubtitle ? (
+                    <Lines text={bannerSubtitle} />
+                  ) : isEn
                     ? 'Give the gift of choice. Buy, gift, and redeem Saadeddin luxury vouchers — the perfect gift for every occasion.'
                     : 'امنح هدية الاختيار. اشترِ، أدر، واستبدل قسائم هدايا "سعد الدين" الراقية — الهدية المثالية لكل مناسبة'}
                 </p>

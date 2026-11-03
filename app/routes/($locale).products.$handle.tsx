@@ -31,6 +31,7 @@ import {ProductItem} from '~/components/ProductItem';
 import {ReviewForm} from '~/components/ReviewForm';
 import {useWishlist} from '~/context/WishlistContext';
 import {fixMojibake} from '~/lib/mojibake';
+import {looksLikeHtml, sanitizeHtml} from '~/lib/safe-html';
 import {adminApiQuery} from '~/lib/admin.server';
 import {getAdminToken, getAdminDomain} from '~/lib/shopify-admin.server';
 import {createPortal} from 'react-dom';
@@ -5191,9 +5192,10 @@ export default function Product() {
                         </span>
                         {isEn ? 'Nutrition Facts' : 'حقائق غذائية'}
                       </h5>
-                      <p className="text-[15px] font-bold text-[#234745]/70 leading-relaxed whitespace-pre-wrap">
-                        {(product as any).nutrition.value}
-                      </p>
+                      <NutritionContent
+                        value={(product as any).nutrition.value}
+                        className="text-[15px] font-bold text-[#234745]/70 leading-relaxed"
+                      />
                     </div>
                   )}
                 </div>
@@ -5296,9 +5298,10 @@ export default function Product() {
                         <span>🥗</span>
                         {isEn ? 'Nutrition Facts' : 'حقائق غذائية'}
                       </h5>
-                      <p className="text-[14px] font-bold text-[#234745]/80 leading-relaxed whitespace-pre-wrap">
-                        {(product as any).nutrition.value}
-                      </p>
+                      <NutritionContent
+                        value={(product as any).nutrition.value}
+                        className="text-[14px] font-bold text-[#234745]/80 leading-relaxed"
+                      />
                     </div>
                   )}
                 </div>
@@ -6522,3 +6525,34 @@ const NEWEST_PRODUCTS_QUERY = `#graphql
     }
   }
 ` as const;
+
+/**
+ * The «حقائق غذائية» tab body, from the `custom.nutrition` metafield.
+ *
+ * Plain text keeps its line breaks, as before. Text containing HTML (for
+ * example a pasted nutrition table) is rendered as HTML after
+ * sanitizeHtml() strips anything that could run code. Tables, lists and
+ * headings get styles here so a bare <table> pasted from anywhere still
+ * reads like the rest of the page.
+ */
+function NutritionContent({value, className}: {value: string; className: string}) {
+  if (!looksLikeHtml(value)) {
+    return <p className={`${className} whitespace-pre-wrap`}>{value}</p>;
+  }
+  return (
+    <div
+      className={[
+        className,
+        'overflow-x-auto',
+        '[&_p]:mb-3 last:[&_p]:mb-0',
+        '[&_ul]:list-disc [&_ul]:ps-5 [&_ol]:list-decimal [&_ol]:ps-5 [&_li]:mb-1',
+        '[&_h1]:text-[17px] [&_h2]:text-[16px] [&_h3]:text-[15px] [&_h4]:text-[15px] [&_h1]:mb-2 [&_h2]:mb-2 [&_h3]:mb-2 [&_h4]:mb-2 [&_h1]:text-[#295b45] [&_h2]:text-[#295b45] [&_h3]:text-[#295b45] [&_h4]:text-[#295b45]',
+        '[&_table]:w-full [&_table]:border-collapse [&_table]:my-2',
+        '[&_th]:border [&_th]:border-[#295b45]/15 [&_th]:bg-[#295b45]/5 [&_th]:px-3 [&_th]:py-2 [&_th]:text-start [&_th]:font-black [&_th]:text-[#295b45]',
+        '[&_td]:border [&_td]:border-[#295b45]/15 [&_td]:px-3 [&_td]:py-2 [&_td]:text-start',
+        '[&_strong]:font-black [&_b]:font-black',
+      ].join(' ')}
+      dangerouslySetInnerHTML={{__html: sanitizeHtml(value)}}
+    />
+  );
+}

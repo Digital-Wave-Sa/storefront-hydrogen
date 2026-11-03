@@ -5186,12 +5186,6 @@ export default function Product() {
                     <div
                       className={`p-8 bg-[#295b45]/5 rounded-[32px] border border-[#295b45]/10 max-w-2xl ${isEn ? 'text-left' : 'text-right'}`}
                     >
-                      <h5 className="text-[16px] font-black text-[#295b45] mb-4 flex items-center gap-3">
-                        <span className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-xl">
-                          🥗
-                        </span>
-                        {isEn ? 'Nutrition Facts' : 'حقائق غذائية'}
-                      </h5>
                       <NutritionContent
                         value={(product as any).nutrition.value}
                         className="text-[15px] font-bold text-[#234745]/70 leading-relaxed"
@@ -5294,10 +5288,6 @@ export default function Product() {
                 <div className="w-full">
                   {(product as any).nutrition?.value && (
                     <div className="p-5 bg-[#295b45]/5 rounded-[20px] border border-[#295b45]/10 text-start">
-                      <h5 className="text-[15px] font-black text-[#295b45] mb-2 flex items-center gap-2">
-                        <span>🥗</span>
-                        {isEn ? 'Nutrition Facts' : 'حقائق غذائية'}
-                      </h5>
                       <NutritionContent
                         value={(product as any).nutrition.value}
                         className="text-[14px] font-bold text-[#234745]/80 leading-relaxed"

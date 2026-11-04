@@ -31,6 +31,8 @@ export function RamadanBanner({ config }: { config?: any }) {
         return path.startsWith('/en/') ? path.replace(/^\/en/, '') : (path === '/en' ? '/' : path);
     })();
     const imageUrl = getRefUrl('image') || getRefUrl('ramadan_image') || '/images/ramadan-offers-section.webp';
+    // Optional phone picture (under 640px); falls back to the desktop one.
+    const mobileImageUrl = getRefUrl('mobile_image');
 
     // Simple countdown logic starting from 14 days
     const [timeLeft, setTimeLeft] = useState({
@@ -92,12 +94,15 @@ export function RamadanBanner({ config }: { config?: any }) {
 
                     {/* Left Side: Image (First in LTR, Last in RTL so it stays on the left visually) */}
                     <div className="relative z-10 w-full md:w-[45%] h-[260px] md:h-full flex items-center justify-center p-8 bg-[#EED5D7] md:bg-transparent pt-12">
-                        <img
-                            src={imageUrl}
-                            alt={customTitleEn || "Ramadan Sweets Tray"}
-                            className="w-full max-w-[490px] h-auto object-contain"
-                            style={{ maxWidth: '489.6px', maxHeight: '400px' }}
-                        />
+                        <picture className="contents">
+                            {mobileImageUrl && <source media="(max-width: 639px)" srcSet={mobileImageUrl} />}
+                            <img
+                                src={imageUrl}
+                                alt={customTitleEn || "Ramadan Sweets Tray"}
+                                className="w-full max-w-[490px] h-auto object-contain"
+                                style={{ maxWidth: '489.6px', maxHeight: '400px' }}
+                            />
+                        </picture>
                     </div>
 
                     {/* Right Side: Content */}

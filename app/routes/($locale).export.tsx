@@ -367,6 +367,8 @@ export default function ExportPage() {
       hero.localized('secondary_button_text', isEn) ||
       (isEn ? 'Request Export Quote' : 'طلب عرض أسعار للتصدير'),
     image: hero.image('background_image') || '/images/export/export-hero.png',
+    // Optional phone picture (under 640px); falls back to the desktop one.
+    mobileImage: hero.image('mobile_image') || null,
   };
 
   const whyCopy = {
@@ -472,11 +474,16 @@ export default function ExportPage() {
       <section className="relative w-full min-h-[560px] sm:min-h-[640px] lg:min-h-[720px] flex items-center overflow-hidden">
         {/* Background Image & Soft Gradient Overlay */}
         <div className="absolute inset-0 z-0">
-          <img
-            src={heroCopy.image}
-            alt="Saudi Export Pastry Table"
-            className="w-full h-full object-cover object-center"
-          />
+          <picture className="contents">
+            {heroCopy.mobileImage && (
+              <source media="(max-width: 639px)" srcSet={heroCopy.mobileImage} />
+            )}
+            <img
+              src={heroCopy.image}
+              alt="Saudi Export Pastry Table"
+              className="w-full h-full object-cover object-center"
+            />
+          </picture>
           <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-transparent rtl:bg-gradient-to-l" />
         </div>
 

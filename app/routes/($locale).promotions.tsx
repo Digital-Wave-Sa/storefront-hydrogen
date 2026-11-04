@@ -169,6 +169,8 @@ export async function loader({context}: LoaderFunctionArgs) {
             heroFields.end_date ||
             heroFields.expires_at,
           image: heroFields.image || heroFields.banner_image,
+          // Optional phone picture (under 640px); falls back to `image`.
+          mobileImage: heroFields.mobile_image || null,
           buttonTextAr: heroFields.button_text_ar || heroFields.button_text,
           buttonTextEn: heroFields.button_text_en || heroFields.button_text,
           buttonLink: heroFields.button_link || heroFields.link,
@@ -719,14 +721,19 @@ export default function PromotionsPage() {
         >
           {/* Top on Mobile: Table Image */}
           <div className="w-full lg:w-[45%] h-[220px] sm:h-[260px] lg:h-[350px] flex-shrink-0 rounded-[16px] overflow-hidden order-1 lg:order-2">
-            <img
-              src={
-                heroData?.image ||
-                '/images/promotions/promotions-1st-section.webp'
-              }
-              alt={heroData?.titleAr || 'Season Specials'}
-              className="w-full h-full object-cover object-center"
-            />
+            <picture className="contents">
+              {heroData?.mobileImage && (
+                <source media="(max-width: 639px)" srcSet={heroData.mobileImage} />
+              )}
+              <img
+                src={
+                  heroData?.image ||
+                  '/images/promotions/promotions-1st-section.webp'
+                }
+                alt={heroData?.titleAr || 'Season Specials'}
+                className="w-full h-full object-cover object-center"
+              />
+            </picture>
           </div>
 
           {/* Bottom on Mobile: Promotion Details */}

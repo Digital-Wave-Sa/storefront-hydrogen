@@ -1,4 +1,4 @@
-import {type MetaFunction} from 'react-router';
+import {type MetaFunction, type LoaderFunctionArgs, useLoaderData} from 'react-router';
 import {useBranchStats} from '~/lib/branch-stats';
 import {yearsSinceFounding} from '~/lib/founded';
 import {useState, useRef} from 'react';
@@ -22,7 +22,80 @@ export const meta: MetaFunction = ({matches}) => {
   ];
 };
 
+/**
+ * The «Founder's Story» section, editable in Shopify admin → Content →
+ * Metaobjects → «About page», entry with handle `about`.
+ *
+ * Every field is optional: an empty one (or one holding only "." or "-")
+ * keeps the built-in picture or text below, so the page never goes blank.
+ * No entry, or a failed lookup, shows the page exactly as before.
+ */
+type AboutStory = {
+  image?: string;
+  mobileImage?: string;
+  labelAr?: string;
+  labelEn?: string;
+  titleAr?: string;
+  titleEn?: string;
+  textAr?: string;
+  textEn?: string;
+};
+
+export async function loader({context}: LoaderFunctionArgs) {
+  const {storefront} = context;
+  let story: AboutStory | null = null;
+  try {
+    const {metaobject} = await storefront.query(
+      `#graphql
+      query AboutPageStory($handle: MetaobjectHandleInput!) {
+        metaobject(handle: $handle) {
+          fields {
+            key
+            value
+            reference {
+              ... on MediaImage {
+                image { url }
+              }
+            }
+          }
+        }
+      }`,
+      {variables: {handle: {type: 'about_page', handle: 'about'}}, cache: storefront.CacheShort()},
+    );
+    if (metaobject) {
+      const field = (key: string) => metaobject.fields.find((f: any) => f.key === key);
+      const text = (key: string) => {
+        const value = String(field(key)?.value ?? '').trim();
+        return value && value !== '.' && value !== '-' ? value : undefined;
+      };
+      const image = (key: string) => (field(key)?.reference?.image?.url as string) || undefined;
+      story = {
+        image: image('story_image'),
+        mobileImage: image('story_mobile_image'),
+        labelAr: text('story_label_ar'),
+        labelEn: text('story_label_en'),
+        titleAr: text('story_title_ar'),
+        titleEn: text('story_title_en'),
+        textAr: text('story_text_ar'),
+        textEn: text('story_text_en'),
+      };
+    }
+  } catch (e: any) {
+    console.warn('[About] Could not read the About page content:', e?.message || e);
+  }
+  return {story};
+}
+
+/** Paragraphs from a multi-line field: a blank line starts a new paragraph. */
+function storyParagraphs(text: string): string[] {
+  return text
+    .split(/\r?\n\s*\r?\n|\r?\n/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+}
+
 export default function AboutPage() {
+  const story = (useLoaderData<typeof loader>() as any)?.story as AboutStory | null;
   /*
     The Admin list's figures. Not the root loader's locations: those come from
     the Storefront API, which returns only the pickup-enabled ones, so
@@ -207,7 +280,8 @@ export default function AboutPage() {
                   fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
                 }}
               >
-                {isEn ? "The Founder's Story" : 'قصة المؤسس'}
+                {(isEn ? story?.labelEn : story?.labelAr) ||
+                  (isEn ? "The Founder's Story" : 'قصة المؤسس')}
               </p>
               <h2
                 className="text-[26px] md:text-[44px] font-bold text-[#1F413F] !mt-1"
@@ -216,9 +290,10 @@ export default function AboutPage() {
                   lineHeight: '1.2',
                 }}
               >
-                {isEn
-                  ? 'It started with a man, a dream, and a small stove'
-                  : 'بدأت برجل وحلم وموقد صغير'}
+                {(isEn ? story?.titleEn : story?.titleAr) ||
+                  (isEn
+                    ? 'It started with a man, a dream, and a small stove'
+                    : 'بدأت برجل وحلم وموقد صغير')}
               </h2>
               <div
                 className="text-[#7D7D7D] !font-normal !text-[16px] space-y-2 !mt-6"
@@ -227,26 +302,43 @@ export default function AboutPage() {
                   lineHeight: '1.8',
                 }}
               >
-                <p className="!mb-2 !font-normal">
-                  {isEn
-                    ? 'In 1919, Saadeddin opened its doors for the first time in the heart of Riyadh. He had nothing in his hands but inherited family recipes and a sincere desire to make those around him happy with the finest sweets.'
-                    : 'في عام 1919، فتح سعد الدين أبوابه لأول مرة في قلب الرياض. لم يكن في يده سوى وصفات عائلية موروثة ورغبة صادقة في إسعاد من حوله بأجود الحلويات.'}
-                </p>
-                <p className="!mb-2 !text-[16px] !font-normal">
-                  {isEn
-                    ? 'From a small shop in the old market, the dream grew to become today one of the largest dessert chains in the Kingdom of Saudi Arabia — with the same recipes and the same authentic taste.'
-                    : 'من محل صغير في السوق القديم، نما الحلم ليصبح اليوم أحد أكبر سلاسل الحلويات في المملكة العربية السعودية — بنفس الوصفات وذات الطعم الأصيل.'}
-                </p>
+                {(isEn ? story?.textEn : story?.textAr) ? (
+                  storyParagraphs((isEn ? story?.textEn : story?.textAr) as string).map((para, idx) => (
+                    <p key={idx} className="!mb-2 !text-[16px] !font-normal">
+                      {para}
+                    </p>
+                  ))
+                ) : (
+                  <>
+                  <p className="!mb-2 !font-normal">
+                    {isEn
+                      ? 'In 1919, Saadeddin opened its doors for the first time in the heart of Riyadh. He had nothing in his hands but inherited family recipes and a sincere desire to make those around him happy with the finest sweets.'
+                      : 'في عام 1919، فتح سعد الدين أبوابه لأول مرة في قلب الرياض. لم يكن في يده سوى وصفات عائلية موروثة ورغبة صادقة في إسعاد من حوله بأجود الحلويات.'}
+                  </p>
+                  <p className="!mb-2 !text-[16px] !font-normal">
+                    {isEn
+                      ? 'From a small shop in the old market, the dream grew to become today one of the largest dessert chains in the Kingdom of Saudi Arabia — with the same recipes and the same authentic taste.'
+                      : 'من محل صغير في السوق القديم، نما الحلم ليصبح اليوم أحد أكبر سلاسل الحلويات في المملكة العربية السعودية — بنفس الوصفات وذات الطعم الأصيل.'}
+                  </p>
+                  </>
+                )}
               </div>
             </div>
 
             {/* Image */}
             <div className={`relative overflow-hidden order-1 ${isEn ? 'md:order-2' : 'md:order-1'} shadow-xl`}>
-              <img
-                src="/assets/images/about/our%20story.webp"
-                alt="Our Story"
-                className="w-full h-[400px] object-cover"
-              />
+              {/* Picture from the «About page» entry (phone picture under
+                  640px, falling back to the desktop one), else the built-in. */}
+              <picture className="contents">
+                {story?.mobileImage && (
+                  <source media="(max-width: 639px)" srcSet={story.mobileImage} />
+                )}
+                <img
+                  src={story?.image || '/assets/images/about/our%20story.webp'}
+                  alt={isEn ? 'Our Story' : 'قصتنا'}
+                  className="w-full h-[400px] object-cover"
+                />
+              </picture>
             </div>
           </div>
         </div>
